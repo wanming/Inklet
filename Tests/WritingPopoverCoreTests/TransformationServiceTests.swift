@@ -53,6 +53,29 @@ final class TransformationServiceTests: XCTestCase {
         }
     }
 
+    func testTimeoutReturnsPromptlyWhenProviderIgnoresCancellation() async throws {
+        let service = TransformationService(provider: FakeLLMProvider(
+            outputText: "Hello.",
+            delayNanoseconds: 500_000_000,
+            ignoresCancellation: true
+        ))
+        let started = Date()
+
+        do {
+            _ = try await service.transform(
+                sourceText: "hello",
+                mode: mode,
+                model: "test-model",
+                temperature: 0.2,
+                timeoutSeconds: 0.01
+            )
+            XCTFail("Expected timeout")
+        } catch let error as TransformationError {
+            XCTAssertEqual(error, .timeout)
+            XCTAssertLessThan(Date().timeIntervalSince(started), 0.2)
+        }
+    }
+
     private var mode: PromptMode {
         PromptMode(
             id: "polish",
@@ -71,15 +94,25 @@ final class TransformationServiceTests: XCTestCase {
 private struct FakeLLMProvider: LLMProvider {
     var outputText: String
     var delayNanoseconds: UInt64
+    var ignoresCancellation: Bool
 
-    init(outputText: String, delayNanoseconds: UInt64 = 0) {
+    init(
+        outputText: String,
+        delayNanoseconds: UInt64 = 0,
+        ignoresCancellation: Bool = false
+    ) {
         self.outputText = outputText
         self.delayNanoseconds = delayNanoseconds
+        self.ignoresCancellation = ignoresCancellation
     }
 
     func transform(_ request: TransformationRequest) async throws -> TransformationResult {
         if delayNanoseconds > 0 {
-            try await Task.sleep(nanoseconds: delayNanoseconds)
+            if ignoresCancellation {
+                await sleepIgnoringCancellation(nanoseconds: delayNanoseconds)
+            } else {
+                try await Task.sleep(nanoseconds: delayNanoseconds)
+            }
         }
 
         return TransformationResult(
@@ -87,5 +120,17 @@ private struct FakeLLMProvider: LLMProvider {
             providerMetadata: ["provider": "fake"],
             elapsedMilliseconds: 1
         )
+    }
+
+    private func sleepIgnoringCancellation(nanoseconds: UInt64) async {
+        let deadline = Date().addingTimeInterval(Double(nanoseconds) / 1_000_000_000)
+
+        while Date() < deadline {
+            do {
+                try await Task.sleep(nanoseconds: 10_000_000)
+            } catch {
+                continue
+            }
+        }
     }
 }

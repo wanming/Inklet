@@ -48,21 +48,67 @@ public struct TransformationService: Sendable {
         seconds: TimeInterval,
         operation: @escaping @Sendable () async throws -> T
     ) async throws -> T {
-        try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask {
-                try await operation()
-            }
-            group.addTask {
-                let nanoseconds = UInt64(max(seconds, 0.001) * 1_000_000_000)
-                try await Task.sleep(nanoseconds: nanoseconds)
-                throw TransformationError.timeout
+        let nanoseconds = UInt64(max(seconds, 0.001) * 1_000_000_000)
+        let operationTask = Task {
+            try await operation()
+        }
+        let timeoutTask = Task {
+            try await Task.sleep(nanoseconds: nanoseconds)
+            throw TransformationError.timeout
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let race = TimeoutRaceState(continuation: continuation)
+
+            Task {
+                do {
+                    let result = try await operationTask.value
+                    if race.resolve(with: .success(result)) {
+                        timeoutTask.cancel()
+                    }
+                } catch {
+                    if race.resolve(with: .failure(error)) {
+                        timeoutTask.cancel()
+                    }
+                }
             }
 
-            guard let result = try await group.next() else {
-                throw TransformationError.timeout
+            Task {
+                do {
+                    _ = try await timeoutTask.value
+                } catch {
+                    if race.resolve(with: .failure(error)) {
+                        operationTask.cancel()
+                    }
+                }
             }
-            group.cancelAll()
-            return result
         }
+    }
+}
+
+private final class TimeoutRaceState<T: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<T, Error>?
+
+    init(continuation: CheckedContinuation<T, Error>) {
+        self.continuation = continuation
+    }
+
+    func resolve(with result: Result<T, Error>) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard let continuation else {
+            return false
+        }
+        self.continuation = nil
+
+        switch result {
+        case .success(let value):
+            continuation.resume(returning: value)
+        case .failure(let error):
+            continuation.resume(throwing: error)
+        }
+        return true
     }
 }
