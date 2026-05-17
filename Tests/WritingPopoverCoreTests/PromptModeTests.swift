@@ -2,6 +2,10 @@ import XCTest
 @testable import WritingPopoverCore
 
 final class PromptModeTests: XCTestCase {
+    private struct AutoRulePayload: Codable {
+        var autoRule: PromptMode.AutoRule
+    }
+
     func testDefaultModesContainAutoTranslationAndPolishing() {
         let store = PromptModeStore.defaultStore()
 
@@ -13,7 +17,7 @@ final class PromptModeTests: XCTestCase {
 
         let mode = store.resolve(modeID: PromptMode.autoID, sourceText: "请帮我写一封英文邮件")
 
-        XCTAssertEqual(mode.name, "Chinese to English")
+        XCTAssertEqual(mode.id, PromptMode.chineseToEnglishID)
     }
 
     func testAutoResolvesEnglishHeavyInputToPolishingMode() {
@@ -21,7 +25,7 @@ final class PromptModeTests: XCTestCase {
 
         let mode = store.resolve(modeID: PromptMode.autoID, sourceText: "i has a apple")
 
-        XCTAssertEqual(mode.name, "Polish English")
+        XCTAssertEqual(mode.id, PromptMode.polishEnglishID)
     }
 
     func testHiddenModesAreExcludedFromVisibleModes() {
@@ -39,5 +43,21 @@ final class PromptModeTests: XCTestCase {
         ))
 
         XCTAssertFalse(store.visibleModes.contains { $0.id == "hidden" })
+    }
+
+    func testEmptyStoreResolveFallsBackToBuiltInPolishEnglishMode() {
+        let store = PromptModeStore(modes: [])
+
+        let mode = store.resolve(modeID: PromptMode.autoID, sourceText: "hello")
+
+        XCTAssertEqual(mode.id, PromptMode.polishEnglishID)
+    }
+
+    func testUnknownAutoRuleDecodesAsNone() throws {
+        let data = #"{"autoRule":"renamed-rule"}"#.data(using: .utf8)!
+
+        let payload = try JSONDecoder().decode(AutoRulePayload.self, from: data)
+
+        XCTAssertEqual(payload.autoRule, .none)
     }
 }

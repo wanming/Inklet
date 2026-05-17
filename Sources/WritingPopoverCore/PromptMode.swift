@@ -8,6 +8,17 @@ public struct PromptMode: Codable, Equatable, Identifiable, Sendable {
         case none
         case chineseHeavy
         case englishHeavy
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            let rawValue = try container.decode(String.self)
+            self = AutoRule(rawValue: rawValue) ?? .none
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            var container = encoder.singleValueContainer()
+            try container.encode(rawValue)
+        }
     }
 
     public var id: String
@@ -125,7 +136,21 @@ public struct PromptModeStore: Equatable, Sendable {
         let rule: PromptMode.AutoRule = sourceText.isChineseHeavy ? .chineseHeavy : .englishHeavy
         return modes.first { $0.participatesInAuto && $0.autoRule == rule }
             ?? modes.first { $0.id == PromptMode.polishEnglishID }
-            ?? modes[0]
+            ?? PromptModeStore.defaultPolishEnglishMode
+    }
+
+    private static var defaultPolishEnglishMode: PromptMode {
+        PromptMode(
+            id: PromptMode.polishEnglishID,
+            name: "Polish English",
+            description: "润色英文，修正语法和表达",
+            systemPrompt: "Improve the user's English. Fix grammar, spelling, word choice, and clarity while preserving meaning. Return only the improved text.",
+            shortcut: "⌘2",
+            participatesInAuto: true,
+            autoRule: .englishHeavy,
+            sortOrder: 2,
+            isVisible: true
+        )
     }
 }
 
