@@ -20,8 +20,24 @@ final class ConfigStoreTests: XCTestCase {
         }
         let store = UserDefaultsConfigStore(userDefaults: userDefaults)
         var config = AppConfig.defaultConfig()
-        config.model = "gpt-4.1"
+        config.model = "test-model"
         config.temperature = 0.7
+        config.timeoutSeconds = 9
+        config.hotkey = "⌘Space"
+        config.defaultModeID = PromptMode.polishEnglishID
+        config.promptModes = [
+            PromptMode(
+                id: "custom-test-mode",
+                name: "Custom Test Mode",
+                description: "Custom test description",
+                systemPrompt: "Custom test prompt",
+                shortcut: "⌘9",
+                participatesInAuto: true,
+                autoRule: .englishHeavy,
+                sortOrder: 99,
+                isVisible: false
+            )
+        ]
 
         try store.save(config)
         let loadedConfig = try store.load()
