@@ -76,6 +76,34 @@ final class TransformationServiceTests: XCTestCase {
         }
     }
 
+    func testParentCancellationThrowsCancellationError() async throws {
+        let service = TransformationService(provider: FakeLLMProvider(
+            outputText: "Hello.",
+            delayNanoseconds: 500_000_000,
+            ignoresCancellation: true
+        ))
+        let task = Task {
+            try await service.transform(
+                sourceText: "hello",
+                mode: mode,
+                model: "test-model",
+                temperature: 0.2,
+                timeoutSeconds: 10
+            )
+        }
+
+        try await Task.sleep(nanoseconds: 10_000_000)
+        let started = Date()
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            XCTFail("Expected cancellation")
+        } catch is CancellationError {
+            XCTAssertLessThan(Date().timeIntervalSince(started), 0.2)
+        }
+    }
+
     private var mode: PromptMode {
         PromptMode(
             id: "polish",

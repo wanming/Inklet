@@ -48,7 +48,10 @@ public struct TransformationService: Sendable {
         seconds: TimeInterval,
         operation: @escaping @Sendable () async throws -> T
     ) async throws -> T {
+        try Task.checkCancellation()
+
         let nanoseconds = UInt64(max(seconds, 0.001) * 1_000_000_000)
+        let race = TimeoutRaceState<T>()
         let operationTask = Task {
             try await operation()
         }
@@ -56,32 +59,31 @@ public struct TransformationService: Sendable {
             try await Task.sleep(nanoseconds: nanoseconds)
             throw TransformationError.timeout
         }
+        race.setTasks(operationTask: operationTask, timeoutTask: timeoutTask)
 
-        return try await withCheckedThrowingContinuation { continuation in
-            let race = TimeoutRaceState(continuation: continuation)
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                race.setContinuation(continuation)
 
-            Task {
-                do {
-                    let result = try await operationTask.value
-                    if race.resolve(with: .success(result)) {
-                        timeoutTask.cancel()
+                Task {
+                    do {
+                        let result = try await operationTask.value
+                        _ = race.resolve(with: .success(result))
+                    } catch {
+                        _ = race.resolve(with: .failure(error))
                     }
-                } catch {
-                    if race.resolve(with: .failure(error)) {
-                        timeoutTask.cancel()
+                }
+
+                Task {
+                    do {
+                        _ = try await timeoutTask.value
+                    } catch {
+                        _ = race.resolve(with: .failure(error))
                     }
                 }
             }
-
-            Task {
-                do {
-                    _ = try await timeoutTask.value
-                } catch {
-                    if race.resolve(with: .failure(error)) {
-                        operationTask.cancel()
-                    }
-                }
-            }
+        } onCancel: {
+            _ = race.resolve(with: .failure(CancellationError()))
         }
     }
 }
@@ -89,26 +91,75 @@ public struct TransformationService: Sendable {
 private final class TimeoutRaceState<T: Sendable>: @unchecked Sendable {
     private let lock = NSLock()
     private var continuation: CheckedContinuation<T, Error>?
+    private var operationTask: Task<T, Error>?
+    private var timeoutTask: Task<Void, Error>?
+    private var pendingResult: Result<T, Error>?
+    private var isResolved = false
 
-    init(continuation: CheckedContinuation<T, Error>) {
-        self.continuation = continuation
+    func setTasks(operationTask: Task<T, Error>, timeoutTask: Task<Void, Error>) {
+        lock.lock()
+        let shouldCancel = isResolved
+        if shouldCancel {
+            lock.unlock()
+            operationTask.cancel()
+            timeoutTask.cancel()
+        } else {
+            self.operationTask = operationTask
+            self.timeoutTask = timeoutTask
+            lock.unlock()
+        }
+    }
+
+    func setContinuation(_ continuation: CheckedContinuation<T, Error>) {
+        lock.lock()
+        if let pendingResult {
+            self.pendingResult = nil
+            lock.unlock()
+            resume(continuation, with: pendingResult)
+        } else {
+            self.continuation = continuation
+            lock.unlock()
+        }
     }
 
     func resolve(with result: Result<T, Error>) -> Bool {
         lock.lock()
-        defer { lock.unlock() }
-
-        guard let continuation else {
+        guard !isResolved else {
+            lock.unlock()
             return false
         }
-        self.continuation = nil
+        isResolved = true
 
+        let operationTask = operationTask
+        let timeoutTask = timeoutTask
+        self.operationTask = nil
+        self.timeoutTask = nil
+
+        guard let continuation else {
+            pendingResult = result
+            lock.unlock()
+            operationTask?.cancel()
+            timeoutTask?.cancel()
+            return true
+        }
+        self.continuation = nil
+        lock.unlock()
+
+        operationTask?.cancel()
+        timeoutTask?.cancel()
+        resume(continuation, with: result)
+        return true
+    }
+
+    private func resume(
+        _ continuation: CheckedContinuation<T, Error>,
+        with result: Result<T, Error>
+    ) {
         switch result {
         case .success(let value):
             continuation.resume(returning: value)
         case .failure(let error):
             continuation.resume(throwing: error)
         }
-        return true
     }
 }
