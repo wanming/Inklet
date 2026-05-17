@@ -26,7 +26,6 @@ final class ConfigStoreTests: XCTestCase {
         try store.save(config)
         let loadedConfig = try store.load()
 
-        XCTAssertEqual(loadedConfig.model, "gpt-4.1")
-        XCTAssertEqual(loadedConfig.temperature, 0.7)
+        XCTAssertEqual(loadedConfig, config)
     }
 }
