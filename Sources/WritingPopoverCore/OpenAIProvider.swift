@@ -25,11 +25,11 @@ public struct OpenAIProvider: LLMProvider {
 
     private struct ResponseBody: Decodable {
         struct OutputItem: Decodable {
-            var content: [ContentItem]
+            var content: [ContentItem]?
         }
 
         struct ContentItem: Decodable {
-            var type: String
+            var type: String?
             var text: String?
         }
 
@@ -37,11 +37,19 @@ public struct OpenAIProvider: LLMProvider {
 
         var outputText: String {
             output
-                .flatMap(\.content)
+                .flatMap { $0.content ?? [] }
                 .filter { $0.type == "output_text" }
                 .compactMap(\.text)
                 .joined()
         }
+    }
+
+    private struct ErrorResponseBody: Decodable {
+        struct ErrorBody: Decodable {
+            var message: String
+        }
+
+        var error: ErrorBody
     }
 
     private let apiKeyProvider: @Sendable () throws -> String
@@ -78,7 +86,7 @@ public struct OpenAIProvider: LLMProvider {
         }
 
         guard (200..<300).contains(httpResponse.statusCode) else {
-            throw TransformationError.provider("OpenAI 请求失败：HTTP \(httpResponse.statusCode)")
+            throw TransformationError.provider(Self.providerErrorMessage(from: data, statusCode: httpResponse.statusCode))
         }
 
         let outputText = try Self.parseOutputText(from: data)
@@ -104,6 +112,18 @@ public struct OpenAIProvider: LLMProvider {
     }
 
     public static func parseOutputText(from data: Data) throws -> String {
-        try JSONDecoder().decode(ResponseBody.self, from: data).outputText
+        let outputText = try JSONDecoder().decode(ResponseBody.self, from: data).outputText
+        guard !outputText.isEmpty else {
+            throw TransformationError.emptyResponse
+        }
+        return outputText
+    }
+
+    static func providerErrorMessage(from data: Data, statusCode: Int) -> String {
+        if let errorBody = try? JSONDecoder().decode(ErrorResponseBody.self, from: data) {
+            return "OpenAI 请求失败：\(errorBody.error.message)"
+        }
+
+        return "OpenAI 请求失败：HTTP \(statusCode)"
     }
 }
