@@ -10,6 +10,7 @@ private final class WritingPopoverPanel: NSPanel {
 @MainActor
 final class WritingPopoverWindowController: NSWindowController {
     private let model: WritingPopoverViewModel
+    private var previousApplication: NSRunningApplication?
 
     init() {
         self.model = WritingPopoverViewModel()
@@ -30,6 +31,13 @@ final class WritingPopoverWindowController: NSWindowController {
 
         super.init(window: panel)
         shouldCascadeWindows = false
+
+        model.onHidePopover = { [weak self] in
+            self?.window?.orderOut(nil)
+        }
+        model.onFocusPopover = { [weak self] in
+            self?.focusPopover()
+        }
     }
 
     @available(*, unavailable)
@@ -38,7 +46,12 @@ final class WritingPopoverWindowController: NSWindowController {
     }
 
     func show() {
-        model.resetForOpen()
+        previousApplication = NSWorkspace.shared.frontmostApplication
+        model.resetForOpen(previousApplication: previousApplication)
+        focusPopover()
+    }
+
+    private func focusPopover() {
         window?.center()
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
