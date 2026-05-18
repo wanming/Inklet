@@ -32,17 +32,25 @@ public final class ClipboardService {
         pasteboard.setString(text, forType: .string)
     }
 
-    public func restore(_ snapshot: PasteboardSnapshot) {
-        pasteboard.clearContents()
+    @discardableResult
+    public func restore(_ snapshot: PasteboardSnapshot) -> Bool {
+        var items: [NSPasteboardItem] = []
 
-        let items = snapshot.items.map { savedItem in
+        for savedItem in snapshot.items {
             let pasteboardItem = NSPasteboardItem()
             for (type, data) in savedItem {
-                pasteboardItem.setData(data, forType: type)
+                guard pasteboardItem.setData(data, forType: type) else {
+                    return false
+                }
             }
-            return pasteboardItem
+            items.append(pasteboardItem)
         }
 
-        pasteboard.writeObjects(items)
+        pasteboard.clearContents()
+        guard !items.isEmpty else {
+            return true
+        }
+
+        return pasteboard.writeObjects(items)
     }
 }
