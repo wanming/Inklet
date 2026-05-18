@@ -40,21 +40,43 @@ public enum HotkeyError: Error, Equatable {
     case registrationFailed(OSStatus)
 }
 
-public final class GlobalHotkeyManager: @unchecked Sendable {
-    public typealias Handler = @Sendable () -> Void
+struct HotkeyRegistrationIdentity: Equatable, Sendable {
+    let signature: OSType
+    let id: UInt32
 
-    private let signature: OSType
-    private let id: UInt32
-    private var hotkeyRef: EventHotKeyRef?
-    private var handlerRef: EventHandlerRef?
-    private var handler: Handler?
-
-    public init(signature: OSType = 0x46554C54, id: UInt32 = 1) {
+    init(signature: OSType, id: UInt32) {
         self.signature = signature
         self.id = id
     }
 
-    deinit {
+    init(_ eventHotkeyID: EventHotKeyID) {
+        self.init(signature: eventHotkeyID.signature, id: eventHotkeyID.id)
+    }
+
+    func matches(_ eventHotkeyID: EventHotKeyID) -> Bool {
+        self == HotkeyRegistrationIdentity(eventHotkeyID)
+    }
+}
+
+@MainActor
+public final class GlobalHotkeyManager {
+    public typealias Handler = @Sendable () -> Void
+
+    nonisolated private let identity: HotkeyRegistrationIdentity
+    private var hotkeyRef: EventHotKeyRef?
+    private var handlerRef: EventHandlerRef?
+    private var handler: Handler?
+
+    private static var nextHotkeyID: UInt32 = 1
+
+    public init(signature: OSType = 0x46554C54, id: UInt32? = nil) {
+        self.identity = HotkeyRegistrationIdentity(
+            signature: signature,
+            id: id ?? Self.allocateHotkeyID()
+        )
+    }
+
+    isolated deinit {
         if let hotkeyRef {
             UnregisterEventHotKey(hotkeyRef)
         }
@@ -74,7 +96,7 @@ public final class GlobalHotkeyManager: @unchecked Sendable {
 
         self.handler = handler
 
-        let eventHotkeyID = EventHotKeyID(signature: signature, id: id)
+        let eventHotkeyID = EventHotKeyID(signature: identity.signature, id: identity.id)
         var registeredHotkeyRef: EventHotKeyRef?
         let status = RegisterEventHotKey(
             hotkey.keyCode,
@@ -128,18 +150,53 @@ public final class GlobalHotkeyManager: @unchecked Sendable {
         handlerRef = installedHandlerRef
     }
 
+    private static func allocateHotkeyID() -> UInt32 {
+        let id = nextHotkeyID
+        nextHotkeyID = nextHotkeyID == UInt32.max ? 1 : nextHotkeyID + 1
+        return id
+    }
+
+    nonisolated func handles(_ eventHotkeyID: EventHotKeyID) -> Bool {
+        identity.matches(eventHotkeyID)
+    }
+
+    nonisolated var registrationIdentity: HotkeyRegistrationIdentity {
+        identity
+    }
+
     fileprivate func handleHotkeyPressed() {
         handler?()
     }
 }
 
-private let globalHotkeyEventHandler: EventHandlerUPP = { _, _, userData in
-    guard let userData else {
+private let globalHotkeyEventHandler: EventHandlerUPP = { _, event, userData in
+    guard let event, let userData else {
+        return OSStatus(eventNotHandledErr)
+    }
+
+    var eventHotkeyID = EventHotKeyID()
+    let parameterStatus = GetEventParameter(
+        event,
+        EventParamName(kEventParamDirectObject),
+        EventParamType(typeEventHotKeyID),
+        nil,
+        MemoryLayout<EventHotKeyID>.size,
+        nil,
+        &eventHotkeyID
+    )
+
+    guard parameterStatus == noErr else {
         return OSStatus(eventNotHandledErr)
     }
 
     let manager = Unmanaged<GlobalHotkeyManager>.fromOpaque(userData).takeUnretainedValue()
-    manager.handleHotkeyPressed()
+    guard manager.handles(eventHotkeyID) else {
+        return OSStatus(eventNotHandledErr)
+    }
+
+    MainActor.assumeIsolated {
+        manager.handleHotkeyPressed()
+    }
 
     return noErr
 }
