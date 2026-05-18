@@ -127,8 +127,20 @@ final class WritingPopoverViewModel: ObservableObject {
         }
 
         errorMessage = nil
-        _ = stateMachine.send(.sourceChanged(sourceText))
-        handle(actions: stateMachine.send(.insertOriginal))
+        let fallbackState: PopoverStateMachine.State = resultText.isEmpty
+            ? .editingSource(source: sourceText, errorMessage: nil)
+            : .previewingResult(source: sourceText, result: resultText)
+
+        if resultText.isEmpty {
+            _ = stateMachine.send(.sourceChanged(sourceText))
+            let actions = stateMachine.send(.insertOriginal)
+            if !actions.isEmpty {
+                handle(actions: actions)
+                return
+            }
+        }
+
+        insert(text: sourceText, fallbackState: fallbackState)
     }
 
     func escape() {
@@ -218,6 +230,7 @@ final class WritingPopoverViewModel: ObservableObject {
 
         isInserting = true
         errorMessage = nil
+        onHidePopover?()
 
         Task { [weak self] in
             guard let self else { return }
@@ -320,7 +333,7 @@ struct WritingPopoverView: View {
 
                 Spacer()
 
-                Text("⌘Enter 转换/插入，Esc 返回/关闭，⌥Space 打开浮窗")
+                Text("Enter 转换/插入，⌘Enter 插入原文，⇧Enter/⌥Enter 换行，Esc 返回/关闭")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -344,6 +357,7 @@ struct WritingPopoverView: View {
         .background(
             PopoverKeyEventHandler(
                 onSubmit: { model.submit() },
+                onInsertOriginal: { model.insertOriginal() },
                 onEscape: { model.escape() }
             )
         )
@@ -366,6 +380,7 @@ struct WritingPopoverView: View {
 
 private struct PopoverKeyEventHandler: NSViewRepresentable {
     let onSubmit: () -> Void
+    let onInsertOriginal: () -> Void
     let onEscape: () -> Void
 
     func makeNSView(context: Context) -> NSView {
@@ -376,6 +391,7 @@ private struct PopoverKeyEventHandler: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSView, context: Context) {
         context.coordinator.onSubmit = onSubmit
+        context.coordinator.onInsertOriginal = onInsertOriginal
         context.coordinator.onEscape = onEscape
         context.coordinator.attach(to: nsView)
     }
@@ -385,18 +401,28 @@ private struct PopoverKeyEventHandler: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onSubmit: onSubmit, onEscape: onEscape)
+        Coordinator(
+            onSubmit: onSubmit,
+            onInsertOriginal: onInsertOriginal,
+            onEscape: onEscape
+        )
     }
 
     @MainActor
     final class Coordinator {
         var onSubmit: () -> Void
+        var onInsertOriginal: () -> Void
         var onEscape: () -> Void
         private weak var view: NSView?
         private var monitor: Any?
 
-        init(onSubmit: @escaping () -> Void, onEscape: @escaping () -> Void) {
+        init(
+            onSubmit: @escaping () -> Void,
+            onInsertOriginal: @escaping () -> Void,
+            onEscape: @escaping () -> Void
+        ) {
             self.onSubmit = onSubmit
+            self.onInsertOriginal = onInsertOriginal
             self.onEscape = onEscape
         }
 
@@ -429,8 +455,17 @@ private struct PopoverKeyEventHandler: NSViewRepresentable {
                 return nil
             }
 
-            if event.keyCode == 36,
-               event.modifierFlags.intersection(.deviceIndependentFlagsMask).contains(.command) {
+            guard event.keyCode == 36 else {
+                return event
+            }
+
+            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            if modifiers.contains(.command) {
+                onInsertOriginal()
+                return nil
+            }
+
+            if !modifiers.contains(.shift), !modifiers.contains(.option) {
                 onSubmit()
                 return nil
             }
