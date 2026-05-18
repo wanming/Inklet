@@ -97,6 +97,15 @@ final class WritingPopoverViewModel: ObservableObject {
         _ = stateMachine.send(.sourceChanged(text))
     }
 
+    func updateResultText(_ text: String) {
+        resultText = text
+        guard !isTransforming, !isInserting else {
+            return
+        }
+
+        _ = stateMachine.send(.resultChanged(text))
+    }
+
     func submit() {
         guard !isTransforming, !isInserting else {
             return
@@ -104,9 +113,14 @@ final class WritingPopoverViewModel: ObservableObject {
 
         errorMessage = nil
         if !resultText.isEmpty {
+            let currentResult = resultText
+            _ = stateMachine.send(.resultChanged(currentResult))
             let actions = stateMachine.send(.submit)
             if actions.isEmpty {
-                insert(text: resultText, fallbackState: .previewingResult(source: sourceText, result: resultText))
+                insert(
+                    text: currentResult,
+                    fallbackState: .previewingResult(source: sourceText, result: currentResult)
+                )
             } else {
                 handle(actions: actions)
             }
@@ -354,7 +368,10 @@ struct WritingPopoverView: View {
             }
 
             if !model.resultText.isEmpty {
-                TextEditor(text: $model.resultText)
+                TextEditor(text: Binding(
+                    get: { model.resultText },
+                    set: { model.updateResultText($0) }
+                ))
                     .font(.body)
                     .frame(minHeight: 72)
                     .overlay {

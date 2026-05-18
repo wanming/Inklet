@@ -38,6 +38,17 @@ final class PopoverStateMachineTests: XCTestCase {
         XCTAssertEqual(actions, [.insertText("Hello.")])
     }
 
+    func testEditedPreviewResultIsInserted() {
+        let machine = PopoverStateMachine(state: .previewingResult(source: "hi", result: "Hello."))
+
+        let editActions = machine.send(.resultChanged("Hello there."))
+        let submitActions = machine.send(.submit)
+
+        XCTAssertEqual(editActions, [])
+        XCTAssertEqual(machine.state, .inserting(text: "Hello there."))
+        XCTAssertEqual(submitActions, [.insertText("Hello there.")])
+    }
+
     func testEditingSourceWhilePreviewingClearsPreviewState() {
         let machine = PopoverStateMachine(state: .previewingResult(source: "hi", result: "Hello."))
 

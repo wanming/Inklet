@@ -12,6 +12,7 @@ public final class PopoverStateMachine {
     public enum Event: Equatable {
         case open
         case sourceChanged(String)
+        case resultChanged(String)
         case submit
         case insertOriginal
         case transformationSucceeded(result: String)
@@ -50,6 +51,10 @@ public final class PopoverStateMachine {
 
         case (.previewingResult, .sourceChanged(let source)):
             state = .editingSource(source: source, errorMessage: nil)
+            return []
+
+        case (.previewingResult(let source, _), .resultChanged(let result)):
+            state = .previewingResult(source: source, result: result)
             return []
 
         case (.editingSource(let source, _), .submit):
