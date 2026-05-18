@@ -18,11 +18,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 final class AppCoordinator: NSObject {
     private let statusItem: NSStatusItem
     private let windowController: WritingPopoverWindowController
+    private let settingsController: SettingsWindowController
     private let hotkeyManager: GlobalHotkeyManager
 
     override init() {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.windowController = WritingPopoverWindowController()
+        self.settingsController = SettingsWindowController()
         self.hotkeyManager = GlobalHotkeyManager()
         super.init()
     }
@@ -36,6 +38,14 @@ final class AppCoordinator: NSObject {
                 title: "打开写作浮窗",
                 action: #selector(openPopover),
                 keyEquivalent: ""
+            )
+        )
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(
+            NSMenuItem(
+                title: "设置",
+                action: #selector(openSettings),
+                keyEquivalent: ","
             )
         )
         menu.addItem(NSMenuItem.separator())
@@ -66,6 +76,10 @@ final class AppCoordinator: NSObject {
 
     @objc func openPopover() {
         windowController.show()
+    }
+
+    @objc func openSettings() {
+        settingsController.show()
     }
 
     @objc func quit() {
