@@ -33,6 +33,20 @@ final class ConfigStoreTests: XCTestCase {
         }
     }
 
+    private func mode(id: String, sortOrder: Int, isVisible: Bool = true) -> PromptMode {
+        PromptMode(
+            id: id,
+            name: id,
+            description: "\(id) description",
+            systemPrompt: "\(id) prompt",
+            shortcut: nil,
+            participatesInAuto: false,
+            autoRule: .none,
+            sortOrder: sortOrder,
+            isVisible: isVisible
+        )
+    }
+
     func testDefaultConfigMatchesSpec() {
         let config = AppConfig.defaultConfig()
 
@@ -87,6 +101,53 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.hotkey, AppConfig.defaultConfig().hotkey)
         XCTAssertEqual(config.defaultModeID, AppConfig.defaultConfig().defaultModeID)
         XCTAssertEqual(config.promptModes, AppConfig.defaultConfig().promptModes)
+    }
+
+    func testVisibleModeIDKeepsVisiblePreferredMode() {
+        var config = AppConfig.defaultConfig()
+        config.defaultModeID = "fallback"
+        config.promptModes = [
+            mode(id: PromptMode.autoID, sortOrder: 0),
+            mode(id: "preferred", sortOrder: 1),
+            mode(id: "fallback", sortOrder: 2)
+        ]
+
+        XCTAssertEqual(config.visibleModeID(preferredModeID: "preferred"), "preferred")
+    }
+
+    func testVisibleModeIDFallsBackToVisibleDefaultMode() {
+        var config = AppConfig.defaultConfig()
+        config.defaultModeID = "fallback"
+        config.promptModes = [
+            mode(id: PromptMode.autoID, sortOrder: 0),
+            mode(id: "hidden-preferred", sortOrder: 1, isVisible: false),
+            mode(id: "fallback", sortOrder: 2)
+        ]
+
+        XCTAssertEqual(config.visibleModeID(preferredModeID: "hidden-preferred"), "fallback")
+    }
+
+    func testVisibleModeIDFallsBackToAutoBeforeFirstVisibleMode() {
+        var config = AppConfig.defaultConfig()
+        config.defaultModeID = "hidden-default"
+        config.promptModes = [
+            mode(id: "first-visible", sortOrder: 0),
+            mode(id: PromptMode.autoID, sortOrder: 1),
+            mode(id: "hidden-default", sortOrder: 2, isVisible: false)
+        ]
+
+        XCTAssertEqual(config.visibleModeID(preferredModeID: "missing"), PromptMode.autoID)
+    }
+
+    func testVisiblePromptModesUsesConfiguredPromptModes() {
+        var config = AppConfig.defaultConfig()
+        config.promptModes = [
+            mode(id: "later", sortOrder: 2),
+            mode(id: "hidden", sortOrder: 0, isVisible: false),
+            mode(id: "earlier", sortOrder: 1)
+        ]
+
+        XCTAssertEqual(config.visiblePromptModes.map(\.id), ["earlier", "later"])
     }
 
     func testSaveAPIKeyUpdatesExistingKeyWithoutAdding() throws {

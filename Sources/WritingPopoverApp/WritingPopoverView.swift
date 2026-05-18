@@ -12,13 +12,12 @@ final class WritingPopoverViewModel: ObservableObject {
     @Published var isInserting = false
     @Published var selectedModeID: String
     @Published var openRevision = 0
+    @Published var modes: [PromptMode]
 
-    let modes: [PromptMode]
     var onHidePopover: (() -> Void)?
     var onFocusPopover: (() -> Void)?
 
     private var stateMachine: PopoverStateMachine
-    private let promptModeStore: PromptModeStore
     private let configStore: UserDefaultsConfigStore
     private let keychainStore: KeychainStore
     private let transformationService: TransformationService
@@ -30,7 +29,6 @@ final class WritingPopoverViewModel: ObservableObject {
 
     init(
         stateMachine: PopoverStateMachine = PopoverStateMachine(),
-        promptModeStore: PromptModeStore = PromptModeStore.defaultStore(),
         configStore: UserDefaultsConfigStore = UserDefaultsConfigStore(),
         keychainStore: KeychainStore = KeychainStore(),
         transformationService: TransformationService? = nil,
@@ -38,7 +36,6 @@ final class WritingPopoverViewModel: ObservableObject {
     ) {
         let apiKeyProvider = OpenAIAPIKeyProvider(keychainStore: keychainStore)
         self.stateMachine = stateMachine
-        self.promptModeStore = promptModeStore
         self.configStore = configStore
         self.keychainStore = keychainStore
         self.transformationService = transformationService ?? TransformationService(
@@ -50,12 +47,8 @@ final class WritingPopoverViewModel: ObservableObject {
 
         let loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         self.config = loadedConfig
-        self.modes = promptModeStore.visibleModes
-        self.selectedModeID = loadedConfig.defaultModeID
-
-        if !modes.contains(where: { $0.id == selectedModeID }) {
-            self.selectedModeID = modes.first?.id ?? PromptMode.polishEnglishID
-        }
+        self.modes = loadedConfig.visiblePromptModes
+        self.selectedModeID = loadedConfig.visibleModeID(preferredModeID: loadedConfig.defaultModeID)
     }
 
     func resetForOpen(previousApplication: NSRunningApplication?) {
@@ -66,20 +59,14 @@ final class WritingPopoverViewModel: ObservableObject {
         stateMachine = PopoverStateMachine()
 
         config = (try? configStore.load()) ?? AppConfig.defaultConfig()
+        modes = config.visiblePromptModes
+        selectedModeID = config.visibleModeID(preferredModeID: selectedModeID)
         sourceText = ""
         resultText = ""
         errorMessage = nil
         isTransforming = false
         isInserting = false
         openRevision += 1
-
-        if !modes.contains(where: { $0.id == selectedModeID }) {
-            selectedModeID = config.defaultModeID
-        }
-
-        if !modes.contains(where: { $0.id == selectedModeID }) {
-            selectedModeID = modes.first?.id ?? PromptMode.polishEnglishID
-        }
 
         handle(actions: stateMachine.send(.open))
     }
@@ -210,6 +197,8 @@ final class WritingPopoverViewModel: ObservableObject {
         errorMessage = nil
         isTransforming = true
 
+        selectedModeID = config.visibleModeID(preferredModeID: selectedModeID)
+        let promptModeStore = config.promptModeStore
         let mode = promptModeStore.resolve(modeID: selectedModeID, sourceText: source)
         let model = config.model
         let temperature = config.temperature

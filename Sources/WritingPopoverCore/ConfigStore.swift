@@ -38,6 +38,25 @@ public struct AppConfig: Codable, Equatable, Sendable {
         )
     }
 
+    public var promptModeStore: PromptModeStore {
+        PromptModeStore(modes: promptModes)
+    }
+
+    public var visiblePromptModes: [PromptMode] {
+        promptModeStore.visibleModes
+    }
+
+    public func visibleModeID(preferredModeID: String) -> String {
+        let visibleModeIDs = Set(visiblePromptModes.map(\.id))
+        let fallbackIDs = [preferredModeID, defaultModeID, PromptMode.autoID]
+
+        for modeID in fallbackIDs where visibleModeIDs.contains(modeID) {
+            return modeID
+        }
+
+        return visiblePromptModes.first?.id ?? PromptMode.polishEnglishID
+    }
+
     private enum CodingKeys: String, CodingKey {
         case version
         case model
