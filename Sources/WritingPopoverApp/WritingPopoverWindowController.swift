@@ -2,13 +2,19 @@ import AppKit
 import SwiftUI
 
 @MainActor
+private final class WritingPopoverPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
+
+@MainActor
 final class WritingPopoverWindowController: NSWindowController {
     private let model: WritingPopoverViewModel
 
     init() {
         self.model = WritingPopoverViewModel()
 
-        let panel = NSPanel(
+        let panel = WritingPopoverPanel(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 320),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
@@ -34,7 +40,7 @@ final class WritingPopoverWindowController: NSWindowController {
     func show() {
         model.resetForOpen()
         window?.center()
+        NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate()
     }
 }

@@ -9,6 +9,7 @@ final class WritingPopoverViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var isTransforming = false
     @Published var selectedModeID: String
+    @Published var openRevision = 0
 
     let modes: [PromptMode]
 
@@ -22,6 +23,7 @@ final class WritingPopoverViewModel: ObservableObject {
         resultText = ""
         errorMessage = nil
         isTransforming = false
+        openRevision += 1
 
         if !modes.contains(where: { $0.id == selectedModeID }) {
             selectedModeID = modes.first?.id ?? PromptMode.polishEnglishID
@@ -44,6 +46,7 @@ final class WritingPopoverViewModel: ObservableObject {
 
 struct WritingPopoverView: View {
     @ObservedObject var model: WritingPopoverViewModel
+    @FocusState private var isSourceFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -58,6 +61,7 @@ struct WritingPopoverView: View {
             TextEditor(text: $model.sourceText)
                 .font(.body)
                 .frame(minHeight: 96)
+                .focused($isSourceFocused)
                 .overlay {
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(Color.secondary.opacity(0.25))
@@ -100,5 +104,17 @@ struct WritingPopoverView: View {
         }
         .padding(16)
         .frame(minWidth: 520, idealWidth: 520, minHeight: 320)
+        .onAppear {
+            focusSourceEditor()
+        }
+        .onChange(of: model.openRevision) {
+            focusSourceEditor()
+        }
+    }
+
+    private func focusSourceEditor() {
+        DispatchQueue.main.async {
+            isSourceFocused = true
+        }
     }
 }
