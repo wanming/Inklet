@@ -48,6 +48,10 @@ public final class PopoverStateMachine {
             state = .editingSource(source: source, errorMessage: nil)
             return []
 
+        case (.previewingResult, .sourceChanged(let source)):
+            state = .editingSource(source: source, errorMessage: nil)
+            return []
+
         case (.editingSource(let source, _), .submit):
             let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else {

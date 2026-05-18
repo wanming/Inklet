@@ -38,6 +38,15 @@ final class PopoverStateMachineTests: XCTestCase {
         XCTAssertEqual(actions, [.insertText("Hello.")])
     }
 
+    func testEditingSourceWhilePreviewingClearsPreviewState() {
+        let machine = PopoverStateMachine(state: .previewingResult(source: "hi", result: "Hello."))
+
+        let actions = machine.send(.sourceChanged("new draft"))
+
+        XCTAssertEqual(machine.state, .editingSource(source: "new draft", errorMessage: nil))
+        XCTAssertEqual(actions, [])
+    }
+
     func testEscapeRejectsPreviewAndReturnsToSource() {
         let machine = PopoverStateMachine(state: .previewingResult(source: "hi", result: "Hello."))
 

@@ -26,6 +26,7 @@ final class WritingPopoverViewModel: ObservableObject {
     private var config: AppConfig
     private var previousApplication: NSRunningApplication?
     private var transformationTask: Task<Void, Never>?
+    private var sessionID = 0
 
     init(
         stateMachine: PopoverStateMachine = PopoverStateMachine(),
@@ -60,6 +61,7 @@ final class WritingPopoverViewModel: ObservableObject {
     func resetForOpen(previousApplication: NSRunningApplication?) {
         transformationTask?.cancel()
         transformationTask = nil
+        sessionID += 1
         self.previousApplication = previousApplication
         stateMachine = PopoverStateMachine()
 
@@ -232,13 +234,20 @@ final class WritingPopoverViewModel: ObservableObject {
         errorMessage = nil
         onHidePopover?()
 
+        let insertionSessionID = sessionID
         Task { [weak self] in
             guard let self else { return }
             do {
                 try await insertionService.insert(text: text, into: previousApplication)
+                guard sessionID == insertionSessionID else {
+                    return
+                }
                 isInserting = false
                 handle(actions: stateMachine.send(.insertionFinished))
             } catch {
+                guard sessionID == insertionSessionID else {
+                    return
+                }
                 isInserting = false
                 stateMachine = PopoverStateMachine(state: fallbackState)
                 errorMessage = error.userFacingMessage
