@@ -1,6 +1,7 @@
 import Foundation
 
 public struct AppConfig: Codable, Equatable, Sendable {
+    public var version: Int
     public var model: String
     public var temperature: Double
     public var timeoutSeconds: Double
@@ -9,6 +10,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
     public var promptModes: [PromptMode]
 
     public init(
+        version: Int = 1,
         model: String,
         temperature: Double,
         timeoutSeconds: Double,
@@ -16,6 +18,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         defaultModeID: String,
         promptModes: [PromptMode]
     ) {
+        self.version = version
         self.model = model
         self.temperature = temperature
         self.timeoutSeconds = timeoutSeconds
@@ -33,6 +36,41 @@ public struct AppConfig: Codable, Equatable, Sendable {
             defaultModeID: PromptMode.autoID,
             promptModes: PromptModeStore.defaultStore().modes
         )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case version
+        case model
+        case temperature
+        case timeoutSeconds
+        case hotkey
+        case defaultModeID
+        case promptModes
+    }
+
+    public init(from decoder: Decoder) throws {
+        let defaults = AppConfig.defaultConfig()
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? defaults.version
+        model = try container.decodeIfPresent(String.self, forKey: .model) ?? defaults.model
+        temperature = try container.decodeIfPresent(Double.self, forKey: .temperature) ?? defaults.temperature
+        timeoutSeconds = try container.decodeIfPresent(Double.self, forKey: .timeoutSeconds) ?? defaults.timeoutSeconds
+        hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey) ?? defaults.hotkey
+        defaultModeID = try container.decodeIfPresent(String.self, forKey: .defaultModeID) ?? defaults.defaultModeID
+        promptModes = try container.decodeIfPresent([PromptMode].self, forKey: .promptModes) ?? defaults.promptModes
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+
+        try container.encode(version, forKey: .version)
+        try container.encode(model, forKey: .model)
+        try container.encode(temperature, forKey: .temperature)
+        try container.encode(timeoutSeconds, forKey: .timeoutSeconds)
+        try container.encode(hotkey, forKey: .hotkey)
+        try container.encode(defaultModeID, forKey: .defaultModeID)
+        try container.encode(promptModes, forKey: .promptModes)
     }
 }
 
