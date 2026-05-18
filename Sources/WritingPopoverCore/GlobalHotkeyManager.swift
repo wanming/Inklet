@@ -24,20 +24,34 @@ public struct Hotkey: Equatable, Sendable {
     }
 
     public static func parse(_ value: String) throws -> Hotkey {
-        switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-        case "⌥space", "option+space":
-            Hotkey(keyCode: 49, modifiers: [.option])
-        case "⌘space", "command+space":
-            Hotkey(keyCode: 49, modifiers: [.command])
+        let normalized = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "")
+
+        switch normalized {
+        case "⌥space", "option+space", "alt+space":
+            return Hotkey(keyCode: 49, modifiers: [.option])
+        case "⌘space", "command+space", "cmd+space":
+            return Hotkey(keyCode: 49, modifiers: [.command])
         default:
             throw HotkeyError.unsupported(value)
         }
     }
 }
 
-public enum HotkeyError: Error, Equatable {
+public enum HotkeyError: Error, Equatable, LocalizedError {
     case unsupported(String)
     case registrationFailed(OSStatus)
+
+    public var errorDescription: String? {
+        switch self {
+        case .unsupported(let value):
+            return "暂不支持快捷键“\(value)”。目前支持 ⌥Space、Option+Space、Alt+Space、⌘Space、Command+Space、Cmd+Space。"
+        case .registrationFailed(let status):
+            return "快捷键注册失败（\(status)）。"
+        }
+    }
 }
 
 struct HotkeyRegistrationIdentity: Equatable, Sendable {

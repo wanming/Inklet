@@ -25,9 +25,23 @@ final class SettingsViewModel: ObservableObject {
 
     func save() {
         do {
+            guard config.promptModes.contains(where: \.isVisible) else {
+                message = "至少需要保留一个可见模式。"
+                return
+            }
+
+            guard !config.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                message = "Model 不能为空。"
+                return
+            }
+
+            _ = try Hotkey.parse(config.hotkey)
             try configStore.save(config)
             try keychainStore.saveAPIKey(apiKey)
             message = "已保存"
+            NotificationCenter.default.post(name: .appConfigDidSave, object: nil)
+        } catch let error as HotkeyError {
+            message = error.localizedDescription
         } catch {
             message = "保存失败：\(String(describing: error))"
         }
@@ -43,6 +57,10 @@ final class SettingsViewModel: ObservableObject {
 
         NSWorkspace.shared.open(url)
     }
+}
+
+extension Notification.Name {
+    static let appConfigDidSave = Notification.Name("FluentaAppConfigDidSave")
 }
 
 struct SettingsView: View {

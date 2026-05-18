@@ -20,12 +20,17 @@ final class AppCoordinator: NSObject {
     private let windowController: WritingPopoverWindowController
     private let settingsController: SettingsWindowController
     private let hotkeyManager: GlobalHotkeyManager
+    private let configStore: UserDefaultsConfigStore
+    private var configObserver: NSObjectProtocol?
+    private var activeApplicationObserver: NSObjectProtocol?
+    private var lastTargetApplication: NSRunningApplication?
 
     override init() {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.windowController = WritingPopoverWindowController()
         self.settingsController = SettingsWindowController()
         self.hotkeyManager = GlobalHotkeyManager()
+        self.configStore = UserDefaultsConfigStore()
         super.init()
     }
 
@@ -59,23 +64,76 @@ final class AppCoordinator: NSObject {
         menu.items.forEach { $0.target = self }
         statusItem.menu = menu
 
+        rememberTargetApplication(NSWorkspace.shared.frontmostApplication)
+        activeApplicationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            Task { @MainActor in
+                self?.rememberTargetApplication(application)
+            }
+        }
+
+        configObserver = NotificationCenter.default.addObserver(
+            forName: .appConfigDidSave,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.registerConfiguredHotkey()
+            }
+        }
+
+        registerConfiguredHotkey()
+    }
+
+    func stop() {
+        if let configObserver {
+            NotificationCenter.default.removeObserver(configObserver)
+            self.configObserver = nil
+        }
+        if let activeApplicationObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(activeApplicationObserver)
+            self.activeApplicationObserver = nil
+        }
+        hotkeyManager.unregister()
+    }
+
+    private func rememberTargetApplication(_ application: NSRunningApplication?) {
+        guard let application,
+              application.processIdentifier != NSRunningApplication.current.processIdentifier
+        else {
+            return
+        }
+
+        lastTargetApplication = application
+    }
+
+    private func registerConfiguredHotkey() {
         do {
-            try hotkeyManager.register(Hotkey(keyCode: 49, modifiers: [.option])) { [weak self] in
+            let config = try configStore.load()
+            let hotkey: Hotkey
+            do {
+                hotkey = try Hotkey.parse(config.hotkey)
+            } catch {
+                NSLog("Unsupported configured hotkey, falling back to Option+Space: \(String(describing: error))")
+                hotkey = Hotkey(keyCode: 49, modifiers: [.option])
+            }
+
+            try hotkeyManager.register(hotkey) { [weak self] in
                 Task { @MainActor in
                     self?.openPopover()
                 }
             }
         } catch {
-            NSLog("Failed to register default hotkey: \(String(describing: error))")
+            NSLog("Failed to register configured hotkey: \(String(describing: error))")
         }
     }
 
-    func stop() {
-        hotkeyManager.unregister()
-    }
-
     @objc func openPopover() {
-        windowController.show()
+        windowController.show(fallbackApplication: lastTargetApplication)
     }
 
     @objc func openSettings() {

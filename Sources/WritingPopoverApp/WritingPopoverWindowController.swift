@@ -45,8 +45,13 @@ final class WritingPopoverWindowController: NSWindowController {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func show() {
-        previousApplication = NSWorkspace.shared.frontmostApplication
+    func show(fallbackApplication: NSRunningApplication? = nil) {
+        let frontmostApplication = NSWorkspace.shared.frontmostApplication
+        if frontmostApplication?.processIdentifier == NSRunningApplication.current.processIdentifier {
+            previousApplication = fallbackApplication
+        } else {
+            previousApplication = frontmostApplication ?? fallbackApplication
+        }
         model.resetForOpen(previousApplication: previousApplication)
         focusPopover()
     }
