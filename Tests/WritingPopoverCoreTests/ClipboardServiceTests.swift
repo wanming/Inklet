@@ -68,6 +68,7 @@ final class ClipboardServiceTests: XCTestCase {
                 activationCallCount += 1
                 return true
             },
+            applicationActivityProvider: { _ in true },
             pasteShortcutSender: { _ in
                 throw InsertionError.cannotCreatePasteEvent
             },
@@ -87,7 +88,7 @@ final class ClipboardServiceTests: XCTestCase {
         }
 
         XCTAssertEqual(activationCallCount, 1)
-        XCTAssertEqual(requestedDelays, [1])
+        XCTAssertTrue(requestedDelays.isEmpty)
         XCTAssertEqual(pasteboard.string(forType: .string), original)
     }
 
@@ -104,6 +105,7 @@ final class ClipboardServiceTests: XCTestCase {
             activationDelayNanoseconds: 1,
             accessibilityTrustProvider: { true },
             applicationActivator: { _ in false },
+            applicationActivityProvider: { _ in false },
             pasteShortcutSender: { _ in
                 pasteShortcutCallCount += 1
             },
@@ -124,6 +126,44 @@ final class ClipboardServiceTests: XCTestCase {
 
         XCTAssertEqual(pasteShortcutCallCount, 0)
         XCTAssertTrue(requestedDelays.isEmpty)
+        XCTAssertEqual(pasteboard.string(forType: .string), original)
+    }
+
+    @MainActor
+    func testInsertionRestoresClipboardAndSkipsPasteWhenTargetNeverBecomesActive() async throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        let clipboardService = ClipboardService(pasteboard: pasteboard)
+        let original = "Original clipboard text"
+        var pasteShortcutCallCount = 0
+        var requestedDelays: [UInt64] = []
+        let service = InsertionService(
+            clipboardService: clipboardService,
+            restoreDelayNanoseconds: 1,
+            activationDelayNanoseconds: 1,
+            activationTimeoutNanoseconds: 3,
+            accessibilityTrustProvider: { true },
+            applicationActivator: { _ in true },
+            applicationActivityProvider: { _ in false },
+            pasteShortcutSender: { _ in
+                pasteShortcutCallCount += 1
+            },
+            delayProvider: { nanoseconds in
+                requestedDelays.append(nanoseconds)
+            }
+        )
+
+        pasteboard.clearContents()
+        pasteboard.setString(original, forType: .string)
+
+        do {
+            try await service.insert(text: "Generated replacement text", into: .current)
+            XCTFail("Expected activationFailed")
+        } catch let error as InsertionError {
+            XCTAssertEqual(error, .activationFailed)
+        }
+
+        XCTAssertEqual(pasteShortcutCallCount, 0)
+        XCTAssertEqual(requestedDelays, [1, 1, 1])
         XCTAssertEqual(pasteboard.string(forType: .string), original)
     }
 }
