@@ -5,22 +5,33 @@ import WritingPopoverCore
 
 @MainActor
 final class SettingsViewModel: ObservableObject {
-    @Published var apiKey: String
     @Published var config: AppConfig
     @Published var message: String
+    @Published var providerAPIKeys: [String: String]
 
     private let configStore: UserDefaultsConfigStore
-    private let keychainStore: KeychainStore
 
     init(
-        configStore: UserDefaultsConfigStore = UserDefaultsConfigStore(),
-        keychainStore: KeychainStore = KeychainStore()
+        configStore: UserDefaultsConfigStore = UserDefaultsConfigStore()
     ) {
         self.configStore = configStore
-        self.keychainStore = keychainStore
         self.config = (try? configStore.load()) ?? AppConfig.defaultConfig()
-        self.apiKey = (try? keychainStore.loadAPIKey()) ?? ""
         self.message = ""
+        self.providerAPIKeys = Dictionary(
+            uniqueKeysWithValues: LLMProviderPreset.all.map { preset in
+                (preset.id, (try? KeychainStore(service: preset.keychainService).loadAPIKey()) ?? "")
+            }
+        )
+    }
+
+    var selectedProvider: LLMProviderPreset {
+        LLMProviderPreset.preset(id: config.providerID)
+    }
+
+    func selectProvider(_ providerID: String) {
+        config.providerID = providerID
+        let preset = LLMProviderPreset.preset(id: providerID)
+        config.model = preset.defaultModel
     }
 
     func save() {
@@ -37,7 +48,8 @@ final class SettingsViewModel: ObservableObject {
 
             _ = try Hotkey.parse(config.hotkey)
             try configStore.save(config)
-            try keychainStore.saveAPIKey(apiKey)
+            let provider = selectedProvider
+            try KeychainStore(service: provider.keychainService).saveAPIKey(providerAPIKeys[provider.id] ?? "")
             message = "已保存"
             NotificationCenter.default.post(name: .appConfigDidSave, object: nil)
         } catch let error as HotkeyError {
@@ -70,23 +82,42 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        let selectedProviderBinding = Binding(
+            get: { model.config.providerID },
+            set: { model.selectProvider($0) }
+        )
+        let selectedAPIKeyBinding = Binding(
+            get: { model.providerAPIKeys[model.config.providerID] ?? "" },
+            set: { model.providerAPIKeys[model.config.providerID] = $0 }
+        )
+
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     header
 
                     settingsSection(
-                        "OpenAI",
+                        "LLM Provider",
                         systemImage: "sparkles",
-                        description: "连接模型并控制生成速度、稳定性和等待时间。"
+                        description: "选择模型服务商并配置对应的 API Key、模型和生成参数。"
                     ) {
+                        labeledRow("Provider", help: "支持主流 LLM 服务商。") {
+                            Picker("", selection: selectedProviderBinding) {
+                                ForEach(LLMProviderPreset.all) { provider in
+                                    Text(provider.name).tag(provider.id)
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(maxWidth: 320, alignment: .leading)
+                        }
+
                         labeledRow("API Key", help: "保存在系统钥匙串中。") {
-                            SecureField("sk-...", text: $model.apiKey)
+                            SecureField(model.selectedProvider.apiKeyPlaceholder, text: selectedAPIKeyBinding)
                                 .textFieldStyle(.roundedBorder)
                         }
 
-                        labeledRow("Model", help: "用于转换文本的 OpenAI 模型。") {
-                            TextField("gpt-4.1-mini", text: $model.config.model)
+                        labeledRow("Model", help: "用于转换文本的模型。") {
+                            TextField(model.selectedProvider.defaultModel, text: $model.config.model)
                                 .textFieldStyle(.roundedBorder)
                         }
 

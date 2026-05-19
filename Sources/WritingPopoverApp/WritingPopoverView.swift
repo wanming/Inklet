@@ -20,8 +20,8 @@ final class WritingPopoverViewModel: ObservableObject {
     private var stateMachine: PopoverStateMachine
     private let configStore: UserDefaultsConfigStore
     private let keychainStore: KeychainStore
-    private let transformationService: TransformationService
     private let insertionService: InsertionService
+    private let transformationServiceFactory: (any LLMProvider) -> TransformationService
     private var config: AppConfig
     private var previousApplication: NSRunningApplication?
     private var transformationTask: Task<Void, Never>?
@@ -31,18 +31,13 @@ final class WritingPopoverViewModel: ObservableObject {
         stateMachine: PopoverStateMachine = PopoverStateMachine(),
         configStore: UserDefaultsConfigStore = UserDefaultsConfigStore(),
         keychainStore: KeychainStore = KeychainStore(),
-        transformationService: TransformationService? = nil,
+        transformationServiceFactory: @escaping (any LLMProvider) -> TransformationService = { TransformationService(provider: $0) },
         insertionService: InsertionService = InsertionService()
     ) {
-        let apiKeyProvider = OpenAIAPIKeyProvider(keychainStore: keychainStore)
         self.stateMachine = stateMachine
         self.configStore = configStore
         self.keychainStore = keychainStore
-        self.transformationService = transformationService ?? TransformationService(
-            provider: OpenAIProvider(apiKeyProvider: {
-                try apiKeyProvider.loadAPIKey()
-            })
-        )
+        self.transformationServiceFactory = transformationServiceFactory
         self.insertionService = insertionService
 
         let loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
@@ -203,6 +198,14 @@ final class WritingPopoverViewModel: ObservableObject {
         let model = config.model
         let temperature = config.temperature
         let timeoutSeconds = config.timeoutSeconds
+        let providerPreset = LLMProviderPreset.preset(id: config.providerID)
+        let provider = LLMProviderFactory.provider(for: providerPreset) {
+            try OpenAIAPIKeyProvider(
+                keychainStore: KeychainStore(service: providerPreset.keychainService),
+                providerName: providerPreset.name
+            ).loadAPIKey()
+        }
+        let transformationService = transformationServiceFactory(provider)
 
         transformationTask = Task { [weak self] in
             guard let self else { return }
@@ -262,12 +265,13 @@ final class WritingPopoverViewModel: ObservableObject {
 
 private struct OpenAIAPIKeyProvider: @unchecked Sendable {
     let keychainStore: KeychainStore
+    let providerName: String
 
     func loadAPIKey() throws -> String {
         guard let apiKey = try keychainStore.loadAPIKey(),
               !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
-            throw TransformationError.provider("请先配置 OpenAI API Key。")
+            throw TransformationError.provider("请先配置 \(providerName) API Key。")
         }
         return apiKey
     }

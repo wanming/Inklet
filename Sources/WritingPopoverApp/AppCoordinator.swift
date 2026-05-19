@@ -24,6 +24,7 @@ final class AppCoordinator: NSObject {
     private let accessibilityPermissionService: AccessibilityPermissionService
     private var configObserver: NSObjectProtocol?
     private var activeApplicationObserver: NSObjectProtocol?
+    private var settingsShortcutMonitor: Any?
     private var lastTargetApplication: NSRunningApplication?
     private var didRequestAccessibilityPermissionThisLaunch = false
 
@@ -49,13 +50,13 @@ final class AppCoordinator: NSObject {
             )
         )
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(
-            NSMenuItem(
-                title: "设置",
-                action: #selector(openSettings),
-                keyEquivalent: ","
-            )
+        let settingsItem = NSMenuItem(
+            title: "设置",
+            action: #selector(openSettings),
+            keyEquivalent: ","
         )
+        settingsItem.keyEquivalentModifierMask = [.command]
+        menu.addItem(settingsItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(
             NSMenuItem(
@@ -91,6 +92,7 @@ final class AppCoordinator: NSObject {
 
         registerConfiguredHotkey()
         requestAccessibilityPermissionIfNeeded()
+        installSettingsShortcutMonitor()
     }
 
     func stop() {
@@ -102,7 +104,29 @@ final class AppCoordinator: NSObject {
             NSWorkspace.shared.notificationCenter.removeObserver(activeApplicationObserver)
             self.activeApplicationObserver = nil
         }
+        if let settingsShortcutMonitor {
+            NSEvent.removeMonitor(settingsShortcutMonitor)
+            self.settingsShortcutMonitor = nil
+        }
         hotkeyManager.unregister()
+    }
+
+    private func installSettingsShortcutMonitor() {
+        guard settingsShortcutMonitor == nil else {
+            return
+        }
+
+        settingsShortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            guard event.keyCode == 43, modifiers == .command else {
+                return event
+            }
+
+            Task { @MainActor in
+                self?.openSettings()
+            }
+            return nil
+        }
     }
 
     private func rememberTargetApplication(_ application: NSRunningApplication?) {

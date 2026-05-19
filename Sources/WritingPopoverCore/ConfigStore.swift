@@ -2,6 +2,7 @@ import Foundation
 
 public struct AppConfig: Codable, Equatable, Sendable {
     public var version: Int
+    public var providerID: String
     public var model: String
     public var temperature: Double
     public var timeoutSeconds: Double
@@ -11,6 +12,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
 
     public init(
         version: Int = 1,
+        providerID: String = LLMProviderPreset.openAI.id,
         model: String,
         temperature: Double,
         timeoutSeconds: Double,
@@ -19,6 +21,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         promptModes: [PromptMode]
     ) {
         self.version = version
+        self.providerID = providerID
         self.model = model
         self.temperature = temperature
         self.timeoutSeconds = timeoutSeconds
@@ -29,6 +32,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
 
     public static func defaultConfig() -> AppConfig {
         AppConfig(
+            providerID: LLMProviderPreset.openAI.id,
             model: "gpt-4.1-mini",
             temperature: 0.2,
             timeoutSeconds: 20,
@@ -59,6 +63,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case version
+        case providerID
         case model
         case temperature
         case timeoutSeconds
@@ -72,6 +77,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         version = try container.decodeIfPresent(Int.self, forKey: .version) ?? defaults.version
+        providerID = try container.decodeIfPresent(String.self, forKey: .providerID) ?? defaults.providerID
         model = try container.decodeIfPresent(String.self, forKey: .model) ?? defaults.model
         temperature = try container.decodeIfPresent(Double.self, forKey: .temperature) ?? defaults.temperature
         timeoutSeconds = try container.decodeIfPresent(Double.self, forKey: .timeoutSeconds) ?? defaults.timeoutSeconds
@@ -84,6 +90,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         try container.encode(version, forKey: .version)
+        try container.encode(providerID, forKey: .providerID)
         try container.encode(model, forKey: .model)
         try container.encode(temperature, forKey: .temperature)
         try container.encode(timeoutSeconds, forKey: .timeoutSeconds)

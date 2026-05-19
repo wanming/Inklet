@@ -50,6 +50,7 @@ final class ConfigStoreTests: XCTestCase {
     func testDefaultConfigMatchesSpec() {
         let config = AppConfig.defaultConfig()
 
+        XCTAssertEqual(config.providerID, LLMProviderPreset.openAI.id)
         XCTAssertEqual(config.model, "gpt-4.1-mini")
         XCTAssertEqual(config.temperature, 0.2)
         XCTAssertEqual(config.timeoutSeconds, 20)
@@ -65,6 +66,7 @@ final class ConfigStoreTests: XCTestCase {
         }
         let store = UserDefaultsConfigStore(userDefaults: userDefaults)
         var config = AppConfig.defaultConfig()
+        config.providerID = "anthropic"
         config.model = "test-model"
         config.temperature = 0.7
         config.timeoutSeconds = 9
@@ -96,6 +98,7 @@ final class ConfigStoreTests: XCTestCase {
         let config = try JSONDecoder().decode(AppConfig.self, from: data)
 
         XCTAssertEqual(config.model, "saved-model")
+        XCTAssertEqual(config.providerID, AppConfig.defaultConfig().providerID)
         XCTAssertEqual(config.temperature, AppConfig.defaultConfig().temperature)
         XCTAssertEqual(config.timeoutSeconds, AppConfig.defaultConfig().timeoutSeconds)
         XCTAssertEqual(config.hotkey, AppConfig.defaultConfig().hotkey)
