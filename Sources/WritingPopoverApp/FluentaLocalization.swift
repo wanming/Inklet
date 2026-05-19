@@ -31,9 +31,9 @@ enum FluentaLanguageStore {
     static var selectedLanguage: InterfaceLanguage {
         get {
             guard let rawValue = UserDefaults.standard.string(forKey: key) else {
-                return .system
+                return .english
             }
-            return InterfaceLanguage(rawValue: rawValue) ?? .system
+            return InterfaceLanguage(rawValue: rawValue) ?? .english
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: key)
