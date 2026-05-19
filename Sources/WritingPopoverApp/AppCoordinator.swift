@@ -21,6 +21,7 @@ final class AppCoordinator: NSObject {
     private let settingsController: SettingsWindowController
     private let hotkeyManager: GlobalHotkeyManager
     private let configStore: UserDefaultsConfigStore
+    private let accessibilityPermissionService: AccessibilityPermissionService
     private var configObserver: NSObjectProtocol?
     private var activeApplicationObserver: NSObjectProtocol?
     private var lastTargetApplication: NSRunningApplication?
@@ -31,6 +32,7 @@ final class AppCoordinator: NSObject {
         self.settingsController = SettingsWindowController()
         self.hotkeyManager = GlobalHotkeyManager()
         self.configStore = UserDefaultsConfigStore()
+        self.accessibilityPermissionService = AccessibilityPermissionService()
         super.init()
     }
 
@@ -133,6 +135,7 @@ final class AppCoordinator: NSObject {
     }
 
     @objc func openPopover() {
+        accessibilityPermissionService.requestOnFirstUse()
         windowController.show(fallbackApplication: lastTargetApplication)
     }
 
