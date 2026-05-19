@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 @MainActor
@@ -35,12 +36,13 @@ private final class ClearHostingView<Content: View>: NSHostingView<Content> {
 final class WritingPopoverWindowController: NSWindowController {
     private let model: WritingPopoverViewModel
     private var previousApplication: NSRunningApplication?
+    private var cancellables = Set<AnyCancellable>()
 
     init() {
         self.model = WritingPopoverViewModel()
 
         let panel = WritingPopoverPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 580, height: 232),
+            contentRect: NSRect(x: 0, y: 0, width: 580, height: 168),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -57,6 +59,13 @@ final class WritingPopoverWindowController: NSWindowController {
 
         super.init(window: panel)
         shouldCascadeWindows = false
+
+        model.$preferredPopoverHeight
+            .removeDuplicates()
+            .sink { [weak self] height in
+                self?.resizePopover(to: height)
+            }
+            .store(in: &cancellables)
 
         model.onHidePopover = { [weak self] in
             self?.window?.orderOut(nil)
@@ -86,5 +95,21 @@ final class WritingPopoverWindowController: NSWindowController {
         window?.center()
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    private func resizePopover(to height: CGFloat) {
+        guard let window else {
+            return
+        }
+
+        var frame = window.frame
+        guard abs(frame.height - height) > 0.5 else {
+            return
+        }
+
+        let topY = frame.maxY
+        frame.size.height = height
+        frame.origin.y = topY - height
+        window.setFrame(frame, display: true, animate: false)
     }
 }

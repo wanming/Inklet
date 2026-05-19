@@ -13,6 +13,7 @@ final class WritingPopoverViewModel: ObservableObject {
     @Published var selectedModeID: String
     @Published var openRevision = 0
     @Published var modes: [PromptMode]
+    @Published var preferredPopoverHeight: CGFloat = 168
 
     var onHidePopover: (() -> Void)?
     var onFocusPopover: (() -> Void)?
@@ -355,6 +356,15 @@ struct WritingPopoverView: View {
     @ObservedObject var model: WritingPopoverViewModel
     @FocusState private var isSourceFocused: Bool
     @FocusState private var isResultFocused: Bool
+    @State private var sourceMeasuredHeight: CGFloat = 0
+    @State private var resultMeasuredHeight: CGFloat = 0
+
+    private let minEditorHeight: CGFloat = 64
+    private let maxEditorHeight: CGFloat = 156
+    private let headerHeight: CGFloat = 46
+    private let actionBarHeight: CGFloat = 56
+    private let dividerHeight: CGFloat = 1
+    private let statusHeight: CGFloat = 34
     private var isBusy: Bool {
         model.isTransforming || model.isInserting
     }
@@ -376,16 +386,21 @@ struct WritingPopoverView: View {
     }
 
     private var popoverHeight: CGFloat {
-        let baseHeight: CGFloat = model.resultText.isEmpty ? 232 : 332
-        return model.errorMessage == nil ? baseHeight : baseHeight + 34
+        headerHeight
+            + dividerHeight
+            + inputHeight
+            + (model.resultText.isEmpty ? 0 : dividerHeight + resultHeight)
+            + (model.errorMessage == nil ? 0 : dividerHeight + statusHeight)
+            + dividerHeight
+            + actionBarHeight
     }
 
     private var inputHeight: CGFloat {
-        model.resultText.isEmpty ? 137 : 96
+        clampedEditorHeight(sourceMeasuredHeight)
     }
 
     private var resultHeight: CGFloat {
-        150
+        clampedEditorHeight(resultMeasuredHeight)
     }
 
     var body: some View {
@@ -413,7 +428,11 @@ struct WritingPopoverView: View {
                 .stroke(FluentaTheme.strongBorder)
         }
         .onAppear {
+            publishPopoverHeight()
             focusSourceEditor()
+        }
+        .onChange(of: popoverHeight) {
+            publishPopoverHeight()
         }
         .onChange(of: model.openRevision) {
             focusSourceEditor()
@@ -457,6 +476,12 @@ struct WritingPopoverView: View {
             }
         }
         .frame(height: inputHeight)
+        .background {
+            editorHeightReader(for: model.sourceText, key: SourceEditorHeightPreferenceKey.self)
+        }
+        .onPreferenceChange(SourceEditorHeightPreferenceKey.self) { height in
+            sourceMeasuredHeight = height
+        }
     }
 
     @ViewBuilder
@@ -491,6 +516,12 @@ struct WritingPopoverView: View {
                     .padding(.trailing, 12)
             }
             .frame(height: resultHeight)
+            .background {
+                editorHeightReader(for: model.resultText, key: ResultEditorHeightPreferenceKey.self)
+            }
+            .onPreferenceChange(ResultEditorHeightPreferenceKey.self) { height in
+                resultMeasuredHeight = height
+            }
             .transition(.opacity.combined(with: .move(edge: .bottom)))
             .onAppear {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
@@ -606,6 +637,55 @@ struct WritingPopoverView: View {
         DispatchQueue.main.async {
             isSourceFocused = true
         }
+    }
+
+    private func clampedEditorHeight(_ measuredHeight: CGFloat) -> CGFloat {
+        min(max(measuredHeight, minEditorHeight), maxEditorHeight)
+    }
+
+    private func publishPopoverHeight() {
+        guard model.preferredPopoverHeight != popoverHeight else {
+            return
+        }
+        model.preferredPopoverHeight = popoverHeight
+    }
+
+    private func editorHeightReader<Key: PreferenceKey>(
+        for text: String,
+        key: Key.Type
+    ) -> some View where Key.Value == CGFloat {
+        Text(text.isEmpty ? " \n " : text)
+            .font(.system(size: 14))
+            .lineSpacing(3)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .hidden()
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: key,
+                        value: proxy.size.height
+                    )
+                }
+            }
+    }
+}
+
+private struct SourceEditorHeightPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = 64
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private struct ResultEditorHeightPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = 64
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 
