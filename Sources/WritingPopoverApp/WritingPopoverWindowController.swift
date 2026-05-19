@@ -48,7 +48,7 @@ final class WritingPopoverWindowController: NSWindowController {
         panel.title = "Fluenta"
         panel.backgroundColor = .clear
         panel.isOpaque = false
-        panel.hasShadow = false
+        panel.hasShadow = true
         panel.isMovableByWindowBackground = true
         panel.isReleasedWhenClosed = false
         panel.level = .floating
