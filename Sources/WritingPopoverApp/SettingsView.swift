@@ -65,162 +65,263 @@ extension Notification.Name {
 
 struct SettingsView: View {
     @StateObject private var model = SettingsViewModel()
+    private var isSavedMessage: Bool {
+        model.message == "已保存"
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    settingsSection("OpenAI") {
-                        labeledRow("API Key") {
+                VStack(alignment: .leading, spacing: 22) {
+                    header
+
+                    settingsSection(
+                        "OpenAI",
+                        systemImage: "sparkles",
+                        description: "连接模型并控制生成速度、稳定性和等待时间。"
+                    ) {
+                        labeledRow("API Key", help: "保存在系统钥匙串中。") {
                             SecureField("sk-...", text: $model.apiKey)
                                 .textFieldStyle(.roundedBorder)
                         }
 
-                        labeledRow("Model") {
+                        labeledRow("Model", help: "用于转换文本的 OpenAI 模型。") {
                             TextField("gpt-4.1-mini", text: $model.config.model)
                                 .textFieldStyle(.roundedBorder)
                         }
 
-                        labeledRow("Temperature") {
-                            HStack {
+                        labeledRow("Temperature", help: "更低更稳定，更高更发散。") {
+                            HStack(spacing: 12) {
                                 Slider(value: $model.config.temperature, in: 0...2, step: 0.1)
                                 Text(model.config.temperature, format: .number.precision(.fractionLength(1)))
-                                    .monospacedDigit()
-                                    .frame(width: 36, alignment: .trailing)
+                                    .font(.body.monospacedDigit())
+                                    .frame(width: 40, alignment: .trailing)
                             }
                         }
 
-                        labeledRow("Timeout") {
+                        labeledRow("Timeout", help: "请求最长等待时间。") {
                             Stepper(
                                 value: $model.config.timeoutSeconds,
                                 in: 1...120,
                                 step: 1
                             ) {
                                 Text("\(Int(model.config.timeoutSeconds)) 秒")
-                                    .monospacedDigit()
+                                    .font(.body.monospacedDigit())
                             }
                         }
                     }
 
-                    settingsSection("行为") {
-                        labeledRow("Hotkey") {
+                    settingsSection(
+                        "行为",
+                        systemImage: "keyboard",
+                        description: "设置唤起快捷键、默认模式和系统权限。"
+                    ) {
+                        labeledRow("Hotkey", help: "例如 ⌥Space 或 ⌘⇧E。") {
                             TextField("⌥Space", text: $model.config.hotkey)
                                 .textFieldStyle(.roundedBorder)
                         }
 
-                        labeledRow("Default Mode") {
+                        labeledRow("Default Mode", help: "打开浮窗时默认选中的模式。") {
                             Picker("", selection: $model.config.defaultModeID) {
                                 ForEach(model.config.promptModes) { mode in
                                     Text(mode.name).tag(mode.id)
                                 }
                             }
                             .labelsHidden()
-                            .frame(maxWidth: 280, alignment: .leading)
+                            .frame(maxWidth: 320, alignment: .leading)
                         }
 
-                        Button("打开辅助功能设置") {
-                            model.openAccessibilitySettings()
+                        HStack {
+                            Spacer()
+                            Button {
+                                model.openAccessibilitySettings()
+                            } label: {
+                                Label("打开辅助功能设置", systemImage: "lock.shield")
+                            }
                         }
                     }
 
-                    settingsSection("Prompt Modes") {
-                        VStack(alignment: .leading, spacing: 14) {
+                    settingsSection(
+                        "Prompt Modes",
+                        systemImage: "slider.horizontal.3",
+                        description: "控制浮窗中的模式名称、可见性、自动匹配和系统提示词。"
+                    ) {
+                        VStack(alignment: .leading, spacing: 12) {
                             ForEach(model.config.promptModes.indices, id: \.self) { index in
                                 promptModeEditor(index: index)
                             }
                         }
                     }
                 }
-                .padding(24)
+                .padding(28)
             }
+            .background(Color(nsColor: .windowBackgroundColor))
 
             Divider()
 
-            HStack {
-                Text(model.message)
-                    .foregroundStyle(model.message == "已保存" ? .green : .secondary)
+            HStack(spacing: 12) {
+                if !model.message.isEmpty {
+                    Label(model.message, systemImage: isSavedMessage ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                        .font(.footnote)
+                        .foregroundStyle(isSavedMessage ? .green : .red)
+                        .lineLimit(2)
+                } else {
+                    Text("更改会在保存后应用到下一次浮窗打开。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
-                Button("保存") {
+
+                Button {
                     model.save()
+                } label: {
+                    Label("保存", systemImage: "checkmark")
                 }
                 .keyboardShortcut("s", modifiers: .command)
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
-            .padding(16)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(.regularMaterial)
         }
-        .frame(minWidth: 680, minHeight: 560)
+        .frame(minWidth: 760, minHeight: 640)
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: "text.bubble.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Fluenta 设置")
+                    .font(.title2.weight(.semibold))
+                Text("配置模型、快捷键和文本转换模式。")
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
     }
 
     private func settingsSection<Content: View>(
         _ title: String,
+        systemImage: String,
+        description: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 24, height: 24)
+                    .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.headline)
+                    Text(description)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             VStack(alignment: .leading, spacing: 10) {
                 content()
             }
-            .padding(14)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(nsColor: .controlBackgroundColor))
             .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.12))
+            }
         }
     }
 
     private func labeledRow<Content: View>(
         _ title: String,
+        help: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(title)
-                .frame(width: 120, alignment: .trailing)
-                .foregroundStyle(.secondary)
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(title)
+                    .foregroundStyle(.primary)
+                Text(help)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
+            }
+            .frame(width: 150, alignment: .trailing)
+
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(minHeight: 36)
     }
 
     private func promptModeEditor(index: Int) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(model.config.promptModes[index].id)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(model.config.promptModes[index].name.isEmpty ? "Untitled mode" : model.config.promptModes[index].name)
+                        .font(.subheadline.weight(.semibold))
+                    Text(model.config.promptModes[index].id)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                }
+
                 Spacer()
+
                 Toggle("Visible", isOn: $model.config.promptModes[index].isVisible)
+                    .toggleStyle(.switch)
                 Toggle("Auto", isOn: $model.config.promptModes[index].participatesInAuto)
+                    .toggleStyle(.switch)
             }
 
-            labeledRow("Name") {
+            labeledRow("Name", help: "浮窗中显示的名称。") {
                 TextField("Name", text: $model.config.promptModes[index].name)
                     .textFieldStyle(.roundedBorder)
             }
 
-            labeledRow("Description") {
+            labeledRow("Description", help: "用于说明模式用途。") {
                 TextField("Description", text: $model.config.promptModes[index].description)
                     .textFieldStyle(.roundedBorder)
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("System Prompt")
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Label("System Prompt", systemImage: "curlybraces")
+                        .font(.subheadline.weight(.medium))
+                    Spacer()
+                    Text("\(model.config.promptModes[index].systemPrompt.count) 字符")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
                 TextEditor(text: $model.config.promptModes[index].systemPrompt)
-                    .font(.body)
-                    .frame(minHeight: 88)
-                    .padding(4)
+                    .font(.system(size: 13))
+                    .scrollContentBackground(.hidden)
+                    .frame(minHeight: 96)
+                    .padding(8)
+                    .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color(nsColor: .separatorColor))
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.secondary.opacity(0.18))
                     }
             }
         }
-        .padding(12)
+        .padding(14)
         .background(Color(nsColor: .textBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(nsColor: .separatorColor))
+                .stroke(Color.secondary.opacity(0.14))
         }
     }
 }
