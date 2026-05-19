@@ -6,12 +6,12 @@ final class SettingsWindowController: NSWindowController {
     init() {
         let hostingController = NSHostingController(rootView: SettingsView())
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 680, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 660),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
-        window.title = "设置"
+        window.title = "Fluenta 设置"
         window.contentViewController = hostingController
         window.isReleasedWhenClosed = false
 

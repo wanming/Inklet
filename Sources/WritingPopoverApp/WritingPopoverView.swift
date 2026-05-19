@@ -17,6 +17,14 @@ final class WritingPopoverViewModel: ObservableObject {
     var onHidePopover: (() -> Void)?
     var onFocusPopover: (() -> Void)?
 
+    var currentProviderName: String {
+        LLMProviderPreset.preset(id: config.providerID).name
+    }
+
+    var currentModelName: String {
+        config.model
+    }
+
     private var stateMachine: PopoverStateMachine
     private let configStore: UserDefaultsConfigStore
     private let keychainStore: KeychainStore
@@ -321,41 +329,31 @@ struct WritingPopoverView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 0) {
             header
-            modePicker
-            editorPanel(
-                title: "输入",
-                subtitle: selectedMode?.description ?? "输入要转换或插入的文本",
-                minHeight: model.resultText.isEmpty ? 132 : 96,
-                text: Binding(
-                    get: { model.sourceText },
-                    set: { model.updateSourceText($0) }
-                ),
-                isFocused: true
-            )
+            Divider().opacity(0.5)
 
-            if !model.resultText.isEmpty {
-                editorPanel(
-                    title: "结果",
-                    subtitle: "可直接编辑后再插入",
-                    minHeight: 92,
-                    text: Binding(
-                        get: { model.resultText },
-                        set: { model.updateResultText($0) }
-                    ),
-                    isFocused: false
-                )
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            VStack(alignment: .leading, spacing: 12) {
+                commandInput
+
+                if !model.resultText.isEmpty {
+                    resultPanel
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
+
+                if let errorMessage = model.errorMessage {
+                    statusMessage(errorMessage, systemImage: "exclamationmark.triangle.fill", color: .red)
+                } else if isBusy {
+                    statusMessage(busyTitle, systemImage: "sparkles", color: .accentColor)
+                }
             }
+            .padding(16)
 
-            if let errorMessage = model.errorMessage {
-                statusMessage(errorMessage, systemImage: "exclamationmark.triangle.fill", color: .red)
-            } else if isBusy {
-                statusMessage(busyTitle, systemImage: "sparkles", color: .accentColor)
-            }
-
+            Divider().opacity(0.5)
             actionBar
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(.regularMaterial)
         }
         .background(
             PopoverKeyEventHandler(
@@ -364,9 +362,15 @@ struct WritingPopoverView: View {
                 onEscape: { model.escape() }
             )
         )
-        .padding(18)
-        .frame(minWidth: 560, idealWidth: 560, minHeight: 360)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .frame(width: 700)
+        .frame(minHeight: model.resultText.isEmpty ? 360 : 470)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius)
+                .stroke(FluentaTheme.subtleBorder)
+        }
+        .shadow(color: .black.opacity(0.22), radius: 28, y: 18)
         .onAppear {
             focusSourceEditor()
         }
@@ -375,45 +379,110 @@ struct WritingPopoverView: View {
         }
     }
 
+    private var commandInput: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "command")
+                    .foregroundStyle(.secondary)
+                Text(selectedMode?.description ?? "输入要转换或插入的文本")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer()
+                if isBusy {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+
+            TextEditor(text: Binding(
+                get: { model.sourceText },
+                set: { model.updateSourceText($0) }
+            ))
+            .font(.system(size: 16))
+            .scrollContentBackground(.hidden)
+            .focused($isSourceFocused)
+            .frame(minHeight: model.resultText.isEmpty ? 150 : 96)
+            .padding(10)
+            .background(FluentaTheme.fieldBackground.opacity(0.85), in: RoundedRectangle(cornerRadius: FluentaTheme.controlRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: FluentaTheme.controlRadius)
+                    .stroke(isSourceFocused ? Color.accentColor.opacity(0.7) : FluentaTheme.subtleBorder)
+            }
+        }
+    }
+
+    private var resultPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("结果", systemImage: "sparkles")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text("可编辑后插入")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Spacer()
+                Text("\(model.resultText.count) chars")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.tertiary)
+            }
+
+            TextEditor(text: Binding(
+                get: { model.resultText },
+                set: { model.updateResultText($0) }
+            ))
+            .font(.system(size: 15))
+            .scrollContentBackground(.hidden)
+            .frame(minHeight: 112)
+            .padding(10)
+            .background(FluentaTheme.fieldBackground.opacity(0.76), in: RoundedRectangle(cornerRadius: FluentaTheme.controlRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: FluentaTheme.controlRadius)
+                    .stroke(FluentaTheme.subtleBorder)
+            }
+        }
+    }
+
     private var header: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: 12) {
             Image(systemName: "text.bubble.fill")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(.white)
                 .frame(width: 34, height: 34)
-                .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 8))
+                .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 9))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Fluenta")
-                    .font(.system(size: 17, weight: .semibold))
-                Text("快速转换、润色并插入文本")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 16, weight: .semibold))
+                HStack(spacing: 6) {
+                    Text(model.currentProviderName)
+                    Text("·")
+                    Text(model.currentModelName)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
             }
 
             Spacer()
 
-            Text(model.resultText.isEmpty ? "编辑中" : "已生成")
-                .font(.caption.weight(.medium))
+            Picker("模式", selection: $model.selectedModeID) {
+                ForEach(model.modes) { mode in
+                    Text(mode.name).tag(mode.id)
+                }
+            }
+            .labelsHidden()
+            .frame(width: 210)
+
+            Text(model.resultText.isEmpty ? "Ready" : "Preview")
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(model.resultText.isEmpty ? Color.secondary : Color.green)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(Color(nsColor: .controlBackgroundColor))
-                )
+                .background(.quaternary.opacity(0.7), in: Capsule())
         }
-    }
-
-    private var modePicker: some View {
-        Picker("模式", selection: $model.selectedModeID) {
-            ForEach(model.modes) { mode in
-                Text(mode.name).tag(mode.id)
-            }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .controlSize(.large)
+        .padding(14)
+        .background(.regularMaterial)
     }
 
     private var actionBar: some View {
@@ -435,68 +504,21 @@ struct WritingPopoverView: View {
             .controlSize(.large)
             .disabled(isBusy)
 
-            if isBusy {
-                ProgressView()
-                    .controlSize(.small)
-                    .padding(.leading, 2)
-            }
-
             Spacer(minLength: 12)
 
-            HStack(spacing: 6) {
-                shortcutHint("Enter")
-                shortcutHint("⌘Enter")
-                shortcutHint("Esc")
+            HStack(spacing: 7) {
+                Keycap(title: "Enter")
+                Text("转换/插入")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Keycap(title: "⌘↩")
+                Text("原文")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Keycap(title: "Esc")
             }
             .accessibilityLabel("快捷键：Enter 转换或插入，Command Enter 插入原文，Escape 返回或关闭")
         }
-    }
-
-    private func editorPanel(
-        title: String,
-        subtitle: String,
-        minHeight: CGFloat,
-        text: Binding<String>,
-        isFocused: Bool
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer()
-            }
-
-            if isFocused {
-                textEditor(text: text, minHeight: minHeight, isActive: isSourceFocused)
-                    .focused($isSourceFocused)
-            } else {
-                textEditor(text: text, minHeight: minHeight, isActive: false)
-            }
-        }
-        .padding(12)
-        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.secondary.opacity(0.12))
-        }
-    }
-
-    private func textEditor(text: Binding<String>, minHeight: CGFloat, isActive: Bool) -> some View {
-        TextEditor(text: text)
-            .font(.system(size: 14))
-            .scrollContentBackground(.hidden)
-            .padding(8)
-            .frame(minHeight: minHeight)
-            .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-            .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isActive ? Color.accentColor.opacity(0.65) : Color.secondary.opacity(0.2), lineWidth: 1)
-            }
     }
 
     private func statusMessage(_ message: String, systemImage: String, color: Color) -> some View {
@@ -507,19 +529,6 @@ struct WritingPopoverView: View {
             .padding(.vertical, 7)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
-    }
-
-    private func shortcutHint(_ title: String) -> some View {
-        Text(title)
-            .font(.caption.monospaced())
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 4)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
-            .overlay {
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color.secondary.opacity(0.16))
-            }
     }
 
     private func focusSourceEditor() {
