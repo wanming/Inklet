@@ -406,7 +406,7 @@ struct WritingPopoverView: View {
             )
         )
         .frame(width: 580, height: popoverHeight, alignment: .top)
-        .background(FluentaTheme.panelBackground.opacity(0.9))
+        .background(FluentaTheme.panelBackground.opacity(0.95))
         .clipShape(RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius))
         .overlay {
             RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius)
