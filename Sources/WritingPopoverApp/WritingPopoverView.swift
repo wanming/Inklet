@@ -375,6 +375,19 @@ struct WritingPopoverView: View {
         modeIcon(for: model.selectedModeID)
     }
 
+    private var popoverHeight: CGFloat {
+        let baseHeight: CGFloat = model.resultText.isEmpty ? 232 : 332
+        return model.errorMessage == nil ? baseHeight : baseHeight + 34
+    }
+
+    private var inputHeight: CGFloat {
+        model.resultText.isEmpty ? 137 : 96
+    }
+
+    private var resultHeight: CGFloat {
+        150
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
@@ -392,8 +405,7 @@ struct WritingPopoverView: View {
                 onEscape: { model.escape() }
             )
         )
-        .frame(width: 580)
-        .frame(minHeight: model.resultText.isEmpty ? 232 : 330)
+        .frame(width: 580, height: popoverHeight, alignment: .top)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius))
         .overlay {
@@ -419,7 +431,7 @@ struct WritingPopoverView: View {
             .lineSpacing(3)
             .scrollContentBackground(.hidden)
             .focused($isSourceFocused)
-            .frame(minHeight: model.resultText.isEmpty ? 104 : 92)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
 
@@ -445,6 +457,7 @@ struct WritingPopoverView: View {
                 .padding(.bottom, 10)
             }
         }
+        .frame(height: inputHeight)
     }
 
     @ViewBuilder
@@ -460,7 +473,7 @@ struct WritingPopoverView: View {
                 .lineSpacing(3)
                 .scrollContentBackground(.hidden)
                 .focused($isResultFocused)
-                .frame(minHeight: 86)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .background(FluentaTheme.primary.opacity(0.08))
@@ -478,6 +491,7 @@ struct WritingPopoverView: View {
                     .padding(.top, 10)
                     .padding(.trailing, 12)
             }
+            .frame(height: resultHeight)
             .transition(.opacity.combined(with: .move(edge: .bottom)))
             .onAppear {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
