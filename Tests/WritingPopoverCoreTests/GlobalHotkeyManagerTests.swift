@@ -17,6 +17,14 @@ final class GlobalHotkeyManagerTests: XCTestCase {
         XCTAssertEqual(try Hotkey.parse("Cmd + Space"), Hotkey(keyCode: 49, modifiers: [.command]))
     }
 
+    func testParsesRecordedHotkeyDisplayStrings() throws {
+        let hotkey = try Hotkey.parse("⌘⇧K")
+
+        XCTAssertEqual(hotkey.keyCode, UInt32(kVK_ANSI_K))
+        XCTAssertEqual(hotkey.modifiers, [.command, .shift])
+        XCTAssertEqual(hotkey.displayString, "⇧⌘K")
+    }
+
     func testRejectsUnsupportedHotkey() {
         XCTAssertThrowsError(try Hotkey.parse("Shift+Space")) { error in
             XCTAssertEqual(error as? HotkeyError, .unsupported("Shift+Space"))

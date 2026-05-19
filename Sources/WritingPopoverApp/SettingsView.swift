@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import Combine
 import SwiftUI
 import WritingPopoverCore
@@ -250,8 +251,8 @@ struct SettingsView: View {
             }
 
             settingsRow(L10n.text("settings.row.hotkey"), help: L10n.text("settings.help.hotkey")) {
-                TextField("⌥Space", text: $model.config.hotkey)
-                    .textFieldStyle(.roundedBorder)
+                HotkeyRecorderField(hotkey: $model.config.hotkey)
+                    .frame(width: 220, height: 34)
             }
 
             settingsRow(L10n.text("settings.row.defaultMode"), help: L10n.text("settings.help.defaultMode")) {
@@ -530,5 +531,152 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(minHeight: 36)
+    }
+}
+
+private struct HotkeyRecorderField: NSViewRepresentable {
+    @Binding var hotkey: String
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(hotkey: $hotkey)
+    }
+
+    func makeNSView(context: Context) -> RecorderView {
+        let view = RecorderView()
+        view.onChange = { context.coordinator.hotkey.wrappedValue = $0 }
+        view.hotkey = hotkey
+        return view
+    }
+
+    func updateNSView(_ nsView: RecorderView, context: Context) {
+        nsView.hotkey = hotkey
+        nsView.onChange = { context.coordinator.hotkey.wrappedValue = $0 }
+        nsView.updateDisplay()
+    }
+
+    final class Coordinator {
+        var hotkey: Binding<String>
+
+        init(hotkey: Binding<String>) {
+            self.hotkey = hotkey
+        }
+    }
+
+    final class RecorderView: NSView {
+        var hotkey = ""
+        var onChange: ((String) -> Void)?
+        private var isRecording = false
+        private let label = NSTextField(labelWithString: "")
+
+        override init(frame frameRect: NSRect) {
+            super.init(frame: frameRect)
+            wantsLayer = true
+            layer?.cornerRadius = 8
+            layer?.borderWidth = 1
+            label.translatesAutoresizingMaskIntoConstraints = false
+            label.alignment = .center
+            label.font = .monospacedSystemFont(ofSize: 13, weight: .medium)
+            addSubview(label)
+            NSLayoutConstraint.activate([
+                label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+                label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+                label.centerYAnchor.constraint(equalTo: centerYAnchor)
+            ])
+            updateDisplay()
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        override var acceptsFirstResponder: Bool { true }
+
+        override func mouseDown(with event: NSEvent) {
+            isRecording = true
+            window?.makeFirstResponder(self)
+            updateDisplay()
+        }
+
+        override func resignFirstResponder() -> Bool {
+            isRecording = false
+            updateDisplay()
+            return super.resignFirstResponder()
+        }
+
+        override func keyDown(with event: NSEvent) {
+            guard isRecording else {
+                super.keyDown(with: event)
+                return
+            }
+
+            if event.keyCode == UInt16(kVK_Escape) {
+                isRecording = false
+                window?.makeFirstResponder(nil)
+                updateDisplay()
+                return
+            }
+
+            guard let recordedHotkey = recordedHotkey(from: event) else {
+                NSSound.beep()
+                return
+            }
+
+            hotkey = recordedHotkey.displayString
+            onChange?(hotkey)
+            isRecording = false
+            window?.makeFirstResponder(nil)
+            updateDisplay()
+        }
+
+        override func flagsChanged(with event: NSEvent) {
+            if isRecording {
+                updateDisplay(pressedModifiers: modifierDisplayString(from: event.modifierFlags))
+            } else {
+                super.flagsChanged(with: event)
+            }
+        }
+
+        func updateDisplay(pressedModifiers: String = "") {
+            let backgroundColor = isRecording ? NSColor.controlAccentColor.withAlphaComponent(0.16) : NSColor.controlBackgroundColor
+            layer?.backgroundColor = backgroundColor.cgColor
+            layer?.borderColor = (isRecording ? NSColor.controlAccentColor : NSColor.separatorColor).cgColor
+            label.textColor = isRecording ? .controlAccentColor : .labelColor
+            if isRecording {
+                label.stringValue = pressedModifiers.isEmpty
+                    ? L10n.text("settings.hotkey.recording")
+                    : "\(pressedModifiers)\(L10n.text("settings.hotkey.pressKey"))"
+            } else {
+                label.stringValue = hotkey.isEmpty ? L10n.text("settings.hotkey.record") : hotkey
+            }
+        }
+
+        private func recordedHotkey(from event: NSEvent) -> Hotkey? {
+            var modifiers: Hotkey.Modifier = []
+            let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            if flags.contains(.command) { modifiers.insert(.command) }
+            if flags.contains(.option) { modifiers.insert(.option) }
+            if flags.contains(.control) { modifiers.insert(.control) }
+            if flags.contains(.shift) { modifiers.insert(.shift) }
+
+            guard !modifiers.isEmpty,
+                  modifiers != [.shift],
+                  Hotkey.displayName(for: UInt32(event.keyCode)) != nil
+            else {
+                return nil
+            }
+
+            return Hotkey(keyCode: UInt32(event.keyCode), modifiers: modifiers)
+        }
+
+        private func modifierDisplayString(from flags: NSEvent.ModifierFlags) -> String {
+            var modifiers: Hotkey.Modifier = []
+            let filteredFlags = flags.intersection(.deviceIndependentFlagsMask)
+            if filteredFlags.contains(.command) { modifiers.insert(.command) }
+            if filteredFlags.contains(.option) { modifiers.insert(.option) }
+            if filteredFlags.contains(.control) { modifiers.insert(.control) }
+            if filteredFlags.contains(.shift) { modifiers.insert(.shift) }
+            return modifiers.displayString
+        }
     }
 }
