@@ -82,6 +82,7 @@ final class TransformationServiceTests: XCTestCase {
             delayNanoseconds: 500_000_000,
             ignoresCancellation: true
         ))
+        let mode = mode
         let task = Task {
             try await service.transform(
                 sourceText: "hello",

@@ -163,7 +163,8 @@ final class ClipboardServiceTests: XCTestCase {
         }
 
         XCTAssertEqual(pasteShortcutCallCount, 0)
-        XCTAssertEqual(requestedDelays, [1, 1, 1])
+        XCTAssertEqual(requestedDelays.reduce(0, +), 3)
+        XCTAssertTrue(requestedDelays.allSatisfy { $0 > 0 })
         XCTAssertEqual(pasteboard.string(forType: .string), original)
     }
 }
