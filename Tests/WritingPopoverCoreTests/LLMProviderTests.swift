@@ -10,13 +10,23 @@ final class LLMProviderTests: XCTestCase {
                 "anthropic",
                 "gemini",
                 "deepseek",
+                "qwen",
+                "moonshot",
+                "zhipu",
+                "minimax",
+                "siliconflow",
+                "volcengine",
+                "tencent-hunyuan",
+                "baichuan",
+                "lingyiwanwu",
                 "xai",
                 "groq",
                 "mistral",
                 "openrouter",
                 "perplexity",
                 "together",
-                "cerebras"
+                "cerebras",
+                "custom-openai-compatible"
             ]
         )
     }

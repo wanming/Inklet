@@ -56,6 +56,10 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.timeoutSeconds, 20)
         XCTAssertEqual(config.hotkey, "⌥Space")
         XCTAssertEqual(config.defaultModeID, PromptMode.autoID)
+        XCTAssertEqual(
+            config.customOpenAICompatibleEndpoint,
+            LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString
+        )
     }
 
     func testConfigRoundTripsThroughUserDefaults() throws {
@@ -72,6 +76,7 @@ final class ConfigStoreTests: XCTestCase {
         config.timeoutSeconds = 9
         config.hotkey = "⌘Space"
         config.defaultModeID = PromptMode.polishEnglishID
+        config.customOpenAICompatibleEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
         config.promptModes = [
             PromptMode(
                 id: "custom-test-mode",
@@ -104,6 +109,21 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.hotkey, AppConfig.defaultConfig().hotkey)
         XCTAssertEqual(config.defaultModeID, AppConfig.defaultConfig().defaultModeID)
         XCTAssertEqual(config.promptModes, AppConfig.defaultConfig().promptModes)
+        XCTAssertEqual(
+            config.customOpenAICompatibleEndpoint,
+            AppConfig.defaultConfig().customOpenAICompatibleEndpoint
+        )
+    }
+
+    func testResolvedProviderPresetUsesCustomOpenAICompatibleEndpoint() {
+        var config = AppConfig.defaultConfig()
+        config.providerID = LLMProviderPreset.customOpenAICompatible.id
+        config.customOpenAICompatibleEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
+
+        XCTAssertEqual(
+            config.resolvedProviderPreset.endpoint.absoluteString,
+            "http://127.0.0.1:1234/v1/chat/completions"
+        )
     }
 
     func testVisibleModeIDKeepsVisiblePreferredMode() {

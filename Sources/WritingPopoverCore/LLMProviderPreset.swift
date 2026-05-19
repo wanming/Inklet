@@ -44,6 +44,15 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         endpoint: URL(string: "https://api.openai.com/v1/responses")!
     )
 
+    public static let customOpenAICompatible = openAICompatible(
+        id: "custom-openai-compatible",
+        name: "Custom OpenAI Compatible",
+        defaultModel: "gpt-4o-mini",
+        placeholder: "sk-...",
+        service: "Fluenta.CustomOpenAICompatible",
+        endpoint: "https://api.example.com/v1/chat/completions"
+    )
+
     public static let all: [LLMProviderPreset] = [
         .openAI,
         LLMProviderPreset(
@@ -71,6 +80,78 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
             placeholder: "sk-...",
             service: "Fluenta.DeepSeek",
             endpoint: "https://api.deepseek.com/chat/completions"
+        ),
+        openAICompatible(
+            id: "qwen",
+            name: "Alibaba Qwen",
+            defaultModel: "qwen-plus",
+            placeholder: "sk-...",
+            service: "Fluenta.Qwen",
+            endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+        ),
+        openAICompatible(
+            id: "moonshot",
+            name: "Moonshot Kimi",
+            defaultModel: "moonshot-v1-8k",
+            placeholder: "sk-...",
+            service: "Fluenta.Moonshot",
+            endpoint: "https://api.moonshot.cn/v1/chat/completions"
+        ),
+        openAICompatible(
+            id: "zhipu",
+            name: "Zhipu GLM",
+            defaultModel: "glm-4-flash",
+            placeholder: "...",
+            service: "Fluenta.Zhipu",
+            endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+        ),
+        openAICompatible(
+            id: "minimax",
+            name: "MiniMax",
+            defaultModel: "MiniMax-M2",
+            placeholder: "...",
+            service: "Fluenta.MiniMax",
+            endpoint: "https://api.minimax.io/v1/chat/completions"
+        ),
+        openAICompatible(
+            id: "siliconflow",
+            name: "SiliconFlow",
+            defaultModel: "Qwen/Qwen3-8B",
+            placeholder: "sk-...",
+            service: "Fluenta.SiliconFlow",
+            endpoint: "https://api.siliconflow.com/v1/chat/completions"
+        ),
+        openAICompatible(
+            id: "volcengine",
+            name: "Volcengine Ark",
+            defaultModel: "doubao-seed-1-6",
+            placeholder: "...",
+            service: "Fluenta.Volcengine",
+            endpoint: "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+        ),
+        openAICompatible(
+            id: "tencent-hunyuan",
+            name: "Tencent Hunyuan",
+            defaultModel: "hunyuan-turbos-latest",
+            placeholder: "...",
+            service: "Fluenta.TencentHunyuan",
+            endpoint: "https://api.hunyuan.cloud.tencent.com/v1/chat/completions"
+        ),
+        openAICompatible(
+            id: "baichuan",
+            name: "Baichuan",
+            defaultModel: "Baichuan4",
+            placeholder: "sk-...",
+            service: "Fluenta.Baichuan",
+            endpoint: "https://api.baichuan-ai.com/v1/chat/completions"
+        ),
+        openAICompatible(
+            id: "lingyiwanwu",
+            name: "01.AI Yi",
+            defaultModel: "yi-lightning",
+            placeholder: "...",
+            service: "Fluenta.Lingyiwanwu",
+            endpoint: "https://api.lingyiwanwu.com/v1/chat/completions"
         ),
         openAICompatible(
             id: "xai",
@@ -127,7 +208,8 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
             placeholder: "csk-...",
             service: "Fluenta.Cerebras",
             endpoint: "https://api.cerebras.ai/v1/chat/completions"
-        )
+        ),
+        .customOpenAICompatible
     ]
 
     public static func preset(id: String) -> LLMProviderPreset {

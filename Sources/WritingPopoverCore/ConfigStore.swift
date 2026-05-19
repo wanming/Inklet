@@ -9,6 +9,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
     public var hotkey: String
     public var defaultModeID: String
     public var promptModes: [PromptMode]
+    public var customOpenAICompatibleEndpoint: String
 
     public init(
         version: Int = 1,
@@ -18,7 +19,8 @@ public struct AppConfig: Codable, Equatable, Sendable {
         timeoutSeconds: Double,
         hotkey: String,
         defaultModeID: String,
-        promptModes: [PromptMode]
+        promptModes: [PromptMode],
+        customOpenAICompatibleEndpoint: String = LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString
     ) {
         self.version = version
         self.providerID = providerID
@@ -28,6 +30,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         self.hotkey = hotkey
         self.defaultModeID = defaultModeID
         self.promptModes = promptModes
+        self.customOpenAICompatibleEndpoint = customOpenAICompatibleEndpoint
     }
 
     public static func defaultConfig() -> AppConfig {
@@ -40,6 +43,15 @@ public struct AppConfig: Codable, Equatable, Sendable {
             defaultModeID: PromptMode.autoID,
             promptModes: PromptModeStore.defaultStore().modes
         )
+    }
+
+    public var resolvedProviderPreset: LLMProviderPreset {
+        var preset = LLMProviderPreset.preset(id: providerID)
+        if providerID == LLMProviderPreset.customOpenAICompatible.id,
+           let endpoint = URL(string: customOpenAICompatibleEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            preset.endpoint = endpoint
+        }
+        return preset
     }
 
     public var promptModeStore: PromptModeStore {
@@ -70,6 +82,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         case hotkey
         case defaultModeID
         case promptModes
+        case customOpenAICompatibleEndpoint
     }
 
     public init(from decoder: Decoder) throws {
@@ -84,6 +97,10 @@ public struct AppConfig: Codable, Equatable, Sendable {
         hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey) ?? defaults.hotkey
         defaultModeID = try container.decodeIfPresent(String.self, forKey: .defaultModeID) ?? defaults.defaultModeID
         promptModes = try container.decodeIfPresent([PromptMode].self, forKey: .promptModes) ?? defaults.promptModes
+        customOpenAICompatibleEndpoint = try container.decodeIfPresent(
+            String.self,
+            forKey: .customOpenAICompatibleEndpoint
+        ) ?? defaults.customOpenAICompatibleEndpoint
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -97,6 +114,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         try container.encode(hotkey, forKey: .hotkey)
         try container.encode(defaultModeID, forKey: .defaultModeID)
         try container.encode(promptModes, forKey: .promptModes)
+        try container.encode(customOpenAICompatibleEndpoint, forKey: .customOpenAICompatibleEndpoint)
     }
 }
 

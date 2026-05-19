@@ -206,7 +206,7 @@ final class WritingPopoverViewModel: ObservableObject {
         let model = config.model
         let temperature = config.temperature
         let timeoutSeconds = config.timeoutSeconds
-        let providerPreset = LLMProviderPreset.preset(id: config.providerID)
+        let providerPreset = config.resolvedProviderPreset
         let provider = LLMProviderFactory.provider(for: providerPreset) {
             try OpenAIAPIKeyProvider(
                 keychainStore: KeychainStore(service: providerPreset.keychainService),

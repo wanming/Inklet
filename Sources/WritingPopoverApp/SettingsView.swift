@@ -29,7 +29,11 @@ final class SettingsViewModel: ObservableObject {
     }
 
     var selectedProvider: LLMProviderPreset {
-        LLMProviderPreset.preset(id: config.providerID)
+        config.resolvedProviderPreset
+    }
+
+    var isCustomOpenAICompatibleProvider: Bool {
+        config.providerID == LLMProviderPreset.customOpenAICompatible.id
     }
 
     var selectedPromptModeIndex: Int? {
@@ -55,6 +59,16 @@ final class SettingsViewModel: ObservableObject {
             guard !config.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 message = L10n.text("settings.error.modelRequired")
                 return
+            }
+
+            if isCustomOpenAICompatibleProvider {
+                guard let endpoint = URL(string: config.customOpenAICompatibleEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)),
+                      endpoint.scheme?.hasPrefix("http") == true,
+                      endpoint.host != nil
+                else {
+                    message = L10n.text("settings.error.endpointInvalid")
+                    return
+                }
             }
 
             _ = try Hotkey.parse(config.hotkey)
@@ -340,6 +354,16 @@ struct SettingsView: View {
                 settingsRow(L10n.text("settings.row.apiKey"), help: L10n.text("settings.help.apiKey")) {
                     SecureField(model.selectedProvider.apiKeyPlaceholder, text: selectedAPIKeyBinding)
                         .textFieldStyle(.roundedBorder)
+                }
+
+                if model.isCustomOpenAICompatibleProvider {
+                    settingsRow(L10n.text("settings.row.endpoint"), help: L10n.text("settings.help.endpoint")) {
+                        TextField(
+                            LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString,
+                            text: $model.config.customOpenAICompatibleEndpoint
+                        )
+                        .textFieldStyle(.roundedBorder)
+                    }
                 }
 
                 settingsRow(L10n.text("settings.row.model"), help: L10n.format("settings.help.model.default", model.selectedProvider.defaultModel)) {
