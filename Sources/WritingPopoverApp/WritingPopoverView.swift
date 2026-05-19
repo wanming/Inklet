@@ -304,70 +304,54 @@ struct WritingPopoverView: View {
         model.isTransforming || model.isInserting
     }
 
+    private var selectedMode: PromptMode? {
+        model.modes.first { $0.id == model.selectedModeID }
+    }
+
+    private var primaryActionTitle: String {
+        model.resultText.isEmpty ? "转换" : "插入"
+    }
+
+    private var busyTitle: String {
+        model.isInserting ? "正在插入..." : "正在转换..."
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Picker("模式", selection: $model.selectedModeID) {
-                ForEach(model.modes) { mode in
-                    Text(mode.name).tag(mode.id)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+        VStack(alignment: .leading, spacing: 14) {
+            header
+            modePicker
+            editorPanel(
+                title: "输入",
+                subtitle: selectedMode?.description ?? "输入要转换或插入的文本",
+                minHeight: model.resultText.isEmpty ? 132 : 96,
+                text: Binding(
+                    get: { model.sourceText },
+                    set: { model.updateSourceText($0) }
+                ),
+                isFocused: true
+            )
 
-            TextEditor(text: Binding(
-                get: { model.sourceText },
-                set: { model.updateSourceText($0) }
-            ))
-                .font(.body)
-                .frame(minHeight: 96)
-                .focused($isSourceFocused)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.secondary.opacity(0.25))
-                }
-
-            HStack(spacing: 10) {
-                Button(model.resultText.isEmpty ? "转换" : "插入") {
-                    model.submit()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(isBusy)
-
-                Button("插入原文") {
-                    model.insertOriginal()
-                }
-                .disabled(isBusy)
-
-                if isBusy {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-
-                Spacer()
-
-                Text("Enter 转换/插入，⌘Enter 插入原文，⇧Enter/⌥Enter 换行，Esc 返回/关闭")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+            if !model.resultText.isEmpty {
+                editorPanel(
+                    title: "结果",
+                    subtitle: "可直接编辑后再插入",
+                    minHeight: 92,
+                    text: Binding(
+                        get: { model.resultText },
+                        set: { model.updateResultText($0) }
+                    ),
+                    isFocused: false
+                )
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
 
             if let errorMessage = model.errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
+                statusMessage(errorMessage, systemImage: "exclamationmark.triangle.fill", color: .red)
+            } else if isBusy {
+                statusMessage(busyTitle, systemImage: "sparkles", color: .accentColor)
             }
 
-            if !model.resultText.isEmpty {
-                TextEditor(text: Binding(
-                    get: { model.resultText },
-                    set: { model.updateResultText($0) }
-                ))
-                    .font(.body)
-                    .frame(minHeight: 72)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.secondary.opacity(0.25))
-                    }
-            }
+            actionBar
         }
         .background(
             PopoverKeyEventHandler(
@@ -376,14 +360,162 @@ struct WritingPopoverView: View {
                 onEscape: { model.escape() }
             )
         )
-        .padding(16)
-        .frame(minWidth: 520, idealWidth: 520, minHeight: 320)
+        .padding(18)
+        .frame(minWidth: 560, idealWidth: 560, minHeight: 360)
+        .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             focusSourceEditor()
         }
         .onChange(of: model.openRevision) {
             focusSourceEditor()
         }
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "text.bubble.fill")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 34, height: 34)
+                .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Fluenta")
+                    .font(.system(size: 17, weight: .semibold))
+                Text("快速转换、润色并插入文本")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text(model.resultText.isEmpty ? "编辑中" : "已生成")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(model.resultText.isEmpty ? Color.secondary : Color.green)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(Color(nsColor: .controlBackgroundColor))
+                )
+        }
+    }
+
+    private var modePicker: some View {
+        Picker("模式", selection: $model.selectedModeID) {
+            ForEach(model.modes) { mode in
+                Text(mode.name).tag(mode.id)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .controlSize(.large)
+    }
+
+    private var actionBar: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Button {
+                model.submit()
+            } label: {
+                Label(primaryActionTitle, systemImage: model.resultText.isEmpty ? "wand.and.stars" : "arrow.down.doc.fill")
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(isBusy)
+
+            Button {
+                model.insertOriginal()
+            } label: {
+                Label("插入原文", systemImage: "text.insert")
+            }
+            .controlSize(.large)
+            .disabled(isBusy)
+
+            if isBusy {
+                ProgressView()
+                    .controlSize(.small)
+                    .padding(.leading, 2)
+            }
+
+            Spacer(minLength: 12)
+
+            HStack(spacing: 6) {
+                shortcutHint("Enter")
+                shortcutHint("⌘Enter")
+                shortcutHint("Esc")
+            }
+            .accessibilityLabel("快捷键：Enter 转换或插入，Command Enter 插入原文，Escape 返回或关闭")
+        }
+    }
+
+    private func editorPanel(
+        title: String,
+        subtitle: String,
+        minHeight: CGFloat,
+        text: Binding<String>,
+        isFocused: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer()
+            }
+
+            if isFocused {
+                textEditor(text: text, minHeight: minHeight, isActive: isSourceFocused)
+                    .focused($isSourceFocused)
+            } else {
+                textEditor(text: text, minHeight: minHeight, isActive: false)
+            }
+        }
+        .padding(12)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.secondary.opacity(0.12))
+        }
+    }
+
+    private func textEditor(text: Binding<String>, minHeight: CGFloat, isActive: Bool) -> some View {
+        TextEditor(text: text)
+            .font(.system(size: 14))
+            .scrollContentBackground(.hidden)
+            .padding(8)
+            .frame(minHeight: minHeight)
+            .background(Color(nsColor: .textBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isActive ? Color.accentColor.opacity(0.65) : Color.secondary.opacity(0.2), lineWidth: 1)
+            }
+    }
+
+    private func statusMessage(_ message: String, systemImage: String, color: Color) -> some View {
+        Label(message, systemImage: systemImage)
+            .font(.footnote)
+            .foregroundStyle(color)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func shortcutHint(_ title: String) -> some View {
+        Text(title)
+            .font(.caption.monospaced())
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 4)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
+            .overlay {
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.secondary.opacity(0.16))
+            }
     }
 
     private func focusSourceEditor() {
