@@ -9,10 +9,25 @@ private final class WritingPopoverPanel: NSPanel {
 
 @MainActor
 private final class ClearHostingView<Content: View>: NSHostingView<Content> {
+    private let cornerRadius: CGFloat = 12
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        configureLayer()
+    }
+
+    override func layout() {
+        super.layout()
+        configureLayer()
+    }
+
+    private func configureLayer() {
         wantsLayer = true
-        layer?.backgroundColor = NSColor.clear.cgColor
+        guard let layer else { return }
+        layer.backgroundColor = NSColor.clear.cgColor
+        layer.cornerRadius = cornerRadius
+        layer.cornerCurve = .continuous
+        layer.masksToBounds = true
     }
 }
 

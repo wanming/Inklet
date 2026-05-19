@@ -406,13 +406,12 @@ struct WritingPopoverView: View {
             )
         )
         .frame(width: 580, height: popoverHeight, alignment: .top)
-        .background(FluentaTheme.panelBackground.opacity(0.98))
+        .background(FluentaTheme.panelBackground.opacity(0.9))
         .clipShape(RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius))
         .overlay {
             RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius)
                 .stroke(FluentaTheme.strongBorder)
         }
-        .shadow(color: .black.opacity(0.5), radius: 28, y: 18)
         .onAppear {
             focusSourceEditor()
         }
