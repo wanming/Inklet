@@ -39,7 +39,7 @@ final class AppCoordinator: NSObject {
     }
 
     func start() {
-        statusItem.button?.title = "AI"
+        configureStatusItemIcon()
 
         let menu = NSMenu()
         menu.addItem(
@@ -167,6 +167,19 @@ final class AppCoordinator: NSObject {
 
         didRequestAccessibilityPermissionThisLaunch = true
         accessibilityPermissionService.requestIfNeeded()
+    }
+
+    private func configureStatusItemIcon() {
+        statusItem.length = NSStatusItem.squareLength
+        statusItem.button?.attributedTitle = NSAttributedString(
+            string: "F",
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 15, weight: .bold),
+                .foregroundColor: NSColor.labelColor
+            ]
+        )
+        statusItem.button?.toolTip = "Fluenta"
+        statusItem.button?.setAccessibilityLabel("Fluenta")
     }
 
     @objc func openPopover() {
