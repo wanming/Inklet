@@ -3,11 +3,9 @@ import XCTest
 
 @MainActor
 final class AccessibilityPermissionServiceTests: XCTestCase {
-    func testRequestOnFirstUsePromptsOnlyOnceWhenUntrusted() {
-        let defaults = UserDefaults(suiteName: "AccessibilityPermissionServiceTests.\(UUID().uuidString)")!
+    func testRequestIfNeededPromptsWhenUntrusted() {
         var promptCount = 0
         let service = AccessibilityPermissionService(
-            userDefaults: defaults,
             trustChecker: { false },
             promptRequester: {
                 promptCount += 1
@@ -15,16 +13,14 @@ final class AccessibilityPermissionServiceTests: XCTestCase {
             }
         )
 
-        XCTAssertFalse(service.requestOnFirstUse())
-        XCTAssertFalse(service.requestOnFirstUse())
-        XCTAssertEqual(promptCount, 1)
+        XCTAssertFalse(service.requestIfNeeded())
+        XCTAssertFalse(service.requestIfNeeded())
+        XCTAssertEqual(promptCount, 2)
     }
 
-    func testRequestOnFirstUseDoesNotPromptWhenAlreadyTrusted() {
-        let defaults = UserDefaults(suiteName: "AccessibilityPermissionServiceTests.\(UUID().uuidString)")!
+    func testRequestIfNeededDoesNotPromptWhenAlreadyTrusted() {
         var promptCount = 0
         let service = AccessibilityPermissionService(
-            userDefaults: defaults,
             trustChecker: { true },
             promptRequester: {
                 promptCount += 1
@@ -32,7 +28,7 @@ final class AccessibilityPermissionServiceTests: XCTestCase {
             }
         )
 
-        XCTAssertTrue(service.requestOnFirstUse())
+        XCTAssertTrue(service.requestIfNeeded())
         XCTAssertEqual(promptCount, 0)
     }
 }

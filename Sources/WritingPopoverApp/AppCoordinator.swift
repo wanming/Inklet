@@ -25,6 +25,7 @@ final class AppCoordinator: NSObject {
     private var configObserver: NSObjectProtocol?
     private var activeApplicationObserver: NSObjectProtocol?
     private var lastTargetApplication: NSRunningApplication?
+    private var didRequestAccessibilityPermissionThisLaunch = false
 
     override init() {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -89,6 +90,7 @@ final class AppCoordinator: NSObject {
         }
 
         registerConfiguredHotkey()
+        requestAccessibilityPermissionIfNeeded()
     }
 
     func stop() {
@@ -134,8 +136,17 @@ final class AppCoordinator: NSObject {
         }
     }
 
+    private func requestAccessibilityPermissionIfNeeded() {
+        guard !didRequestAccessibilityPermissionThisLaunch else {
+            return
+        }
+
+        didRequestAccessibilityPermissionThisLaunch = true
+        accessibilityPermissionService.requestIfNeeded()
+    }
+
     @objc func openPopover() {
-        accessibilityPermissionService.requestOnFirstUse()
+        requestAccessibilityPermissionIfNeeded()
         windowController.show(fallbackApplication: lastTargetApplication)
     }
 
