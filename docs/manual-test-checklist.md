@@ -2,7 +2,7 @@
 
 ## 准备
 
-- 从 Xcode 或 `swift run WritingPopoverApp` 启动 App。
+- 从 Xcode 或 `swift run Fluenta` 启动 App。
 - 在设置里配置 OpenAI API key。
 - 在 macOS System Settings 中授予 Accessibility 权限。
 - 默认快捷键为 Option+Space。

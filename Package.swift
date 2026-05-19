@@ -8,13 +8,14 @@ let package = Package(
     ],
     products: [
         .library(name: "WritingPopoverCore", targets: ["WritingPopoverCore"]),
-        .executable(name: "WritingPopoverApp", targets: ["WritingPopoverApp"])
+        .executable(name: "Fluenta", targets: ["Fluenta"])
     ],
     targets: [
         .target(name: "WritingPopoverCore"),
         .executableTarget(
-            name: "WritingPopoverApp",
-            dependencies: ["WritingPopoverCore"]
+            name: "Fluenta",
+            dependencies: ["WritingPopoverCore"],
+            path: "Sources/WritingPopoverApp"
         ),
         .testTarget(
             name: "WritingPopoverCoreTests",
