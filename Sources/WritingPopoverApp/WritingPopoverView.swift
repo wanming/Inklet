@@ -128,7 +128,7 @@ final class WritingPopoverViewModel: ObservableObject {
 
         let trimmedSource = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedSource.isEmpty else {
-            errorMessage = "请输入要插入的文本。"
+            errorMessage = L10n.text("popover.error.emptyOriginal")
             return
         }
 
@@ -181,7 +181,7 @@ final class WritingPopoverViewModel: ObservableObject {
             case .showResult(let result):
                 resultText = result
             case .showError(let message):
-                errorMessage = message
+                errorMessage = localizedStateMachineMessage(message)
             case .insertText(let text):
                 let fallbackState: PopoverStateMachine.State
                 if !resultText.isEmpty {
@@ -237,10 +237,19 @@ final class WritingPopoverViewModel: ObservableObject {
         }
     }
 
+    private func localizedStateMachineMessage(_ message: String) -> String {
+        switch message {
+        case "请输入要转换的文本":
+            L10n.text("error.emptySource")
+        default:
+            message
+        }
+    }
+
     private func insert(text: String, fallbackState: PopoverStateMachine.State) {
         guard let previousApplication else {
             stateMachine = PopoverStateMachine(state: fallbackState)
-            errorMessage = "找不到要插入文本的目标应用。"
+            errorMessage = L10n.text("popover.error.missingTarget")
             return
         }
 
@@ -279,7 +288,7 @@ private struct OpenAIAPIKeyProvider: @unchecked Sendable {
         guard let apiKey = try keychainStore.loadAPIKey(),
               !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
-            throw TransformationError.provider("请先配置 \(providerName) API Key。")
+            throw TransformationError.provider(L10n.format("popover.error.missingAPIKey", providerName))
         }
         return apiKey
     }
@@ -287,6 +296,19 @@ private struct OpenAIAPIKeyProvider: @unchecked Sendable {
 
 private extension Error {
     var userFacingMessage: String {
+        if let transformationError = self as? TransformationError {
+            switch transformationError {
+            case .emptySource:
+                return L10n.text("error.emptySource")
+            case .emptyResponse:
+                return L10n.text("error.emptyResponse")
+            case .timeout:
+                return L10n.text("error.timeout")
+            case .provider(let message):
+                return localizedProviderMessage(message)
+            }
+        }
+
         if let localizedError = self as? LocalizedError,
            let description = localizedError.errorDescription {
             return description
@@ -295,17 +317,37 @@ private extension Error {
         if let insertionError = self as? InsertionError {
             switch insertionError {
             case .accessibilityPermissionMissing:
-                return "需要开启辅助功能权限后才能插入文本。"
+                return L10n.text("insertion.error.accessibility")
             case .activationFailed:
-                return "无法切回原应用，请重试。"
+                return L10n.text("insertion.error.activation")
             case .cannotCreatePasteEvent:
-                return "无法发送粘贴快捷键。"
+                return L10n.text("insertion.error.pasteEvent")
             case .clipboardRestoreFailed:
-                return "插入后恢复剪贴板失败。"
+                return L10n.text("insertion.error.clipboardRestore")
             }
         }
 
         return String(describing: self)
+    }
+
+    private func localizedProviderMessage(_ message: String) -> String {
+        for providerName in LLMProviderPreset.all.map(\.name) {
+            let prefix = "\(providerName) 请求失败："
+            guard message.hasPrefix(prefix) else {
+                continue
+            }
+
+            let detail = String(message.dropFirst(prefix.count))
+            if detail == "URL 无效" {
+                return L10n.format("error.provider.urlInvalid", providerName)
+            }
+            if detail == "HTTP unknown" {
+                return L10n.format("error.provider.httpUnknown", providerName)
+            }
+            return L10n.format("error.provider.prefix", providerName, detail)
+        }
+
+        return message
     }
 }
 
@@ -321,11 +363,11 @@ struct WritingPopoverView: View {
     }
 
     private var primaryActionTitle: String {
-        model.resultText.isEmpty ? "转换" : "插入"
+        model.resultText.isEmpty ? L10n.text("popover.action.transform") : L10n.text("popover.action.insert")
     }
 
     private var busyTitle: String {
-        model.isInserting ? "正在插入..." : "正在转换..."
+        model.isInserting ? L10n.text("popover.busy.inserting") : L10n.text("popover.busy.transforming")
     }
 
     var body: some View {
@@ -384,7 +426,7 @@ struct WritingPopoverView: View {
             HStack(spacing: 8) {
                 Image(systemName: "command")
                     .foregroundStyle(.secondary)
-                Text(selectedMode?.description ?? "输入要转换或插入的文本")
+                Text(selectedMode?.localizedDescription ?? L10n.text("popover.input.placeholder"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -415,10 +457,10 @@ struct WritingPopoverView: View {
     private var resultPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label("结果", systemImage: "sparkles")
+                Label(L10n.text("popover.result.title"), systemImage: "sparkles")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
-                Text("可编辑后插入")
+                Text(L10n.text("popover.result.editable"))
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                 Spacer()
@@ -466,15 +508,15 @@ struct WritingPopoverView: View {
 
             Spacer()
 
-            Picker("模式", selection: $model.selectedModeID) {
+            Picker(L10n.text("popover.mode.picker"), selection: $model.selectedModeID) {
                 ForEach(model.modes) { mode in
-                    Text(mode.name).tag(mode.id)
+                    Text(mode.localizedName).tag(mode.id)
                 }
             }
             .labelsHidden()
             .frame(width: 210)
 
-            Text(model.resultText.isEmpty ? "Ready" : "Preview")
+            Text(model.resultText.isEmpty ? L10n.text("popover.status.ready") : L10n.text("popover.status.preview"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(model.resultText.isEmpty ? Color.secondary : Color.green)
                 .padding(.horizontal, 9)
@@ -499,7 +541,7 @@ struct WritingPopoverView: View {
             Button {
                 model.insertOriginal()
             } label: {
-                Label("插入原文", systemImage: "text.insert")
+                Label(L10n.text("popover.action.insertOriginal"), systemImage: "text.insert")
             }
             .controlSize(.large)
             .disabled(isBusy)
@@ -508,16 +550,16 @@ struct WritingPopoverView: View {
 
             HStack(spacing: 7) {
                 Keycap(title: "Enter")
-                Text("转换/插入")
+                Text(L10n.text("popover.hint.transformInsert"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Keycap(title: "⌘↩")
-                Text("原文")
+                Text(L10n.text("popover.hint.original"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Keycap(title: "Esc")
             }
-            .accessibilityLabel("快捷键：Enter 转换或插入，Command Enter 插入原文，Escape 返回或关闭")
+            .accessibilityLabel(L10n.text("popover.hint.accessibility"))
         }
     }
 

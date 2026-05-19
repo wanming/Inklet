@@ -11,7 +11,7 @@ final class SettingsWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "Fluenta 设置"
+        window.title = L10n.text("settings.window.title")
         window.contentViewController = hostingController
         window.isReleasedWhenClosed = false
 
@@ -25,6 +25,7 @@ final class SettingsWindowController: NSWindowController {
     }
 
     func show() {
+        window?.title = L10n.text("settings.window.title")
         window?.center()
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)

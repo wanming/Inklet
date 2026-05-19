@@ -9,6 +9,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var message: String
     @Published var providerAPIKeys: [String: String]
     @Published var selectedPromptModeID: String
+    @Published var interfaceLanguage: InterfaceLanguage
 
     private let configStore: UserDefaultsConfigStore
 
@@ -17,6 +18,7 @@ final class SettingsViewModel: ObservableObject {
         self.configStore = configStore
         self.config = loadedConfig
         self.message = ""
+        self.interfaceLanguage = FluentaLanguageStore.selectedLanguage
         self.providerAPIKeys = Dictionary(
             uniqueKeysWithValues: LLMProviderPreset.all.map { preset in
                 (preset.id, (try? KeychainStore(service: preset.keychainService).loadAPIKey()) ?? "")
@@ -45,16 +47,17 @@ final class SettingsViewModel: ObservableObject {
     func save() {
         do {
             guard config.promptModes.contains(where: \.isVisible) else {
-                message = "至少需要保留一个可见模式。"
+                message = L10n.text("settings.error.visibleModeRequired")
                 return
             }
 
             guard !config.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                message = "Model 不能为空。"
+                message = L10n.text("settings.error.modelRequired")
                 return
             }
 
             _ = try Hotkey.parse(config.hotkey)
+            FluentaLanguageStore.selectedLanguage = interfaceLanguage
             try configStore.save(config)
             for provider in LLMProviderPreset.all {
                 let trimmedKey = (providerAPIKeys[provider.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -62,12 +65,12 @@ final class SettingsViewModel: ObservableObject {
                     try KeychainStore(service: provider.keychainService).saveAPIKey(trimmedKey)
                 }
             }
-            message = "已保存"
+            message = L10n.text("settings.saved")
             NotificationCenter.default.post(name: .appConfigDidSave, object: nil)
         } catch let error as HotkeyError {
-            message = error.localizedDescription
+            message = error.userFacingMessage
         } catch {
-            message = "保存失败：\(String(describing: error))"
+            message = L10n.format("settings.error.saveFailed", String(describing: error))
         }
     }
 
@@ -75,7 +78,7 @@ final class SettingsViewModel: ObservableObject {
         guard let url = URL(
             string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
         ) else {
-            message = "无法打开辅助功能设置。"
+            message = L10n.text("settings.error.openAccessibility")
             return
         }
 
@@ -95,6 +98,15 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var title: String {
+        switch self {
+        case .general: L10n.text("settings.section.general")
+        case .providers: L10n.text("settings.section.providers")
+        case .promptModes: L10n.text("settings.section.promptModes")
+        case .permissions: L10n.text("settings.section.permissions")
+        }
+    }
+
     var icon: String {
         switch self {
         case .general: "gearshape"
@@ -110,7 +122,7 @@ struct SettingsView: View {
     @State private var selectedSection: SettingsSection = .general
 
     private var isSavedMessage: Bool {
-        model.message == "已保存"
+        model.message == L10n.text("settings.saved")
     }
 
     var body: some View {
@@ -134,7 +146,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Fluenta")
                         .font(.headline)
-                    Text("Preferences")
+                    Text(L10n.text("settings.sidebar.preferences"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -150,7 +162,7 @@ struct SettingsView: View {
                         HStack(spacing: 9) {
                             Image(systemName: section.icon)
                                 .frame(width: 18)
-                            Text(section.rawValue)
+                            Text(section.title)
                             Spacer()
                         }
                         .font(.system(size: 13, weight: selectedSection == section ? .semibold : .regular))
@@ -168,7 +180,7 @@ struct SettingsView: View {
             .padding(.horizontal, 10)
 
             Spacer()
-            Text("⌘S 保存 · ⌘, 打开")
+            Text(L10n.text("settings.sidebar.hint"))
                 .font(.caption.monospaced())
                 .foregroundStyle(.tertiary)
                 .padding(14)
@@ -204,7 +216,7 @@ struct SettingsView: View {
 
     private var sectionHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(selectedSection.rawValue)
+            Text(selectedSection.title)
                 .font(.title2.weight(.semibold))
             Text(sectionDescription)
                 .font(.callout)
@@ -215,34 +227,44 @@ struct SettingsView: View {
     private var sectionDescription: String {
         switch selectedSection {
         case .general:
-            "基础行为、快捷键和生成参数。"
+            L10n.text("settings.description.general")
         case .providers:
-            "选择 LLM 服务商、模型和对应的 API Key。"
+            L10n.text("settings.description.providers")
         case .promptModes:
-            "管理浮窗中的转换模式和系统提示词。"
+            L10n.text("settings.description.promptModes")
         case .permissions:
-            "检查插入文本所需的 macOS 权限。"
+            L10n.text("settings.description.permissions")
         }
     }
 
     private var generalPanel: some View {
         settingsPanel {
-            settingsRow("Hotkey", help: "例如 ⌥Space、Option+Space、Cmd+Space。") {
-                TextField("⌥Space", text: $model.config.hotkey)
-                    .textFieldStyle(.roundedBorder)
-            }
-
-            settingsRow("Default Mode", help: "浮窗打开时默认选中的模式。") {
-                Picker("", selection: $model.config.defaultModeID) {
-                    ForEach(model.config.promptModes) { mode in
-                        Text(mode.name).tag(mode.id)
+            settingsRow(L10n.text("settings.row.language"), help: L10n.text("settings.help.language")) {
+                Picker("", selection: $model.interfaceLanguage) {
+                    ForEach(InterfaceLanguage.allCases) { language in
+                        Text(language.localizedDisplayName).tag(language)
                     }
                 }
                 .labelsHidden()
                 .frame(maxWidth: 320, alignment: .leading)
             }
 
-            settingsRow("Temperature", help: "低值更稳定，高值更发散。") {
+            settingsRow(L10n.text("settings.row.hotkey"), help: L10n.text("settings.help.hotkey")) {
+                TextField("⌥Space", text: $model.config.hotkey)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            settingsRow(L10n.text("settings.row.defaultMode"), help: L10n.text("settings.help.defaultMode")) {
+                Picker("", selection: $model.config.defaultModeID) {
+                    ForEach(model.config.promptModes) { mode in
+                        Text(mode.localizedName).tag(mode.id)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(L10n.text("settings.row.temperature"), help: L10n.text("settings.help.temperature")) {
                 HStack(spacing: 12) {
                     Slider(value: $model.config.temperature, in: 0...2, step: 0.1)
                     Text(model.config.temperature, format: .number.precision(.fractionLength(1)))
@@ -251,9 +273,9 @@ struct SettingsView: View {
                 }
             }
 
-            settingsRow("Timeout", help: "请求最长等待时间。") {
+            settingsRow(L10n.text("settings.row.timeout"), help: L10n.text("settings.help.timeout")) {
                 Stepper(value: $model.config.timeoutSeconds, in: 1...120, step: 1) {
-                    Text("\(Int(model.config.timeoutSeconds)) 秒")
+                    Text(L10n.format("settings.seconds", Int(model.config.timeoutSeconds)))
                         .font(.body.monospacedDigit())
                 }
             }
@@ -304,7 +326,7 @@ struct SettingsView: View {
             }
 
             settingsPanel {
-                settingsRow("Provider", help: "当前服务商。") {
+                settingsRow(L10n.text("settings.row.provider"), help: L10n.text("settings.help.provider")) {
                     Picker("", selection: selectedProviderBinding) {
                         ForEach(LLMProviderPreset.all) { provider in
                             Text(provider.name).tag(provider.id)
@@ -314,12 +336,12 @@ struct SettingsView: View {
                     .frame(maxWidth: 320, alignment: .leading)
                 }
 
-                settingsRow("API Key", help: "仅保存当前 provider 的 Keychain item。") {
+                settingsRow(L10n.text("settings.row.apiKey"), help: L10n.text("settings.help.apiKey")) {
                     SecureField(model.selectedProvider.apiKeyPlaceholder, text: selectedAPIKeyBinding)
                         .textFieldStyle(.roundedBorder)
                 }
 
-                settingsRow("Model", help: "默认：\(model.selectedProvider.defaultModel)") {
+                settingsRow(L10n.text("settings.row.model"), help: L10n.format("settings.help.model.default", model.selectedProvider.defaultModel)) {
                     TextField(model.selectedProvider.defaultModel, text: $model.config.model)
                         .textFieldStyle(.roundedBorder)
                 }
@@ -336,9 +358,9 @@ struct SettingsView: View {
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(mode.name.isEmpty ? "Untitled mode" : mode.name)
+                                Text(mode.name.isEmpty ? L10n.text("settings.mode.untitled") : mode.localizedName)
                                     .font(.system(size: 13, weight: mode.id == model.selectedPromptModeID ? .semibold : .regular))
-                                Text(mode.isVisible ? "Visible" : "Hidden")
+                                Text(mode.isVisible ? L10n.text("settings.mode.visible") : L10n.text("settings.mode.hidden"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -365,7 +387,7 @@ struct SettingsView: View {
             if let index = model.selectedPromptModeIndex {
                 promptModeDetail(index: index)
             } else {
-                Text("选择一个 Prompt Mode")
+                Text(L10n.text("settings.mode.pick"))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 280)
             }
@@ -375,7 +397,7 @@ struct SettingsView: View {
     private func promptModeDetail(index: Int) -> some View {
         settingsPanel {
             HStack {
-                Toggle("Visible", isOn: $model.config.promptModes[index].isVisible)
+                Toggle(L10n.text("settings.mode.visible"), isOn: $model.config.promptModes[index].isVisible)
                     .toggleStyle(.switch)
                 Toggle("Auto", isOn: $model.config.promptModes[index].participatesInAuto)
                     .toggleStyle(.switch)
@@ -385,22 +407,22 @@ struct SettingsView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            settingsRow("Name", help: "浮窗中显示的名称。") {
-                TextField("Name", text: $model.config.promptModes[index].name)
+            settingsRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
+                TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
                     .textFieldStyle(.roundedBorder)
             }
 
-            settingsRow("Description", help: "模式用途说明。") {
-                TextField("Description", text: $model.config.promptModes[index].description)
+            settingsRow(L10n.text("settings.row.description"), help: L10n.text("settings.help.description")) {
+                TextField(L10n.text("settings.row.description"), text: $model.config.promptModes[index].description)
                     .textFieldStyle(.roundedBorder)
             }
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Label("System Prompt", systemImage: "curlybraces")
+                    Label(L10n.text("settings.row.systemPrompt"), systemImage: "curlybraces")
                         .font(.subheadline.weight(.semibold))
                     Spacer()
-                    Text("\(model.config.promptModes[index].systemPrompt.count) 字符")
+                    Text(L10n.format("settings.characters", model.config.promptModes[index].systemPrompt.count))
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
@@ -429,9 +451,9 @@ struct SettingsView: View {
                     .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: 10))
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(model.isAccessibilityTrusted ? "Accessibility 已授权" : "需要 Accessibility 权限")
+                    Text(model.isAccessibilityTrusted ? L10n.text("settings.permission.authorized") : L10n.text("settings.permission.required"))
                         .font(.headline)
-                    Text("Fluenta 需要该权限，才能把生成文本粘贴回当前输入框。")
+                    Text(L10n.text("settings.permission.description"))
                         .foregroundStyle(.secondary)
                 }
 
@@ -441,7 +463,7 @@ struct SettingsView: View {
             Button {
                 model.openAccessibilitySettings()
             } label: {
-                Label("打开系统权限设置", systemImage: "arrow.up.forward.app")
+                Label(L10n.text("settings.permission.open"), systemImage: "arrow.up.forward.app")
             }
             .buttonStyle(.borderedProminent)
         }
@@ -455,7 +477,7 @@ struct SettingsView: View {
                     .foregroundStyle(isSavedMessage ? .green : .red)
                     .lineLimit(2)
             } else {
-                Text("更改会在保存后应用到下一次浮窗打开。")
+                Text(L10n.text("settings.footer.pending"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -463,7 +485,7 @@ struct SettingsView: View {
             Button {
                 model.save()
             } label: {
-                Label("保存", systemImage: "checkmark")
+                Label(L10n.text("settings.save"), systemImage: "checkmark")
             }
             .keyboardShortcut("s", modifiers: .command)
             .buttonStyle(.borderedProminent)

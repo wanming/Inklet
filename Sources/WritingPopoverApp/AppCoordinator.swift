@@ -23,6 +23,7 @@ final class AppCoordinator: NSObject {
     private let configStore: UserDefaultsConfigStore
     private let accessibilityPermissionService: AccessibilityPermissionService
     private var configObserver: NSObjectProtocol?
+    private var languageObserver: NSObjectProtocol?
     private var activeApplicationObserver: NSObjectProtocol?
     private var settingsShortcutMonitor: Any?
     private var lastTargetApplication: NSRunningApplication?
@@ -40,33 +41,7 @@ final class AppCoordinator: NSObject {
 
     func start() {
         configureStatusItemIcon()
-
-        let menu = NSMenu()
-        menu.addItem(
-            NSMenuItem(
-                title: "打开写作浮窗",
-                action: #selector(openPopover),
-                keyEquivalent: ""
-            )
-        )
-        menu.addItem(NSMenuItem.separator())
-        let settingsItem = NSMenuItem(
-            title: "设置",
-            action: #selector(openSettings),
-            keyEquivalent: ","
-        )
-        settingsItem.keyEquivalentModifierMask = [.command]
-        menu.addItem(settingsItem)
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(
-            NSMenuItem(
-                title: "退出",
-                action: #selector(quit),
-                keyEquivalent: "q"
-            )
-        )
-        menu.items.forEach { $0.target = self }
-        statusItem.menu = menu
+        configureStatusItemMenu()
 
         rememberTargetApplication(NSWorkspace.shared.frontmostApplication)
         activeApplicationObserver = NSWorkspace.shared.notificationCenter.addObserver(
@@ -90,6 +65,16 @@ final class AppCoordinator: NSObject {
             }
         }
 
+        languageObserver = NotificationCenter.default.addObserver(
+            forName: .fluentaLanguageDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.configureStatusItemMenu()
+            }
+        }
+
         registerConfiguredHotkey()
         requestAccessibilityPermissionIfNeeded()
         installSettingsShortcutMonitor()
@@ -99,6 +84,10 @@ final class AppCoordinator: NSObject {
         if let configObserver {
             NotificationCenter.default.removeObserver(configObserver)
             self.configObserver = nil
+        }
+        if let languageObserver {
+            NotificationCenter.default.removeObserver(languageObserver)
+            self.languageObserver = nil
         }
         if let activeApplicationObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(activeApplicationObserver)
@@ -180,6 +169,35 @@ final class AppCoordinator: NSObject {
         )
         statusItem.button?.toolTip = "Fluenta"
         statusItem.button?.setAccessibilityLabel("Fluenta")
+    }
+
+    private func configureStatusItemMenu() {
+        let menu = NSMenu()
+        menu.addItem(
+            NSMenuItem(
+                title: L10n.text("app.menu.openPopover"),
+                action: #selector(openPopover),
+                keyEquivalent: ""
+            )
+        )
+        menu.addItem(NSMenuItem.separator())
+        let settingsItem = NSMenuItem(
+            title: L10n.text("app.menu.settings"),
+            action: #selector(openSettings),
+            keyEquivalent: ","
+        )
+        settingsItem.keyEquivalentModifierMask = [.command]
+        menu.addItem(settingsItem)
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(
+            NSMenuItem(
+                title: L10n.text("app.menu.quit"),
+                action: #selector(quit),
+                keyEquivalent: "q"
+            )
+        )
+        menu.items.forEach { $0.target = self }
+        statusItem.menu = menu
     }
 
     @objc func openPopover() {
