@@ -228,9 +228,11 @@ enum L10n {
         "error.provider.prefix": "%@ request failed: %@",
         "hotkey.error.unsupported": "Unsupported hotkey “%@”. Supported: ⌥Space, Option+Space, Alt+Space, ⌘Space, Command+Space, Cmd+Space.",
         "hotkey.error.registrationFailed": "Hotkey registration failed (%d).",
-        "prompt.auto.description": "Automatically choose a conversion mode based on the input language",
-        "prompt.chineseToEnglish.description": "Translate Chinese meaning into natural English",
-        "prompt.polishEnglish.description": "Polish English, fixing grammar and wording",
+        "prompt.translateToEnglish.description": "Translate any language into natural English",
+        "prompt.improveWriting.description": "Improve writing while keeping the original language",
+        "prompt.makeConcise.description": "Shorten text while keeping the original language and key points",
+        "prompt.professionalTone.description": "Rewrite with a clearer, more professional tone",
+        "prompt.friendlyReply.description": "Rewrite as a natural, friendly reply",
         "prompt.custom.description": "Use your custom prompt"
     ]
 
@@ -328,9 +330,11 @@ enum L10n {
         "error.provider.prefix": "%@ 请求失败：%@",
         "hotkey.error.unsupported": "暂不支持快捷键“%@”。目前支持 ⌥Space、Option+Space、Alt+Space、⌘Space、Command+Space、Cmd+Space。",
         "hotkey.error.registrationFailed": "快捷键注册失败（%d）。",
-        "prompt.auto.description": "根据输入语言自动选择转换模式",
-        "prompt.chineseToEnglish.description": "把中文原意翻译成自然英文",
-        "prompt.polishEnglish.description": "润色英文，修正语法和表达",
+        "prompt.translateToEnglish.description": "把任意语言翻译成自然英文",
+        "prompt.improveWriting.description": "保持原语言，润色语法、表达和清晰度",
+        "prompt.makeConcise.description": "保持原语言，压缩文字并保留重点",
+        "prompt.professionalTone.description": "改成更职业、清楚、礼貌的语气",
+        "prompt.friendlyReply.description": "改成自然、友好、适合回复的表达",
         "prompt.custom.description": "使用用户自定义 prompt"
     ]
 
@@ -950,7 +954,12 @@ extension Notification.Name {
 extension PromptMode {
     var localizedName: String {
         switch id {
-        case PromptMode.autoID, PromptMode.chineseToEnglishID, PromptMode.polishEnglishID, PromptMode.customPromptID:
+        case PromptMode.translateToEnglishID,
+             PromptMode.improveWritingID,
+             PromptMode.makeConciseID,
+             PromptMode.professionalToneID,
+             PromptMode.friendlyReplyID,
+             PromptMode.customPromptID:
             name
         default:
             name
@@ -959,12 +968,16 @@ extension PromptMode {
 
     var localizedDescription: String {
         switch id {
-        case PromptMode.autoID:
-            L10n.text("prompt.auto.description")
-        case PromptMode.chineseToEnglishID:
-            L10n.text("prompt.chineseToEnglish.description")
-        case PromptMode.polishEnglishID:
-            L10n.text("prompt.polishEnglish.description")
+        case PromptMode.translateToEnglishID:
+            L10n.text("prompt.translateToEnglish.description")
+        case PromptMode.improveWritingID:
+            L10n.text("prompt.improveWriting.description")
+        case PromptMode.makeConciseID:
+            L10n.text("prompt.makeConcise.description")
+        case PromptMode.professionalToneID:
+            L10n.text("prompt.professionalTone.description")
+        case PromptMode.friendlyReplyID:
+            L10n.text("prompt.friendlyReply.description")
         case PromptMode.customPromptID:
             L10n.text("prompt.custom.description")
         default:

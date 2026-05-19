@@ -159,7 +159,7 @@ final class SettingsViewModel: ObservableObject {
             return
         }
         config.promptModes.removeAll { $0.id == selectedPromptModeID }
-        selectedPromptModeID = config.promptModes.first?.id ?? PromptMode.autoID
+        selectedPromptModeID = config.promptModes.first?.id ?? PromptMode.translateToEnglishID
     }
 
     func save() {
@@ -220,9 +220,11 @@ extension Notification.Name {
 
 private extension PromptMode {
     static let builtInIDs: Set<String> = [
-        PromptMode.autoID,
-        PromptMode.chineseToEnglishID,
-        PromptMode.polishEnglishID,
+        PromptMode.translateToEnglishID,
+        PromptMode.improveWritingID,
+        PromptMode.makeConciseID,
+        PromptMode.professionalToneID,
+        PromptMode.friendlyReplyID,
         PromptMode.customPromptID
     ]
 }
@@ -673,7 +675,6 @@ struct SettingsView: View {
 
             VStack(spacing: 12) {
                 settingsToggle(title: "Visible in menu", subtitle: "Show this mode in the mode selector", isOn: $model.config.promptModes[index].isVisible)
-                settingsToggle(title: "Auto-match", subtitle: "Include in Auto mode detection", isOn: $model.config.promptModes[index].participatesInAuto)
             }
         }
         .padding(24)

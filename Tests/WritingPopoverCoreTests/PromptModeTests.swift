@@ -6,26 +6,34 @@ final class PromptModeTests: XCTestCase {
         var autoRule: PromptMode.AutoRule
     }
 
-    func testDefaultModesContainAutoTranslationAndPolishing() {
+    func testDefaultModesAreMultilingualWritingModesWithoutAuto() {
         let store = PromptModeStore.defaultStore()
 
-        XCTAssertEqual(store.visibleModes.map(\.name), ["Auto", "Chinese to English", "Polish English", "Custom Prompt"])
+        XCTAssertEqual(store.visibleModes.map(\.name), [
+            "Translate to English",
+            "Improve Writing",
+            "Make Concise",
+            "Professional Tone",
+            "Friendly Reply",
+            "Custom Prompt"
+        ])
+        XCTAssertFalse(store.visibleModes.contains { $0.id == PromptMode.autoID })
     }
 
-    func testAutoResolvesChineseHeavyInputToTranslationMode() {
+    func testResolveReturnsSelectedModeWhenAvailable() {
         let store = PromptModeStore.defaultStore()
 
-        let mode = store.resolve(modeID: PromptMode.autoID, sourceText: "请帮我写一封英文邮件")
+        let mode = store.resolve(modeID: PromptMode.makeConciseID, sourceText: "Please make this shorter.")
 
-        XCTAssertEqual(mode.id, PromptMode.chineseToEnglishID)
+        XCTAssertEqual(mode.id, PromptMode.makeConciseID)
     }
 
-    func testAutoResolvesEnglishHeavyInputToPolishingMode() {
+    func testResolveFallsBackToTranslateToEnglishForMissingMode() {
         let store = PromptModeStore.defaultStore()
 
-        let mode = store.resolve(modeID: PromptMode.autoID, sourceText: "i has a apple")
+        let mode = store.resolve(modeID: "missing", sourceText: "hello")
 
-        XCTAssertEqual(mode.id, PromptMode.polishEnglishID)
+        XCTAssertEqual(mode.id, PromptMode.translateToEnglishID)
     }
 
     func testHiddenModesAreExcludedFromVisibleModes() {
@@ -45,12 +53,12 @@ final class PromptModeTests: XCTestCase {
         XCTAssertFalse(store.visibleModes.contains { $0.id == "hidden" })
     }
 
-    func testEmptyStoreResolveFallsBackToBuiltInPolishEnglishMode() {
+    func testEmptyStoreResolveFallsBackToBuiltInTranslateToEnglishMode() {
         let store = PromptModeStore(modes: [])
 
-        let mode = store.resolve(modeID: PromptMode.autoID, sourceText: "hello")
+        let mode = store.resolve(modeID: "missing", sourceText: "hello")
 
-        XCTAssertEqual(mode.id, PromptMode.polishEnglishID)
+        XCTAssertEqual(mode.id, PromptMode.translateToEnglishID)
     }
 
     func testUnknownAutoRuleDecodesAsNone() throws {
