@@ -11,7 +11,12 @@ let package = Package(
         .executable(name: "Fluenta", targets: ["Fluenta"])
     ],
     targets: [
-        .target(name: "WritingPopoverCore"),
+        .target(
+            name: "WritingPopoverCore",
+            resources: [
+                .process("Resources")
+            ]
+        ),
         .executableTarget(
             name: "Fluenta",
             dependencies: ["WritingPopoverCore"],

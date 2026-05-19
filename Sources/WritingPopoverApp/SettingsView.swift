@@ -11,12 +11,22 @@ final class SettingsViewModel: ObservableObject {
     @Published var providerAPIKeys: [String: String]
     @Published var selectedPromptModeID: String
     @Published var interfaceLanguage: InterfaceLanguage
+    @Published var cachedProviderModels: [String: [String]]
+    @Published var isRefreshingModelCatalog: Bool
+    @Published var isEditingCustomModel: Bool
 
     private let configStore: UserDefaultsConfigStore
+    private let modelCatalogService: ModelCatalogService
 
-    init(configStore: UserDefaultsConfigStore = UserDefaultsConfigStore()) {
+    static let customModelMenuID = "__custom_model__"
+
+    init(
+        configStore: UserDefaultsConfigStore = UserDefaultsConfigStore(),
+        modelCatalogService: ModelCatalogService = ModelCatalogService()
+    ) {
         let loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         self.configStore = configStore
+        self.modelCatalogService = modelCatalogService
         self.config = loadedConfig
         self.message = ""
         self.interfaceLanguage = FluentaLanguageStore.selectedLanguage
@@ -26,6 +36,16 @@ final class SettingsViewModel: ObservableObject {
             }
         )
         self.selectedPromptModeID = loadedConfig.defaultModeID
+        self.cachedProviderModels = Dictionary(
+            uniqueKeysWithValues: LLMProviderPreset.all.compactMap { preset in
+                guard let modelIDs = modelCatalogService.cachedModelIDs(for: preset.id) else {
+                    return nil
+                }
+                return (preset.id, modelIDs)
+            }
+        )
+        self.isRefreshingModelCatalog = false
+        self.isEditingCustomModel = false
     }
 
     var selectedProvider: LLMProviderPreset {
@@ -34,6 +54,39 @@ final class SettingsViewModel: ObservableObject {
 
     var isCustomOpenAICompatibleProvider: Bool {
         config.providerID == LLMProviderPreset.customOpenAICompatible.id
+    }
+
+    var selectedProviderModelOptions: [String] {
+        guard !isCustomOpenAICompatibleProvider else {
+            return []
+        }
+
+        var seen = Set<String>()
+        var options: [String] = []
+
+        for modelID in cachedProviderModels[config.providerID] ?? [] {
+            if seen.insert(modelID).inserted {
+                options.append(modelID)
+            }
+        }
+
+        if seen.insert(selectedProvider.defaultModel).inserted {
+            options.insert(selectedProvider.defaultModel, at: 0)
+        }
+
+        return options
+    }
+
+    var selectedModelMenuValue: String {
+        if isEditingCustomModel {
+            return Self.customModelMenuID
+        }
+
+        return selectedProviderModelOptions.contains(config.model) ? config.model : Self.customModelMenuID
+    }
+
+    var shouldShowCustomModelField: Bool {
+        isCustomOpenAICompatibleProvider || selectedModelMenuValue == Self.customModelMenuID
     }
 
     var selectedPromptModeIndex: Int? {
@@ -51,6 +104,38 @@ final class SettingsViewModel: ObservableObject {
     func selectProvider(_ providerID: String) {
         config.providerID = providerID
         config.model = LLMProviderPreset.preset(id: providerID).defaultModel
+        isEditingCustomModel = false
+    }
+
+    func selectModelMenuValue(_ value: String) {
+        if value == Self.customModelMenuID {
+            isEditingCustomModel = true
+            return
+        }
+
+        isEditingCustomModel = false
+        config.model = value
+    }
+
+    func refreshModelCatalogIfNeeded() async {
+        isRefreshingModelCatalog = true
+        defer {
+            isRefreshingModelCatalog = false
+        }
+
+        do {
+            try await modelCatalogService.refreshIfNeeded()
+            cachedProviderModels = Dictionary(
+                uniqueKeysWithValues: LLMProviderPreset.all.compactMap { preset in
+                    guard let modelIDs = modelCatalogService.cachedModelIDs(for: preset.id) else {
+                        return nil
+                    }
+                    return (preset.id, modelIDs)
+                }
+            )
+        } catch {
+            // The model picker still works with saved/default/custom values when the catalog cannot be fetched.
+        }
     }
 
     func addPromptMode() {
@@ -185,6 +270,9 @@ struct SettingsView: View {
         .frame(width: 800, height: 560)
         .background(FluentaTheme.panelBackground)
         .clipShape(RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius))
+        .task {
+            await model.refreshModelCatalogIfNeeded()
+        }
     }
 
     private var sidebar: some View {
@@ -366,6 +454,10 @@ struct SettingsView: View {
             get: { model.providerAPIKeys[model.config.providerID] ?? "" },
             set: { model.providerAPIKeys[model.config.providerID] = $0 }
         )
+        let selectedModelBinding = Binding(
+            get: { model.selectedModelMenuValue },
+            set: { model.selectModelMenuValue($0) }
+        )
 
         return HStack(alignment: .top, spacing: 0) {
             ScrollView {
@@ -425,8 +517,30 @@ struct SettingsView: View {
                 }
 
                 settingsRow(L10n.text("settings.row.model"), help: L10n.format("settings.help.model.default", model.selectedProvider.defaultModel)) {
-                    TextField(model.selectedProvider.defaultModel, text: $model.config.model)
-                        .textFieldStyle(.roundedBorder)
+                    VStack(alignment: .leading, spacing: 8) {
+                        if !model.selectedProviderModelOptions.isEmpty {
+                            Picker("", selection: selectedModelBinding) {
+                                ForEach(model.selectedProviderModelOptions, id: \.self) { modelID in
+                                    Text(modelID).tag(modelID)
+                                }
+                                Divider()
+                                Text(L10n.text("settings.model.custom")).tag(SettingsViewModel.customModelMenuID)
+                            }
+                            .labelsHidden()
+                            .frame(maxWidth: 320, alignment: .leading)
+                        }
+
+                        if model.shouldShowCustomModelField {
+                            TextField(model.selectedProvider.defaultModel, text: $model.config.model)
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        if model.isRefreshingModelCatalog {
+                            Text(L10n.text("settings.model.refreshing"))
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
             .padding(24)
