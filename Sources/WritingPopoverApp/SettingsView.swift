@@ -424,8 +424,6 @@ struct SettingsView: View {
             HStack {
                 Toggle(L10n.text("settings.mode.visible"), isOn: $model.config.promptModes[index].isVisible)
                     .toggleStyle(.switch)
-                Toggle("Auto", isOn: $model.config.promptModes[index].participatesInAuto)
-                    .toggleStyle(.switch)
                 Spacer()
                 Text(model.config.promptModes[index].id)
                     .font(.caption.monospaced())

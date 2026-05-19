@@ -1,8 +1,13 @@
 public struct PromptMode: Codable, Equatable, Identifiable, Sendable {
     public static let autoID = "auto"
+    public static let translateToEnglishID = "translate-to-english"
+    public static let improveWritingID = "improve-writing"
+    public static let makeConciseID = "make-concise"
+    public static let professionalToneID = "professional-tone"
+    public static let friendlyReplyID = "friendly-reply"
+    public static let customPromptID = "custom-prompt"
     public static let chineseToEnglishID = "chinese-to-english"
     public static let polishEnglishID = "polish-english"
-    public static let customPromptID = "custom-prompt"
 
     public enum AutoRule: String, Codable, Sendable {
         case none
@@ -70,36 +75,58 @@ public struct PromptModeStore: Equatable, Sendable {
     public static func defaultStore() -> PromptModeStore {
         PromptModeStore(modes: [
             PromptMode(
-                id: PromptMode.autoID,
-                name: "Auto",
-                description: "根据输入语言自动选择转换模式",
-                systemPrompt: "",
-                shortcut: nil,
+                id: PromptMode.translateToEnglishID,
+                name: "Translate to English",
+                description: "把任意语言翻译成自然英文",
+                systemPrompt: "Translate the user's text into natural English. Preserve meaning, tone, names, formatting, and intent. Return only the translated text.",
+                shortcut: "⌘1",
                 participatesInAuto: false,
                 autoRule: .none,
                 sortOrder: 0,
                 isVisible: true
             ),
             PromptMode(
-                id: PromptMode.chineseToEnglishID,
-                name: "Chinese to English",
-                description: "把中文原意翻译成自然英文",
-                systemPrompt: "Translate the user's Chinese text into natural English. Preserve meaning and tone. Return only the translated text.",
-                shortcut: "⌘1",
-                participatesInAuto: true,
-                autoRule: .chineseHeavy,
+                id: PromptMode.improveWritingID,
+                name: "Improve Writing",
+                description: "保持原语言，润色语法、表达和清晰度",
+                systemPrompt: "Improve the user's writing while keeping the original language. Fix grammar, spelling, word choice, clarity, and flow while preserving meaning and tone. Return only the improved text.",
+                shortcut: "⌘2",
+                participatesInAuto: false,
+                autoRule: .none,
                 sortOrder: 1,
                 isVisible: true
             ),
             PromptMode(
-                id: PromptMode.polishEnglishID,
-                name: "Polish English",
-                description: "润色英文，修正语法和表达",
-                systemPrompt: "Improve the user's English. Fix grammar, spelling, word choice, and clarity while preserving meaning. Return only the improved text.",
-                shortcut: "⌘2",
-                participatesInAuto: true,
-                autoRule: .englishHeavy,
+                id: PromptMode.makeConciseID,
+                name: "Make Concise",
+                description: "保持原语言，压缩文字并保留重点",
+                systemPrompt: "Make the user's text more concise while keeping the original language. Remove redundancy, keep the key points, and preserve the intended tone. Return only the concise version.",
+                shortcut: "⌘3",
+                participatesInAuto: false,
+                autoRule: .none,
                 sortOrder: 2,
+                isVisible: true
+            ),
+            PromptMode(
+                id: PromptMode.professionalToneID,
+                name: "Professional Tone",
+                description: "保持原语言，改成更职业、清楚、礼貌的语气",
+                systemPrompt: "Rewrite the user's text in a more professional, clear, and polite tone while keeping the original language and preserving the meaning. Return only the rewritten text.",
+                shortcut: "⌘4",
+                participatesInAuto: false,
+                autoRule: .none,
+                sortOrder: 3,
+                isVisible: true
+            ),
+            PromptMode(
+                id: PromptMode.friendlyReplyID,
+                name: "Friendly Reply",
+                description: "保持原语言，改成自然、友好、适合回复的表达",
+                systemPrompt: "Rewrite the user's text as a natural, friendly reply while keeping the original language and preserving the meaning. Return only the reply.",
+                shortcut: "⌘5",
+                participatesInAuto: false,
+                autoRule: .none,
+                sortOrder: 4,
                 isVisible: true
             ),
             PromptMode(
@@ -107,10 +134,10 @@ public struct PromptModeStore: Equatable, Sendable {
                 name: "Custom Prompt",
                 description: "使用用户自定义 prompt",
                 systemPrompt: "Transform the user's text according to the user's custom instruction. Return only the transformed text.",
-                shortcut: "⌘3",
+                shortcut: "⌘6",
                 participatesInAuto: false,
                 autoRule: .none,
-                sortOrder: 3,
+                sortOrder: 5,
                 isVisible: true
             )
         ])
@@ -129,39 +156,25 @@ public struct PromptModeStore: Equatable, Sendable {
     }
 
     public func resolve(modeID: String, sourceText: String) -> PromptMode {
-        if modeID != PromptMode.autoID, let mode = mode(id: modeID) {
+        if let mode = mode(id: modeID), mode.id != PromptMode.autoID {
             return mode
         }
 
-        let rule: PromptMode.AutoRule = sourceText.isChineseHeavy ? .chineseHeavy : .englishHeavy
-        return modes.first { $0.participatesInAuto && $0.autoRule == rule }
-            ?? modes.first { $0.id == PromptMode.polishEnglishID }
-            ?? PromptModeStore.defaultPolishEnglishMode
+        return modes.first { $0.id == PromptMode.translateToEnglishID }
+            ?? PromptModeStore.defaultTranslateToEnglishMode
     }
 
-    private static var defaultPolishEnglishMode: PromptMode {
+    private static var defaultTranslateToEnglishMode: PromptMode {
         PromptMode(
-            id: PromptMode.polishEnglishID,
-            name: "Polish English",
-            description: "润色英文，修正语法和表达",
-            systemPrompt: "Improve the user's English. Fix grammar, spelling, word choice, and clarity while preserving meaning. Return only the improved text.",
-            shortcut: "⌘2",
-            participatesInAuto: true,
-            autoRule: .englishHeavy,
-            sortOrder: 2,
+            id: PromptMode.translateToEnglishID,
+            name: "Translate to English",
+            description: "把任意语言翻译成自然英文",
+            systemPrompt: "Translate the user's text into natural English. Preserve meaning, tone, names, formatting, and intent. Return only the translated text.",
+            shortcut: "⌘1",
+            participatesInAuto: false,
+            autoRule: .none,
+            sortOrder: 0,
             isVisible: true
         )
-    }
-}
-
-private extension String {
-    var isChineseHeavy: Bool {
-        let scalars = unicodeScalars.filter { !$0.properties.isWhitespace }
-        guard !scalars.isEmpty else { return false }
-
-        let chineseCount = scalars.filter { scalar in
-            (0x4E00...0x9FFF).contains(Int(scalar.value))
-        }.count
-        return Double(chineseCount) / Double(scalars.count) >= 0.25
     }
 }

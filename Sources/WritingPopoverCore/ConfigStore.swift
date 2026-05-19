@@ -40,7 +40,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
             temperature: 0.2,
             timeoutSeconds: 20,
             hotkey: "⌥Space",
-            defaultModeID: PromptMode.autoID,
+            defaultModeID: PromptMode.translateToEnglishID,
             promptModes: PromptModeStore.defaultStore().modes
         )
     }
@@ -64,13 +64,13 @@ public struct AppConfig: Codable, Equatable, Sendable {
 
     public func visibleModeID(preferredModeID: String) -> String {
         let visibleModeIDs = Set(visiblePromptModes.map(\.id))
-        let fallbackIDs = [preferredModeID, defaultModeID, PromptMode.autoID]
+        let fallbackIDs = [preferredModeID, defaultModeID]
 
         for modeID in fallbackIDs where visibleModeIDs.contains(modeID) {
             return modeID
         }
 
-        return visiblePromptModes.first?.id ?? PromptMode.polishEnglishID
+        return visiblePromptModes.first?.id ?? PromptMode.translateToEnglishID
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -95,8 +95,13 @@ public struct AppConfig: Codable, Equatable, Sendable {
         temperature = try container.decodeIfPresent(Double.self, forKey: .temperature) ?? defaults.temperature
         timeoutSeconds = try container.decodeIfPresent(Double.self, forKey: .timeoutSeconds) ?? defaults.timeoutSeconds
         hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey) ?? defaults.hotkey
-        defaultModeID = try container.decodeIfPresent(String.self, forKey: .defaultModeID) ?? defaults.defaultModeID
-        promptModes = try container.decodeIfPresent([PromptMode].self, forKey: .promptModes) ?? defaults.promptModes
+        let decodedDefaultModeID = try container.decodeIfPresent(String.self, forKey: .defaultModeID) ?? defaults.defaultModeID
+        promptModes = AppConfig.migratedPromptModes(
+            try container.decodeIfPresent([PromptMode].self, forKey: .promptModes) ?? defaults.promptModes
+        )
+        defaultModeID = AppConfig.legacyPromptModeIDs.contains(decodedDefaultModeID)
+            ? defaults.defaultModeID
+            : decodedDefaultModeID
         customOpenAICompatibleEndpoint = try container.decodeIfPresent(
             String.self,
             forKey: .customOpenAICompatibleEndpoint
@@ -115,6 +120,35 @@ public struct AppConfig: Codable, Equatable, Sendable {
         try container.encode(defaultModeID, forKey: .defaultModeID)
         try container.encode(promptModes, forKey: .promptModes)
         try container.encode(customOpenAICompatibleEndpoint, forKey: .customOpenAICompatibleEndpoint)
+    }
+
+    private static func migratedPromptModes(_ modes: [PromptMode]) -> [PromptMode] {
+        let legacyIDs = legacyPromptModeIDs
+        guard modes.contains(where: { legacyIDs.contains($0.id) }) else {
+            return modes
+        }
+
+        let modesWithoutLegacy = modes.filter { !legacyIDs.contains($0.id) }
+        let existingIDs = Set(modesWithoutLegacy.map(\.id))
+        let missingDefaults = PromptModeStore.defaultStore().modes.filter { !existingIDs.contains($0.id) }
+
+        return (modesWithoutLegacy + missingDefaults)
+            .enumerated()
+            .map { index, mode in
+                var migratedMode = mode
+                migratedMode.participatesInAuto = false
+                migratedMode.autoRule = .none
+                migratedMode.sortOrder = index
+                return migratedMode
+            }
+    }
+
+    private static var legacyPromptModeIDs: Set<String> {
+        [
+            PromptMode.autoID,
+            PromptMode.chineseToEnglishID,
+            PromptMode.polishEnglishID
+        ]
     }
 }
 
