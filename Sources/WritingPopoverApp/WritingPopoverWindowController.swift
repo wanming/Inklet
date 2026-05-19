@@ -8,6 +8,15 @@ private final class WritingPopoverPanel: NSPanel {
 }
 
 @MainActor
+private final class ClearHostingView<Content: View>: NSHostingView<Content> {
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+    }
+}
+
+@MainActor
 final class WritingPopoverWindowController: NSWindowController {
     private let model: WritingPopoverViewModel
     private var previousApplication: NSRunningApplication?
@@ -28,7 +37,7 @@ final class WritingPopoverWindowController: NSWindowController {
         panel.isReleasedWhenClosed = false
         panel.level = .floating
         panel.collectionBehavior = [.fullScreenAuxiliary, .moveToActiveSpace]
-        panel.contentView = NSHostingView(rootView: WritingPopoverView(model: model))
+        panel.contentView = ClearHostingView(rootView: WritingPopoverView(model: model))
 
         super.init(window: panel)
         shouldCascadeWindows = false
