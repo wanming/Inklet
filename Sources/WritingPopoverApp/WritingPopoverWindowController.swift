@@ -16,7 +16,7 @@ final class WritingPopoverWindowController: NSWindowController {
         self.model = WritingPopoverViewModel()
 
         let panel = WritingPopoverPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 580, height: 300),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false

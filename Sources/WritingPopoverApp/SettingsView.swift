@@ -44,9 +44,37 @@ final class SettingsViewModel: ObservableObject {
         AccessibilityPermissionService().isTrusted
     }
 
+    func isProviderConfigured(_ provider: LLMProviderPreset) -> Bool {
+        !(providerAPIKeys[provider.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     func selectProvider(_ providerID: String) {
         config.providerID = providerID
         config.model = LLMProviderPreset.preset(id: providerID).defaultModel
+    }
+
+    func addPromptMode() {
+        let mode = PromptMode(
+            id: "custom-\(Int(Date().timeIntervalSince1970))",
+            name: "New Mode",
+            description: "Custom transformation mode",
+            systemPrompt: "",
+            shortcut: nil,
+            participatesInAuto: false,
+            autoRule: .none,
+            sortOrder: (config.promptModes.map(\.sortOrder).max() ?? 0) + 1,
+            isVisible: true
+        )
+        config.promptModes.append(mode)
+        selectedPromptModeID = mode.id
+    }
+
+    func deleteSelectedPromptMode() {
+        guard !PromptMode.builtInIDs.contains(selectedPromptModeID) else {
+            return
+        }
+        config.promptModes.removeAll { $0.id == selectedPromptModeID }
+        selectedPromptModeID = config.promptModes.first?.id ?? PromptMode.autoID
     }
 
     func save() {
@@ -105,6 +133,15 @@ extension Notification.Name {
     static let appConfigDidSave = Notification.Name("FluentaAppConfigDidSave")
 }
 
+private extension PromptMode {
+    static let builtInIDs: Set<String> = [
+        PromptMode.autoID,
+        PromptMode.chineseToEnglishID,
+        PromptMode.polishEnglishID,
+        PromptMode.customPromptID
+    ]
+}
+
 private enum SettingsSection: String, CaseIterable, Identifiable {
     case general = "General"
     case providers = "Providers"
@@ -143,33 +180,43 @@ struct SettingsView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-            Divider().opacity(0.5)
             detail
         }
-        .frame(minWidth: 860, minHeight: 620)
-        .background(.regularMaterial)
+        .frame(width: 800, height: 560)
+        .background(FluentaTheme.panelBackground)
+        .clipShape(RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius))
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 10) {
-                Image(systemName: "text.bubble.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 34, height: 34)
-                    .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 9))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Fluenta")
-                        .font(.headline)
-                    Text(L10n.text("settings.sidebar.preferences"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Button {
+                    NSApp.keyWindow?.close()
+                } label: {
+                    Circle().fill(Color(red: 1, green: 0.37, blue: 0.34)).frame(width: 12, height: 12)
                 }
+                .buttonStyle(.plain)
+                Circle().fill(Color(red: 1, green: 0.74, blue: 0.18)).frame(width: 12, height: 12)
+                Circle().fill(Color(red: 0.16, green: 0.78, blue: 0.25)).frame(width: 12, height: 12)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 16)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .bottom) { Divider().opacity(0.45) }
 
-            VStack(spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Fluenta")
+                    .font(.system(size: 14, weight: .semibold))
+                Text(L10n.text("settings.sidebar.preferences"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .bottom) { Divider().opacity(0.45) }
+
+            VStack(spacing: 0) {
                 ForEach(SettingsSection.allCases) { section in
                     Button {
                         selectedSection = section
@@ -182,34 +229,37 @@ struct SettingsView: View {
                         }
                         .font(.system(size: 13, weight: selectedSection == section ? .semibold : .regular))
                         .foregroundStyle(selectedSection == section ? .primary : .secondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 9)
                         .background(
-                            selectedSection == section ? Color.accentColor.opacity(0.16) : Color.clear,
-                            in: RoundedRectangle(cornerRadius: 8)
+                            selectedSection == section ? FluentaTheme.primary.opacity(0.18) : Color.clear
                         )
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 10)
+            .padding(.top, 6)
 
             Spacer()
-            Text(L10n.text("settings.sidebar.hint"))
-                .font(.caption.monospaced())
-                .foregroundStyle(.tertiary)
-                .padding(14)
+            Text("Version 1.0.0")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 13)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(alignment: .top) { Divider().opacity(0.45) }
         }
-        .frame(width: 210)
-        .background(.ultraThinMaterial)
+        .frame(width: 200)
+        .background(Color(nsColor: .underPageBackgroundColor).opacity(0.75))
+        .overlay(alignment: .trailing) { Divider().opacity(0.55) }
     }
 
     private var detail: some View {
         VStack(spacing: 0) {
+            detailHeader
+            Divider().opacity(0.55)
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    sectionHeader
-
+                VStack(alignment: .leading, spacing: 0) {
                     switch selectedSection {
                     case .general:
                         generalPanel
@@ -221,7 +271,7 @@ struct SettingsView: View {
                         permissionsPanel
                     }
                 }
-                .padding(26)
+                .padding(24)
             }
 
             Divider().opacity(0.5)
@@ -229,14 +279,24 @@ struct SettingsView: View {
         }
     }
 
-    private var sectionHeader: some View {
-        VStack(alignment: .leading, spacing: 4) {
+    private var detailHeader: some View {
+        HStack {
             Text(selectedSection.title)
-                .font(.title2.weight(.semibold))
-            Text(sectionDescription)
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 18, weight: .semibold))
+            Spacer()
+            Button {
+                NSApp.keyWindow?.close()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .background(.quaternary.opacity(0.01), in: RoundedRectangle(cornerRadius: 7))
+            }
+            .buttonStyle(.plain)
         }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
     }
 
     private var sectionDescription: String {
@@ -307,8 +367,9 @@ struct SettingsView: View {
             set: { model.providerAPIKeys[model.config.providerID] = $0 }
         )
 
-        return HStack(alignment: .top, spacing: 16) {
-            VStack(spacing: 4) {
+        return HStack(alignment: .top, spacing: 0) {
+            ScrollView {
+                VStack(spacing: 0) {
                 ForEach(LLMProviderPreset.all) { provider in
                     Button {
                         model.selectProvider(provider.id)
@@ -317,30 +378,27 @@ struct SettingsView: View {
                             Text(provider.name)
                                 .font(.system(size: 13, weight: provider.id == model.config.providerID ? .semibold : .regular))
                             Spacer()
-                            if provider.id == model.config.providerID {
+                            if model.isProviderConfigured(provider) {
                                 Image(systemName: "checkmark")
-                                    .font(.caption.weight(.bold))
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundStyle(FluentaTheme.success)
                             }
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
                         .background(
-                            provider.id == model.config.providerID ? Color.accentColor.opacity(0.15) : Color.clear,
-                            in: RoundedRectangle(cornerRadius: 8)
+                            provider.id == model.config.providerID ? FluentaTheme.primary.opacity(0.14) : Color.clear
                         )
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(8)
-            .frame(width: 220)
-            .background(FluentaTheme.elevatedBackground, in: RoundedRectangle(cornerRadius: FluentaTheme.controlRadius))
-            .overlay {
-                RoundedRectangle(cornerRadius: FluentaTheme.controlRadius)
-                    .stroke(FluentaTheme.subtleBorder)
             }
+            .frame(width: 200)
+            .overlay(alignment: .trailing) { Divider().opacity(0.55) }
 
-            settingsPanel {
+            VStack(alignment: .leading, spacing: 20) {
+                providerStatusHeader
                 settingsRow(L10n.text("settings.row.provider"), help: L10n.text("settings.help.provider")) {
                     Picker("", selection: selectedProviderBinding) {
                         ForEach(LLMProviderPreset.all) { provider in
@@ -371,43 +429,83 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
             }
+            .padding(24)
+        }
+    }
+
+    private var providerStatusHeader: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(model.selectedProvider.name)
+                    .font(.system(size: 16, weight: .semibold))
+                Text(model.isProviderConfigured(model.selectedProvider) ? "Configured" : "Not configured")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if model.isProviderConfigured(model.selectedProvider) {
+                Text("Active")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(FluentaTheme.success)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(FluentaTheme.success.opacity(0.18), in: RoundedRectangle(cornerRadius: 6))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(FluentaTheme.success.opacity(0.3))
+                    }
+            }
         }
     }
 
     private var promptModesPanel: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(spacing: 4) {
-                ForEach(model.config.promptModes) { mode in
-                    Button {
-                        model.selectedPromptModeID = mode.id
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(mode.name.isEmpty ? L10n.text("settings.mode.untitled") : mode.localizedName)
-                                    .font(.system(size: 13, weight: mode.id == model.selectedPromptModeID ? .semibold : .regular))
-                                Text(mode.isVisible ? L10n.text("settings.mode.visible") : L10n.text("settings.mode.hidden"))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: 0) {
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(model.config.promptModes) { mode in
+                            Button {
+                                model.selectedPromptModeID = mode.id
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "line.3.horizontal")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(.tertiary)
+                                    Text(mode.name.isEmpty ? L10n.text("settings.mode.untitled") : mode.localizedName)
+                                        .font(.system(size: 13, weight: mode.id == model.selectedPromptModeID ? .semibold : .regular))
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Image(systemName: mode.isVisible ? "eye" : "eye.slash")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(mode.id == model.selectedPromptModeID ? FluentaTheme.primary.opacity(0.14) : Color.clear)
                             }
-                            Spacer()
+                            .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(
-                            mode.id == model.selectedPromptModeID ? Color.accentColor.opacity(0.15) : Color.clear,
-                            in: RoundedRectangle(cornerRadius: 8)
-                        )
                     }
-                    .buttonStyle(.plain)
                 }
+                Divider().opacity(0.55)
+                Button {
+                    model.addPromptMode()
+                } label: {
+                    Label("Add Mode", systemImage: "plus")
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 7)
+                                .stroke(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                                .foregroundStyle(FluentaTheme.subtleBorder)
+                        }
+                }
+                .buttonStyle(.plain)
+                .padding(12)
             }
-            .padding(8)
-            .frame(width: 230)
-            .background(FluentaTheme.elevatedBackground, in: RoundedRectangle(cornerRadius: FluentaTheme.controlRadius))
-            .overlay {
-                RoundedRectangle(cornerRadius: FluentaTheme.controlRadius)
-                    .stroke(FluentaTheme.subtleBorder)
-            }
+            .frame(width: 200)
+            .overlay(alignment: .trailing) { Divider().opacity(0.55) }
 
             if let index = model.selectedPromptModeIndex {
                 promptModeDetail(index: index)
@@ -420,77 +518,112 @@ struct SettingsView: View {
     }
 
     private func promptModeDetail(index: Int) -> some View {
-        settingsPanel {
-            HStack {
-                Toggle(L10n.text("settings.mode.visible"), isOn: $model.config.promptModes[index].isVisible)
-                    .toggleStyle(.switch)
-                Toggle("Auto", isOn: $model.config.promptModes[index].participatesInAuto)
-                    .toggleStyle(.switch)
-                Spacer()
-                Text(model.config.promptModes[index].id)
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.tertiary)
-            }
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top) {
+                VStack(spacing: 14) {
+                    settingsRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
+                        TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
+                            .textFieldStyle(.roundedBorder)
+                    }
 
-            settingsRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
-                TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
-                    .textFieldStyle(.roundedBorder)
-            }
+                    settingsRow(L10n.text("settings.row.description"), help: L10n.text("settings.help.description")) {
+                        TextField(L10n.text("settings.row.description"), text: $model.config.promptModes[index].description)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                }
 
-            settingsRow(L10n.text("settings.row.description"), help: L10n.text("settings.help.description")) {
-                TextField(L10n.text("settings.row.description"), text: $model.config.promptModes[index].description)
-                    .textFieldStyle(.roundedBorder)
+                if !PromptMode.builtInIDs.contains(model.config.promptModes[index].id) {
+                    Button {
+                        model.deleteSelectedPromptMode()
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 30, height: 30)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Label(L10n.text("settings.row.systemPrompt"), systemImage: "curlybraces")
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                    Text(L10n.format("settings.characters", model.config.promptModes[index].systemPrompt.count))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
+                Text(L10n.text("settings.row.systemPrompt"))
+                    .font(.system(size: 13, weight: .semibold))
 
                 TextEditor(text: $model.config.promptModes[index].systemPrompt)
                     .font(.system(size: 13))
                     .scrollContentBackground(.hidden)
-                    .frame(minHeight: 220)
+                    .frame(minHeight: 140)
                     .padding(10)
-                    .background(FluentaTheme.fieldBackground, in: RoundedRectangle(cornerRadius: FluentaTheme.controlRadius))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: FluentaTheme.controlRadius)
-                            .stroke(FluentaTheme.subtleBorder)
-                    }
+                    .modifier(FluentaFieldModifier())
+            }
+
+            VStack(spacing: 12) {
+                settingsToggle(title: "Visible in menu", subtitle: "Show this mode in the mode selector", isOn: $model.config.promptModes[index].isVisible)
+                settingsToggle(title: "Auto-match", subtitle: "Include in Auto mode detection", isOn: $model.config.promptModes[index].participatesInAuto)
             }
         }
+        .padding(24)
     }
 
     private var permissionsPanel: some View {
-        settingsPanel {
-            HStack(spacing: 12) {
-                Image(systemName: model.isAccessibilityTrusted ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(model.isAccessibilityTrusted ? Color.green : Color.orange)
-                    .frame(width: 42, height: 42)
-                    .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: 10))
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: model.isAccessibilityTrusted ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(model.isAccessibilityTrusted ? FluentaTheme.success : FluentaTheme.warning)
+                        .frame(width: 40, height: 40)
+                        .background((model.isAccessibilityTrusted ? FluentaTheme.success : FluentaTheme.warning).opacity(0.18), in: RoundedRectangle(cornerRadius: 9))
 
-                VStack(alignment: .leading, spacing: 3) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Accessibility")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text(L10n.text("settings.permission.description"))
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
                     Text(model.isAccessibilityTrusted ? L10n.text("settings.permission.authorized") : L10n.text("settings.permission.required"))
-                        .font(.headline)
-                    Text(L10n.text("settings.permission.description"))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(model.isAccessibilityTrusted ? FluentaTheme.success : FluentaTheme.warning)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background((model.isAccessibilityTrusted ? FluentaTheme.success : FluentaTheme.warning).opacity(0.16), in: RoundedRectangle(cornerRadius: 6))
                 }
 
-                Spacer()
+                Button {
+                    model.openAccessibilitySettings()
+                } label: {
+                    Label(L10n.text("settings.permission.open"), systemImage: "arrow.up.forward.app")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+            .padding(16)
+            .background(FluentaTheme.elevatedBackground, in: RoundedRectangle(cornerRadius: 9))
+            .overlay {
+                RoundedRectangle(cornerRadius: 9)
+                    .stroke(FluentaTheme.subtleBorder)
             }
 
-            Button {
-                model.openAccessibilitySettings()
-            } label: {
-                Label(L10n.text("settings.permission.open"), systemImage: "arrow.up.forward.app")
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Privacy & Security")
+                    .font(.system(size: 14, weight: .semibold))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("• API keys are stored in macOS Keychain")
+                    Text("• Text is sent directly to the selected provider")
+                    Text("• Clipboard contents are restored after insertion")
+                }
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
             }
-            .buttonStyle(.borderedProminent)
+            .padding(16)
+            .background(FluentaTheme.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
+            .overlay {
+                RoundedRectangle(cornerRadius: 9)
+                    .stroke(FluentaTheme.subtleBorder)
+            }
         }
     }
 
@@ -525,13 +658,8 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 14) {
             content()
         }
-        .padding(18)
+        .padding(0)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(FluentaTheme.elevatedBackground, in: RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius))
-        .overlay {
-            RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius)
-                .stroke(FluentaTheme.subtleBorder)
-        }
     }
 
     private func settingsRow<Content: View>(
@@ -539,22 +667,38 @@ struct SettingsView: View {
         help: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .trailing, spacing: 2) {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack {
                 Text(title)
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
-                Text(help)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.trailing)
-                    .lineLimit(2)
+                Spacer()
             }
-            .frame(width: 150, alignment: .trailing)
-
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
+            if !help.isEmpty {
+                Text(help)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
         }
-        .frame(minHeight: 36)
+    }
+
+    private func settingsToggle(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+        }
     }
 }
 

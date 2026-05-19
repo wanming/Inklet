@@ -354,6 +354,7 @@ private extension Error {
 struct WritingPopoverView: View {
     @ObservedObject var model: WritingPopoverViewModel
     @FocusState private var isSourceFocused: Bool
+    @FocusState private var isResultFocused: Bool
     private var isBusy: Bool {
         model.isTransforming || model.isInserting
     }
@@ -370,32 +371,19 @@ struct WritingPopoverView: View {
         model.isInserting ? L10n.text("popover.busy.inserting") : L10n.text("popover.busy.transforming")
     }
 
+    private var modeIconName: String {
+        modeIcon(for: model.selectedModeID)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            Divider().opacity(0.5)
-
-            VStack(alignment: .leading, spacing: 12) {
-                commandInput
-
-                if !model.resultText.isEmpty {
-                    resultPanel
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
-                }
-
-                if let errorMessage = model.errorMessage {
-                    statusMessage(errorMessage, systemImage: "exclamationmark.triangle.fill", color: .red)
-                } else if isBusy {
-                    statusMessage(busyTitle, systemImage: "sparkles", color: .accentColor)
-                }
-            }
-            .padding(16)
-
-            Divider().opacity(0.5)
+            Divider().opacity(0.45)
+            commandInput
+            resultPanel
+            statusStrip
+            Divider().opacity(0.45)
             actionBar
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(.regularMaterial)
         }
         .background(
             PopoverKeyEventHandler(
@@ -404,15 +392,15 @@ struct WritingPopoverView: View {
                 onEscape: { model.escape() }
             )
         )
-        .frame(width: 700)
-        .frame(minHeight: model.resultText.isEmpty ? 360 : 470)
+        .frame(width: 580)
+        .frame(minHeight: model.resultText.isEmpty ? 232 : 330)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius))
         .overlay {
             RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius)
-                .stroke(FluentaTheme.subtleBorder)
+                .stroke(FluentaTheme.strongBorder)
         }
-        .shadow(color: .black.opacity(0.22), radius: 28, y: 18)
+        .shadow(color: .black.opacity(0.5), radius: 28, y: 18)
         .onAppear {
             focusSourceEditor()
         }
@@ -422,155 +410,183 @@ struct WritingPopoverView: View {
     }
 
     private var commandInput: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "command")
-                    .foregroundStyle(.secondary)
-                Text(selectedMode?.localizedDescription ?? L10n.text("popover.input.placeholder"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                Spacer()
-                if isBusy {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-            }
-
+        ZStack(alignment: .bottomTrailing) {
             TextEditor(text: Binding(
                 get: { model.sourceText },
                 set: { model.updateSourceText($0) }
             ))
-            .font(.system(size: 16))
+            .font(.system(size: 14))
+            .lineSpacing(3)
             .scrollContentBackground(.hidden)
             .focused($isSourceFocused)
-            .frame(minHeight: model.resultText.isEmpty ? 150 : 96)
-            .padding(10)
-            .background(FluentaTheme.fieldBackground.opacity(0.85), in: RoundedRectangle(cornerRadius: FluentaTheme.controlRadius))
-            .overlay {
-                RoundedRectangle(cornerRadius: FluentaTheme.controlRadius)
-                    .stroke(isSourceFocused ? Color.accentColor.opacity(0.7) : FluentaTheme.subtleBorder)
+            .frame(minHeight: model.resultText.isEmpty ? 104 : 92)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+
+            if model.sourceText.isEmpty {
+                Text(L10n.text("popover.input.placeholder"))
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary.opacity(0.55))
+                    .allowsHitTesting(false)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.horizontal, 17)
+                    .padding(.vertical, 18)
+            }
+
+            if isBusy {
+                HStack(spacing: 6) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(busyTitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.trailing, 12)
+                .padding(.bottom, 10)
             }
         }
     }
 
+    @ViewBuilder
     private var resultPanel: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label(L10n.text("popover.result.title"), systemImage: "sparkles")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Text(L10n.text("popover.result.editable"))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-                Text("\(model.resultText.count) chars")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.tertiary)
-            }
+        if !model.resultText.isEmpty {
+            Divider().opacity(0.45)
+            ZStack(alignment: .topTrailing) {
+                TextEditor(text: Binding(
+                    get: { model.resultText },
+                    set: { model.updateResultText($0) }
+                ))
+                .font(.system(size: 14))
+                .lineSpacing(3)
+                .scrollContentBackground(.hidden)
+                .focused($isResultFocused)
+                .frame(minHeight: 86)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(FluentaTheme.primary.opacity(0.08))
 
-            TextEditor(text: Binding(
-                get: { model.resultText },
-                set: { model.updateResultText($0) }
-            ))
-            .font(.system(size: 15))
-            .scrollContentBackground(.hidden)
-            .frame(minHeight: 112)
-            .padding(10)
-            .background(FluentaTheme.fieldBackground.opacity(0.76), in: RoundedRectangle(cornerRadius: FluentaTheme.controlRadius))
-            .overlay {
-                RoundedRectangle(cornerRadius: FluentaTheme.controlRadius)
-                    .stroke(FluentaTheme.subtleBorder)
+                Text(L10n.text("popover.result.title"))
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(FluentaTheme.success)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(FluentaTheme.success.opacity(0.18), in: RoundedRectangle(cornerRadius: 5))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 5)
+                            .stroke(FluentaTheme.success.opacity(0.3))
+                    }
+                    .padding(.top, 10)
+                    .padding(.trailing, 12)
             }
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                    isResultFocused = true
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var statusStrip: some View {
+        if let errorMessage = model.errorMessage {
+            Divider().opacity(0.45)
+            Text(errorMessage)
+                .font(.system(size: 12))
+                .foregroundStyle(.red)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.red.opacity(0.1))
         }
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "text.bubble.fill")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 34, height: 34)
-                .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 9))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Fluenta")
-                    .font(.system(size: 16, weight: .semibold))
-                HStack(spacing: 6) {
-                    Text(model.currentProviderName)
-                    Text("·")
-                    Text(model.currentModelName)
+        HStack(alignment: .center, spacing: 10) {
+            Menu {
+                ForEach(model.modes) { mode in
+                    Button {
+                        model.selectedModeID = mode.id
+                    } label: {
+                        Label(mode.localizedName, systemImage: modeIcon(for: mode.id))
+                    }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: modeIconName)
+                        .font(.system(size: 13, weight: .medium))
+                    Text(selectedMode?.localizedName ?? L10n.text("popover.mode.picker"))
+                        .font(.system(size: 12, weight: .semibold))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 7))
+            }
+            .buttonStyle(.plain)
+            .menuStyle(.borderlessButton)
+
+            Spacer()
+
+            HStack(spacing: 7) {
+                Text(model.currentProviderName)
+                Text("·")
+                    .foregroundStyle(FluentaTheme.subtleBorder)
+                Text(model.currentModelName)
+                    .font(.system(size: 11, design: .monospaced))
+            }
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.regularMaterial.opacity(0.75))
+    }
+
+    private var actionBar: some View {
+        HStack(alignment: .center, spacing: 12) {
+            HStack(spacing: 12) {
+                shortcutHint(keys: ["↵"], label: primaryActionTitle)
+                shortcutHint(keys: ["⌘", "↵"], label: L10n.text("popover.action.insertOriginal"))
+                shortcutHint(keys: ["⇧", "↵"], label: L10n.text("popover.hint.newLine"))
             }
 
             Spacer()
 
-            Picker(L10n.text("popover.mode.picker"), selection: $model.selectedModeID) {
-                ForEach(model.modes) { mode in
-                    Text(mode.localizedName).tag(mode.id)
-                }
-            }
-            .labelsHidden()
-            .frame(width: 210)
-
-            Text(model.resultText.isEmpty ? L10n.text("popover.status.ready") : L10n.text("popover.status.preview"))
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(model.resultText.isEmpty ? Color.secondary : Color.green)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 5)
-                .background(.quaternary.opacity(0.7), in: Capsule())
+            shortcutHint(keys: ["esc"], label: model.resultText.isEmpty ? L10n.text("popover.hint.close") : L10n.text("popover.hint.back"))
         }
-        .padding(14)
-        .background(.regularMaterial)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.regularMaterial.opacity(0.55))
+        .accessibilityLabel(L10n.text("popover.hint.accessibility"))
     }
 
-    private var actionBar: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Button {
-                model.submit()
-            } label: {
-                Label(primaryActionTitle, systemImage: model.resultText.isEmpty ? "wand.and.stars" : "arrow.down.doc.fill")
+    private func shortcutHint(keys: [String], label: String) -> some View {
+        HStack(spacing: 4) {
+            ForEach(keys, id: \.self) { key in
+                Keycap(title: key)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(isBusy)
-
-            Button {
-                model.insertOriginal()
-            } label: {
-                Label(L10n.text("popover.action.insertOriginal"), systemImage: "text.insert")
-            }
-            .controlSize(.large)
-            .disabled(isBusy)
-
-            Spacer(minLength: 12)
-
-            HStack(spacing: 7) {
-                Keycap(title: "Enter")
-                Text(L10n.text("popover.hint.transformInsert"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Keycap(title: "⌘↩")
-                Text(L10n.text("popover.hint.original"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Keycap(title: "Esc")
-            }
-            .accessibilityLabel(L10n.text("popover.hint.accessibility"))
+            Text(label)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
         }
     }
 
-    private func statusMessage(_ message: String, systemImage: String, color: Color) -> some View {
-        Label(message, systemImage: systemImage)
-            .font(.footnote)
-            .foregroundStyle(color)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+    private func modeIcon(for modeID: String) -> String {
+        switch modeID {
+        case PromptMode.autoID:
+            "sparkles"
+        case PromptMode.chineseToEnglishID:
+            "globe.asia.australia"
+        case PromptMode.polishEnglishID:
+            "wand.and.stars"
+        default:
+            "arrow.right"
+        }
     }
 
     private func focusSourceEditor() {

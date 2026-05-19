@@ -1,27 +1,39 @@
 import SwiftUI
 
 enum FluentaTheme {
-    static let cornerRadius: CGFloat = 14
-    static let controlRadius: CGFloat = 10
+    static let cornerRadius: CGFloat = 12
+    static let controlRadius: CGFloat = 8
+
+    static var primary: Color {
+        Color(red: 0.28, green: 0.58, blue: 0.94)
+    }
+
+    static var success: Color {
+        Color(red: 0.26, green: 0.78, blue: 0.45)
+    }
+
+    static var warning: Color {
+        Color(red: 0.95, green: 0.68, blue: 0.24)
+    }
 
     static var panelBackground: Color {
         Color(nsColor: .windowBackgroundColor)
     }
 
     static var elevatedBackground: Color {
-        Color(nsColor: .controlBackgroundColor)
+        Color(nsColor: .controlBackgroundColor).opacity(0.88)
     }
 
     static var fieldBackground: Color {
-        Color(nsColor: .textBackgroundColor)
+        Color(nsColor: .textBackgroundColor).opacity(0.9)
     }
 
     static var subtleBorder: Color {
-        Color.secondary.opacity(0.16)
+        Color.secondary.opacity(0.18)
     }
 
     static var strongBorder: Color {
-        Color.secondary.opacity(0.28)
+        Color.secondary.opacity(0.32)
     }
 }
 
@@ -30,14 +42,28 @@ struct Keycap: View {
 
     var body: some View {
         Text(title)
-            .font(.caption.monospaced().weight(.medium))
+            .font(.system(size: 10, weight: .medium, design: .monospaced))
             .foregroundStyle(.secondary)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 4)
-            .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 6))
+            .frame(minWidth: 20)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(.quaternary.opacity(0.65), in: RoundedRectangle(cornerRadius: 5))
             .overlay {
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: 5)
                     .stroke(FluentaTheme.subtleBorder)
+            }
+    }
+}
+
+struct FluentaFieldModifier: ViewModifier {
+    var isFocused = false
+
+    func body(content: Content) -> some View {
+        content
+            .background(FluentaTheme.fieldBackground, in: RoundedRectangle(cornerRadius: 7))
+            .overlay {
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(isFocused ? FluentaTheme.primary.opacity(0.75) : FluentaTheme.subtleBorder)
             }
     }
 }
