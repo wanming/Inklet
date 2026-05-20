@@ -459,8 +459,8 @@ struct WritingPopoverView: View {
                     .foregroundStyle(.secondary.opacity(0.55))
                     .allowsHitTesting(false)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(.horizontal, 17)
-                    .padding(.vertical, 18)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
             }
 
             if isBusy {
