@@ -31,6 +31,21 @@ final class LLMProviderTests: XCTestCase {
         )
     }
 
+    func testProviderDefaultsUseCurrentFastModels() {
+        let defaults = Dictionary(uniqueKeysWithValues: LLMProviderPreset.all.map { ($0.id, $0.defaultModel) })
+
+        XCTAssertEqual(defaults["openai"], "gpt-5.4-mini")
+        XCTAssertEqual(defaults["anthropic"], "claude-haiku-4-5")
+        XCTAssertEqual(defaults["gemini"], "gemini-flash-latest")
+        XCTAssertEqual(defaults["deepseek"], "deepseek-v4-flash")
+        XCTAssertEqual(defaults["qwen"], "qwen3.6-plus")
+        XCTAssertEqual(defaults["minimax"], "MiniMax-M2.7-highspeed")
+        XCTAssertEqual(defaults["groq"], "meta-llama/llama-4-scout-17b-16e-instruct")
+        XCTAssertEqual(defaults["openrouter"], "openai/gpt-5.4-mini")
+        XCTAssertEqual(defaults["custom-openai-compatible"], "gpt-5-mini")
+        XCTAssertTrue(LLMProviderPreset.all.allSatisfy { !$0.defaultModel.isEmpty })
+    }
+
     func testChatCompletionBuildsOpenAICompatibleRequest() {
         let body = ChatCompletionProvider.makeRequestBody(for: request)
 

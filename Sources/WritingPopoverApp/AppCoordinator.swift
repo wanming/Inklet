@@ -206,6 +206,7 @@ final class AppCoordinator: NSObject {
     }
 
     @objc func openSettings() {
+        windowController.hide()
         settingsController.show()
     }
 

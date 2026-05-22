@@ -1,4 +1,41 @@
+import AppKit
 import SwiftUI
+import WritingPopoverCore
+
+extension AppAppearance {
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system:
+            nil
+        case .light:
+            .light
+        case .dark:
+            .dark
+        }
+    }
+
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system:
+            nil
+        case .light:
+            NSAppearance(named: .aqua)
+        case .dark:
+            NSAppearance(named: .darkAqua)
+        }
+    }
+
+    var localizedDisplayName: String {
+        switch self {
+        case .system:
+            L10n.text("appearance.system")
+        case .light:
+            L10n.text("appearance.light")
+        case .dark:
+            L10n.text("appearance.dark")
+        }
+    }
+}
 
 enum FluentaTheme {
     static let cornerRadius: CGFloat = 12

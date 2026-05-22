@@ -14,6 +14,7 @@ final class WritingPopoverViewModel: ObservableObject {
     @Published var openRevision = 0
     @Published var modes: [PromptMode]
     @Published var preferredPopoverHeight: CGFloat = 168
+    @Published var appearance: AppAppearance
 
     var onHidePopover: (() -> Void)?
     var onFocusPopover: (() -> Void)?
@@ -28,7 +29,7 @@ final class WritingPopoverViewModel: ObservableObject {
 
     private var stateMachine: PopoverStateMachine
     private let configStore: UserDefaultsConfigStore
-    private let keychainStore: KeychainStore
+    private let apiKeyStore: LocalAPIKeyStore
     private let insertionService: InsertionService
     private let transformationServiceFactory: (any LLMProvider) -> TransformationService
     private var config: AppConfig
@@ -39,13 +40,13 @@ final class WritingPopoverViewModel: ObservableObject {
     init(
         stateMachine: PopoverStateMachine = PopoverStateMachine(),
         configStore: UserDefaultsConfigStore = UserDefaultsConfigStore(),
-        keychainStore: KeychainStore = KeychainStore(),
+        apiKeyStore: LocalAPIKeyStore = LocalAPIKeyStore(),
         transformationServiceFactory: @escaping (any LLMProvider) -> TransformationService = { TransformationService(provider: $0) },
         insertionService: InsertionService = InsertionService()
     ) {
         self.stateMachine = stateMachine
         self.configStore = configStore
-        self.keychainStore = keychainStore
+        self.apiKeyStore = apiKeyStore
         self.transformationServiceFactory = transformationServiceFactory
         self.insertionService = insertionService
 
@@ -53,6 +54,7 @@ final class WritingPopoverViewModel: ObservableObject {
         self.config = loadedConfig
         self.modes = loadedConfig.visiblePromptModes
         self.selectedModeID = loadedConfig.visibleModeID(preferredModeID: loadedConfig.defaultModeID)
+        self.appearance = loadedConfig.appearance
     }
 
     func resetForOpen(previousApplication: NSRunningApplication?) {
@@ -65,11 +67,13 @@ final class WritingPopoverViewModel: ObservableObject {
         config = (try? configStore.load()) ?? AppConfig.defaultConfig()
         modes = config.visiblePromptModes
         selectedModeID = config.visibleModeID(preferredModeID: selectedModeID)
+        appearance = config.appearance
         sourceText = ""
         resultText = ""
         errorMessage = nil
         isTransforming = false
         isInserting = false
+        preferredPopoverHeight = 168
         openRevision += 1
 
         handle(actions: stateMachine.send(.open))
@@ -97,6 +101,16 @@ final class WritingPopoverViewModel: ObservableObject {
         _ = stateMachine.send(.resultChanged(text))
     }
 
+    func cyclePromptMode(direction: Int) {
+        guard !modes.isEmpty else {
+            return
+        }
+
+        let currentIndex = modes.firstIndex { $0.id == selectedModeID } ?? 0
+        let nextIndex = (currentIndex + direction + modes.count) % modes.count
+        selectedModeID = modes[nextIndex].id
+    }
+
     func submit() {
         guard !isTransforming, !isInserting else {
             return
@@ -104,6 +118,7 @@ final class WritingPopoverViewModel: ObservableObject {
 
         errorMessage = nil
         if !resultText.isEmpty {
+            removeSingleTrailingNewlineFromResult()
             let currentResult = resultText
             _ = stateMachine.send(.resultChanged(currentResult))
             let actions = stateMachine.send(.submit)
@@ -118,8 +133,25 @@ final class WritingPopoverViewModel: ObservableObject {
             return
         }
 
+        removeSingleTrailingNewlineFromSource()
         _ = stateMachine.send(.sourceChanged(sourceText))
         handle(actions: stateMachine.send(.submit))
+    }
+
+    private func removeSingleTrailingNewlineFromSource() {
+        if sourceText.hasSuffix("\r\n") {
+            sourceText.removeLast(2)
+        } else if sourceText.hasSuffix("\n") || sourceText.hasSuffix("\r") {
+            sourceText.removeLast()
+        }
+    }
+
+    private func removeSingleTrailingNewlineFromResult() {
+        if resultText.hasSuffix("\r\n") {
+            resultText.removeLast(2)
+        } else if resultText.hasSuffix("\n") || resultText.hasSuffix("\r") {
+            resultText.removeLast()
+        }
     }
 
     func insertOriginal() {
@@ -208,9 +240,12 @@ final class WritingPopoverViewModel: ObservableObject {
         let temperature = config.temperature
         let timeoutSeconds = config.timeoutSeconds
         let providerPreset = config.resolvedProviderPreset
+        let providerID = config.providerID
+        let apiKeyStore = self.apiKeyStore
         let provider = LLMProviderFactory.provider(for: providerPreset) {
-            try OpenAIAPIKeyProvider(
-                keychainStore: KeychainStore(service: providerPreset.keychainService),
+            try LocalAPIKeyProvider(
+                apiKeyStore: apiKeyStore,
+                providerID: providerID,
                 providerName: providerPreset.name
             ).loadAPIKey()
         }
@@ -281,12 +316,13 @@ final class WritingPopoverViewModel: ObservableObject {
     }
 }
 
-private struct OpenAIAPIKeyProvider: @unchecked Sendable {
-    let keychainStore: KeychainStore
+private struct LocalAPIKeyProvider: @unchecked Sendable {
+    let apiKeyStore: LocalAPIKeyStore
+    let providerID: String
     let providerName: String
 
     func loadAPIKey() throws -> String {
-        guard let apiKey = try keychainStore.loadAPIKey(),
+        guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: providerID),
               !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
             throw TransformationError.provider(L10n.format("popover.error.missingAPIKey", providerName))
@@ -359,10 +395,14 @@ struct WritingPopoverView: View {
     @State private var sourceMeasuredHeight: CGFloat = 0
     @State private var resultMeasuredHeight: CGFloat = 0
 
-    private let minEditorHeight: CGFloat = 64
-    private let maxEditorHeight: CGFloat = 156
-    private let headerHeight: CGFloat = 46
-    private let actionBarHeight: CGFloat = 56
+    private let minEditorRows: CGFloat = 2
+    private let maxSourceEditorRows: CGFloat = 7
+    private let maxResultEditorRows: CGFloat = 13
+    private let editorLineHeight: CGFloat = 20
+    private let editorVerticalPadding: CGFloat = 20
+    private let editorEstimatedCharactersPerLine: CGFloat = 72
+    private let headerHeight: CGFloat = 44
+    private let actionBarHeight: CGFloat = 44
     private let dividerHeight: CGFloat = 1
     private let statusHeight: CGFloat = 34
     private var isBusy: Bool {
@@ -396,11 +436,19 @@ struct WritingPopoverView: View {
     }
 
     private var inputHeight: CGFloat {
-        clampedEditorHeight(sourceMeasuredHeight)
+        editorHeight(
+            for: model.sourceText,
+            measuredHeight: sourceMeasuredHeight,
+            maxRows: maxSourceEditorRows
+        )
     }
 
     private var resultHeight: CGFloat {
-        clampedEditorHeight(resultMeasuredHeight)
+        editorHeight(
+            for: model.resultText,
+            measuredHeight: resultMeasuredHeight,
+            maxRows: maxResultEditorRows
+        )
     }
 
     var body: some View {
@@ -417,7 +465,8 @@ struct WritingPopoverView: View {
             PopoverKeyEventHandler(
                 onSubmit: { model.submit() },
                 onInsertOriginal: { model.insertOriginal() },
-                onEscape: { model.escape() }
+                onEscape: { model.escape() },
+                onCycleMode: { model.cyclePromptMode(direction: $0) }
             )
         )
         .frame(width: 580, height: popoverHeight, alignment: .top)
@@ -427,6 +476,7 @@ struct WritingPopoverView: View {
             RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius)
                 .stroke(FluentaTheme.strongBorder)
         }
+        .preferredColorScheme(model.appearance.colorScheme)
         .onAppear {
             publishPopoverHeight()
             focusSourceEditor()
@@ -448,6 +498,7 @@ struct WritingPopoverView: View {
             .font(.system(size: 14))
             .lineSpacing(3)
             .scrollContentBackground(.hidden)
+            .background(TextEditorInsetNormalizer())
             .focused($isSourceFocused)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 12)
@@ -459,8 +510,10 @@ struct WritingPopoverView: View {
                     .foregroundStyle(.secondary.opacity(0.55))
                     .allowsHitTesting(false)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
+                    .padding(.leading, 12)
+                    .padding(.trailing, 12)
+                    .padding(.top, 10)
+                    .padding(.bottom, 10)
             }
 
             if isBusy {
@@ -496,24 +549,12 @@ struct WritingPopoverView: View {
                 .font(.system(size: 14))
                 .lineSpacing(3)
                 .scrollContentBackground(.hidden)
+                .background(TextEditorInsetNormalizer())
                 .focused($isResultFocused)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .background(FluentaTheme.primary.opacity(0.08))
-
-                Text(L10n.text("popover.result.title"))
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(FluentaTheme.success)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(FluentaTheme.success.opacity(0.18), in: RoundedRectangle(cornerRadius: 5))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 5)
-                            .stroke(FluentaTheme.success.opacity(0.3))
-                    }
-                    .padding(.top, 10)
-                    .padding(.trailing, 12)
             }
             .frame(height: resultHeight)
             .background {
@@ -587,36 +628,66 @@ struct WritingPopoverView: View {
             .lineLimit(1)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .frame(height: headerHeight)
         .background(.regularMaterial.opacity(0.75))
     }
 
     private var actionBar: some View {
         HStack(alignment: .center, spacing: 12) {
             HStack(spacing: 12) {
-                shortcutHint(keys: ["↵"], label: primaryActionTitle)
-                shortcutHint(keys: ["⌘", "↵"], label: L10n.text("popover.action.insertOriginal"))
-                shortcutHint(keys: ["⇧", "↵"], label: L10n.text("popover.hint.newLine"))
+                shortcutHint(keys: ["↵"], label: primaryActionTitle) {
+                    model.submit()
+                }
+                shortcutHint(keys: ["⌘", "↵"], label: L10n.text("popover.action.insertOriginal")) {
+                    model.insertOriginal()
+                }
+                shortcutHint(keys: ["⇧", "↵"], label: L10n.text("popover.hint.newLine")) {
+                    insertNewLine()
+                }
+                shortcutHint(keys: ["⌘", "↑/↓"], label: L10n.text("popover.hint.mode")) {
+                    model.cyclePromptMode(direction: 1)
+                }
             }
 
             Spacer()
 
-            shortcutHint(keys: ["esc"], label: model.resultText.isEmpty ? L10n.text("popover.hint.close") : L10n.text("popover.hint.back"))
+            shortcutHint(keys: ["esc"], label: model.resultText.isEmpty ? L10n.text("popover.hint.close") : L10n.text("popover.hint.back")) {
+                model.escape()
+            }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .frame(height: actionBarHeight)
         .background(.regularMaterial.opacity(0.55))
         .accessibilityLabel(L10n.text("popover.hint.accessibility"))
     }
 
-    private func shortcutHint(keys: [String], label: String) -> some View {
-        HStack(spacing: 4) {
-            ForEach(keys, id: \.self) { key in
-                Keycap(title: key)
+    private func shortcutHint(keys: [String], label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                ForEach(keys, id: \.self) { key in
+                    Keycap(title: key)
+                }
+                Text(label)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
             }
-            Text(label)
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+        .help(label)
+    }
+
+    private func insertNewLine() {
+        guard !model.isTransforming, !model.isInserting else {
+            return
+        }
+
+        if isResultFocused || !model.resultText.isEmpty && !isSourceFocused {
+            model.updateResultText(model.resultText + "\n")
+            isResultFocused = true
+        } else {
+            model.updateSourceText(model.sourceText + "\n")
+            isSourceFocused = true
         }
     }
 
@@ -639,8 +710,35 @@ struct WritingPopoverView: View {
         }
     }
 
-    private func clampedEditorHeight(_ measuredHeight: CGFloat) -> CGFloat {
-        min(max(measuredHeight, minEditorHeight), maxEditorHeight)
+    private func editorHeight(for text: String, measuredHeight: CGFloat, maxRows: CGFloat) -> CGFloat {
+        max(
+            clampedEditorHeight(measuredHeight, maxRows: maxRows),
+            estimatedEditorHeight(for: text, maxRows: maxRows)
+        )
+    }
+
+    private func clampedEditorHeight(_ measuredHeight: CGFloat, maxRows: CGFloat) -> CGFloat {
+        let minHeight = minEditorRows * editorLineHeight + editorVerticalPadding
+        let maxHeight = maxRows * editorLineHeight + editorVerticalPadding
+        return min(max(measuredHeight, minHeight), maxHeight)
+    }
+
+    private func estimatedEditorHeight(for text: String, maxRows: CGFloat) -> CGFloat {
+        let minHeight = minEditorRows * editorLineHeight + editorVerticalPadding
+        let maxHeight = maxRows * editorLineHeight + editorVerticalPadding
+        guard !text.isEmpty else {
+            return minHeight
+        }
+
+        let rows = text
+            .components(separatedBy: .newlines)
+            .map { line -> CGFloat in
+                let characterCount = max(line.count, 1)
+                return max(ceil(CGFloat(characterCount) / editorEstimatedCharactersPerLine), 1)
+            }
+            .reduce(CGFloat(0), +)
+
+        return min(max(rows * editorLineHeight + editorVerticalPadding, minHeight), maxHeight)
     }
 
     private func publishPopoverHeight() {
@@ -674,7 +772,7 @@ struct WritingPopoverView: View {
 }
 
 private struct SourceEditorHeightPreferenceKey: PreferenceKey {
-    static let defaultValue: CGFloat = 64
+    static let defaultValue: CGFloat = 60
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
@@ -682,10 +780,56 @@ private struct SourceEditorHeightPreferenceKey: PreferenceKey {
 }
 
 private struct ResultEditorHeightPreferenceKey: PreferenceKey {
-    static let defaultValue: CGFloat = 64
+    static let defaultValue: CGFloat = 60
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = nextValue()
+    }
+}
+
+private struct TextEditorInsetNormalizer: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        DispatchQueue.main.async {
+            normalizeTextEditors(from: view)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            normalizeTextEditors(from: nsView)
+        }
+    }
+
+    private func normalizeTextEditors(from view: NSView) {
+        guard let rootView = view.window?.contentView else {
+            return
+        }
+
+        for textView in rootView.descendantTextViews {
+            textView.textContainerInset = .zero
+            textView.textContainer?.lineFragmentPadding = 0
+            textView.enclosingScrollView?.contentInsets = NSEdgeInsetsZero
+            textView.enclosingScrollView?.automaticallyAdjustsContentInsets = false
+            textView.backgroundColor = .clear
+            textView.drawsBackground = false
+        }
+    }
+}
+
+private extension NSView {
+    var descendantTextViews: [NSTextView] {
+        var textViews: [NSTextView] = []
+        if let textView = self as? NSTextView {
+            textViews.append(textView)
+        }
+
+        for subview in subviews {
+            textViews.append(contentsOf: subview.descendantTextViews)
+        }
+
+        return textViews
     }
 }
 
@@ -693,6 +837,7 @@ private struct PopoverKeyEventHandler: NSViewRepresentable {
     let onSubmit: () -> Void
     let onInsertOriginal: () -> Void
     let onEscape: () -> Void
+    let onCycleMode: (Int) -> Void
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView(frame: .zero)
@@ -704,6 +849,7 @@ private struct PopoverKeyEventHandler: NSViewRepresentable {
         context.coordinator.onSubmit = onSubmit
         context.coordinator.onInsertOriginal = onInsertOriginal
         context.coordinator.onEscape = onEscape
+        context.coordinator.onCycleMode = onCycleMode
         context.coordinator.attach(to: nsView)
     }
 
@@ -715,7 +861,8 @@ private struct PopoverKeyEventHandler: NSViewRepresentable {
         Coordinator(
             onSubmit: onSubmit,
             onInsertOriginal: onInsertOriginal,
-            onEscape: onEscape
+            onEscape: onEscape,
+            onCycleMode: onCycleMode
         )
     }
 
@@ -724,17 +871,20 @@ private struct PopoverKeyEventHandler: NSViewRepresentable {
         var onSubmit: () -> Void
         var onInsertOriginal: () -> Void
         var onEscape: () -> Void
+        var onCycleMode: (Int) -> Void
         private weak var view: NSView?
         private var monitor: Any?
 
         init(
             onSubmit: @escaping () -> Void,
             onInsertOriginal: @escaping () -> Void,
-            onEscape: @escaping () -> Void
+            onEscape: @escaping () -> Void,
+            onCycleMode: @escaping (Int) -> Void
         ) {
             self.onSubmit = onSubmit
             self.onInsertOriginal = onInsertOriginal
             self.onEscape = onEscape
+            self.onCycleMode = onCycleMode
         }
 
         func detach() {
@@ -761,16 +911,33 @@ private struct PopoverKeyEventHandler: NSViewRepresentable {
                 return event
             }
 
+            let isReturnKey = event.keyCode == 36 || event.keyCode == 76
+            if isComposingText, isReturnKey || event.keyCode == 53 {
+                return event
+            }
+
             if event.keyCode == 53 {
                 onEscape()
                 return nil
             }
 
-            guard event.keyCode == 36 else {
+            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            if modifiers.contains(.command), !modifiers.contains(.shift), !modifiers.contains(.option) {
+                if event.keyCode == 126 {
+                    onCycleMode(-1)
+                    return nil
+                }
+
+                if event.keyCode == 125 {
+                    onCycleMode(1)
+                    return nil
+                }
+            }
+
+            guard isReturnKey else {
                 return event
             }
 
-            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
             if modifiers.contains(.command) {
                 onInsertOriginal()
                 return nil
@@ -782,6 +949,14 @@ private struct PopoverKeyEventHandler: NSViewRepresentable {
             }
 
             return event
+        }
+
+        private var isComposingText: Bool {
+            guard let responder = view?.window?.firstResponder as? NSTextInputClient else {
+                return false
+            }
+
+            return responder.hasMarkedText()
         }
     }
 }

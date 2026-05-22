@@ -1,22 +1,31 @@
 import AppKit
 import SwiftUI
+import WritingPopoverCore
+
+@MainActor
+private final class SettingsWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
 
 @MainActor
 final class SettingsWindowController: NSWindowController {
+    private let configStore: UserDefaultsConfigStore
+
     init() {
+        self.configStore = UserDefaultsConfigStore()
         let hostingController = NSHostingController(rootView: SettingsView())
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 560),
-            styleMask: [.titled, .closable, .fullSizeContentView],
+        let window = SettingsWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 920, height: 560),
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
         window.title = L10n.text("settings.window.title")
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.standardWindowButton(.closeButton)?.isHidden = true
-        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
-        window.standardWindowButton(.zoomButton)?.isHidden = true
+        window.backgroundColor = .clear
+        window.isOpaque = false
+        window.hasShadow = true
+        window.isMovableByWindowBackground = true
         window.contentViewController = hostingController
         window.isReleasedWhenClosed = false
 
@@ -31,6 +40,8 @@ final class SettingsWindowController: NSWindowController {
 
     func show() {
         window?.title = L10n.text("settings.window.title")
+        let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
+        window?.appearance = config.appearance.nsAppearance
         window?.center()
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)

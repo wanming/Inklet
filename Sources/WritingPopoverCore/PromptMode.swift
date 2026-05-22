@@ -156,11 +156,12 @@ public struct PromptModeStore: Equatable, Sendable {
     }
 
     public func resolve(modeID: String, sourceText: String) -> PromptMode {
-        if let mode = mode(id: modeID), mode.id != PromptMode.autoID {
+        if let mode = mode(id: modeID), mode.id != PromptMode.autoID, mode.isVisible {
             return mode
         }
 
-        return modes.first { $0.id == PromptMode.translateToEnglishID }
+        return visibleModes.first { $0.id == PromptMode.translateToEnglishID }
+            ?? visibleModes.first
             ?? PromptModeStore.defaultTranslateToEnglishMode
     }
 

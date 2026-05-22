@@ -53,6 +53,37 @@ final class PromptModeTests: XCTestCase {
         XCTAssertFalse(store.visibleModes.contains { $0.id == "hidden" })
     }
 
+    func testResolveIgnoresHiddenSelectedMode() {
+        let store = PromptModeStore(modes: [
+            PromptMode(
+                id: "hidden",
+                name: "Hidden",
+                description: "hidden mode",
+                systemPrompt: "hidden prompt",
+                shortcut: nil,
+                participatesInAuto: false,
+                autoRule: .none,
+                sortOrder: 0,
+                isVisible: false
+            ),
+            PromptMode(
+                id: "visible",
+                name: "Visible",
+                description: "visible mode",
+                systemPrompt: "visible prompt",
+                shortcut: nil,
+                participatesInAuto: false,
+                autoRule: .none,
+                sortOrder: 1,
+                isVisible: true
+            )
+        ])
+
+        let mode = store.resolve(modeID: "hidden", sourceText: "hello")
+
+        XCTAssertEqual(mode.id, "visible")
+    }
+
     func testEmptyStoreResolveFallsBackToBuiltInTranslateToEnglishMode() {
         let store = PromptModeStore(modes: [])
 

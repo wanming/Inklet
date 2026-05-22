@@ -51,10 +51,11 @@ final class ConfigStoreTests: XCTestCase {
         let config = AppConfig.defaultConfig()
 
         XCTAssertEqual(config.providerID, LLMProviderPreset.openAI.id)
-        XCTAssertEqual(config.model, "gpt-4.1-mini")
+        XCTAssertEqual(config.model, LLMProviderPreset.openAI.defaultModel)
         XCTAssertEqual(config.temperature, 0.2)
         XCTAssertEqual(config.timeoutSeconds, 20)
         XCTAssertEqual(config.hotkey, "⌥Space")
+        XCTAssertEqual(config.appearance, .system)
         XCTAssertEqual(config.defaultModeID, PromptMode.translateToEnglishID)
         XCTAssertEqual(
             config.customOpenAICompatibleEndpoint,
@@ -75,6 +76,7 @@ final class ConfigStoreTests: XCTestCase {
         config.temperature = 0.7
         config.timeoutSeconds = 9
         config.hotkey = "⌘Space"
+        config.appearance = .dark
         config.defaultModeID = PromptMode.improveWritingID
         config.customOpenAICompatibleEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
         config.promptModes = [
@@ -107,6 +109,7 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.temperature, AppConfig.defaultConfig().temperature)
         XCTAssertEqual(config.timeoutSeconds, AppConfig.defaultConfig().timeoutSeconds)
         XCTAssertEqual(config.hotkey, AppConfig.defaultConfig().hotkey)
+        XCTAssertEqual(config.appearance, AppConfig.defaultConfig().appearance)
         XCTAssertEqual(config.defaultModeID, AppConfig.defaultConfig().defaultModeID)
         XCTAssertEqual(config.promptModes, AppConfig.defaultConfig().promptModes)
         XCTAssertEqual(
@@ -223,6 +226,24 @@ final class ConfigStoreTests: XCTestCase {
         ]
 
         XCTAssertEqual(config.visiblePromptModes.map(\.id), ["earlier", "later"])
+    }
+
+    func testLocalAPIKeyStoreRoundTripsAndDeletesProviderKey() throws {
+        let suiteName = "LocalAPIKeyStoreTests-\(UUID().uuidString)"
+        let userDefaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            userDefaults.removePersistentDomain(forName: suiteName)
+        }
+        let store = LocalAPIKeyStore(userDefaults: userDefaults, keyPrefix: "testAPIKey")
+
+        store.saveAPIKey("local-key", forProviderID: "openai")
+
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "openai"), "local-key")
+        XCTAssertNil(store.loadAPIKey(forProviderID: "anthropic"))
+
+        store.deleteAPIKey(forProviderID: "openai")
+
+        XCTAssertNil(store.loadAPIKey(forProviderID: "openai"))
     }
 
     func testSaveAPIKeyUpdatesExistingKeyWithoutAdding() throws {

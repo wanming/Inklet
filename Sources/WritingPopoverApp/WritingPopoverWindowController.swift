@@ -37,12 +37,13 @@ final class WritingPopoverWindowController: NSWindowController {
     private let model: WritingPopoverViewModel
     private var previousApplication: NSRunningApplication?
     private var cancellables = Set<AnyCancellable>()
+    private let popoverWidth: CGFloat = 580
 
     init() {
         self.model = WritingPopoverViewModel()
 
         let panel = WritingPopoverPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 580, height: 168),
+            contentRect: NSRect(x: 0, y: 0, width: popoverWidth, height: 168),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -88,7 +89,17 @@ final class WritingPopoverWindowController: NSWindowController {
             previousApplication = frontmostApplication ?? fallbackApplication
         }
         model.resetForOpen(previousApplication: previousApplication)
+        window?.appearance = model.appearance.nsAppearance
+        resizePopover(to: model.preferredPopoverHeight)
         focusPopover()
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.resizePopover(to: self.model.preferredPopoverHeight)
+        }
+    }
+
+    func hide() {
+        window?.orderOut(nil)
     }
 
     private func focusPopover() {
@@ -102,14 +113,17 @@ final class WritingPopoverWindowController: NSWindowController {
             return
         }
 
+        let height = max(1, height)
         var frame = window.frame
-        guard abs(frame.height - height) > 0.5 else {
-            return
-        }
 
         let topY = frame.maxY
+        frame.size.width = popoverWidth
         frame.size.height = height
         frame.origin.y = topY - height
+        window.setContentSize(NSSize(width: popoverWidth, height: height))
         window.setFrame(frame, display: true, animate: false)
+        window.contentView?.frame = NSRect(x: 0, y: 0, width: popoverWidth, height: height)
+        window.contentView?.needsLayout = true
+        window.contentView?.layoutSubtreeIfNeeded()
     }
 }

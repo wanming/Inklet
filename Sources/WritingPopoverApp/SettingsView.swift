@@ -8,7 +8,7 @@ import WritingPopoverCore
 final class SettingsViewModel: ObservableObject {
     @Published var config: AppConfig
     @Published var message: String
-    @Published var providerAPIKeys: [String: String]
+    @Published var providerAPIKey: String
     @Published var selectedPromptModeID: String
     @Published var interfaceLanguage: InterfaceLanguage
     @Published var cachedProviderModels: [String: [String]]
@@ -16,25 +16,24 @@ final class SettingsViewModel: ObservableObject {
     @Published var isEditingCustomModel: Bool
 
     private let configStore: UserDefaultsConfigStore
+    private let apiKeyStore: LocalAPIKeyStore
     private let modelCatalogService: ModelCatalogService
 
     static let customModelMenuID = "__custom_model__"
 
     init(
         configStore: UserDefaultsConfigStore = UserDefaultsConfigStore(),
+        apiKeyStore: LocalAPIKeyStore = LocalAPIKeyStore(),
         modelCatalogService: ModelCatalogService = ModelCatalogService()
     ) {
         let loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         self.configStore = configStore
+        self.apiKeyStore = apiKeyStore
         self.modelCatalogService = modelCatalogService
         self.config = loadedConfig
         self.message = ""
         self.interfaceLanguage = FluentaLanguageStore.selectedLanguage
-        self.providerAPIKeys = Dictionary(
-            uniqueKeysWithValues: LLMProviderPreset.all.map { preset in
-                (preset.id, (try? KeychainStore(service: preset.keychainService).loadAPIKey()) ?? "")
-            }
-        )
+        self.providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: loadedConfig.providerID) ?? ""
         self.selectedPromptModeID = loadedConfig.defaultModeID
         self.cachedProviderModels = Dictionary(
             uniqueKeysWithValues: LLMProviderPreset.all.compactMap { preset in
@@ -89,21 +88,38 @@ final class SettingsViewModel: ObservableObject {
         isCustomOpenAICompatibleProvider || selectedModelMenuValue == Self.customModelMenuID
     }
 
+    var selectedModelIsDefault: Bool {
+        config.model.trimmingCharacters(in: .whitespacesAndNewlines) == selectedProvider.defaultModel
+    }
+
     var selectedPromptModeIndex: Int? {
         config.promptModes.firstIndex { $0.id == selectedPromptModeID }
+    }
+
+    var orderedPromptModes: [PromptMode] {
+        config.promptModes.sorted { lhs, rhs in
+            if lhs.sortOrder == rhs.sortOrder {
+                return lhs.name < rhs.name
+            }
+            return lhs.sortOrder < rhs.sortOrder
+        }
     }
 
     var isAccessibilityTrusted: Bool {
         AccessibilityPermissionService().isTrusted
     }
 
-    func isProviderConfigured(_ provider: LLMProviderPreset) -> Bool {
-        !(providerAPIKeys[provider.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    func modelMenuTitle(for modelID: String) -> String {
+        if modelID == config.model, !selectedModelIsDefault {
+            return "\(modelID) *"
+        }
+        return modelID
     }
 
     func selectProvider(_ providerID: String) {
         config.providerID = providerID
         config.model = LLMProviderPreset.preset(id: providerID).defaultModel
+        providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: providerID) ?? ""
         isEditingCustomModel = false
     }
 
@@ -141,8 +157,8 @@ final class SettingsViewModel: ObservableObject {
     func addPromptMode() {
         let mode = PromptMode(
             id: "custom-\(Int(Date().timeIntervalSince1970))",
-            name: "New Mode",
-            description: "Custom transformation mode",
+            name: L10n.text("settings.mode.newName"),
+            description: L10n.text("settings.mode.newDescription"),
             systemPrompt: "",
             shortcut: nil,
             participatesInAuto: false,
@@ -152,14 +168,92 @@ final class SettingsViewModel: ObservableObject {
         )
         config.promptModes.append(mode)
         selectedPromptModeID = mode.id
+        normalizePromptModeSortOrder()
     }
 
     func deleteSelectedPromptMode() {
-        guard !PromptMode.builtInIDs.contains(selectedPromptModeID) else {
+        deletePromptMode(modeID: selectedPromptModeID)
+    }
+
+    func deletePromptMode(modeID: String) {
+        guard config.promptModes.count > 1 else {
+            message = L10n.text("settings.error.promptModeRequired")
             return
         }
-        config.promptModes.removeAll { $0.id == selectedPromptModeID }
-        selectedPromptModeID = config.promptModes.first?.id ?? PromptMode.translateToEnglishID
+
+        config.promptModes.removeAll { $0.id == modeID }
+        normalizePromptModeSortOrder()
+
+        if !config.promptModes.contains(where: \.isVisible),
+           let firstIndex = config.promptModes.firstIndex(where: { _ in true }) {
+            config.promptModes[firstIndex].isVisible = true
+        }
+
+        if config.defaultModeID == modeID {
+            config.defaultModeID = config.visibleModeID(preferredModeID: config.promptModes.first?.id ?? PromptMode.translateToEnglishID)
+        }
+
+        if selectedPromptModeID == modeID {
+            selectedPromptModeID = config.visibleModeID(preferredModeID: config.defaultModeID)
+        }
+    }
+
+    func movePromptModes(from source: IndexSet, to destination: Int) {
+        var orderedModes = orderedPromptModes
+        orderedModes.move(fromOffsets: source, toOffset: destination)
+
+        for (sortOrder, mode) in orderedModes.enumerated() {
+            guard let configIndex = config.promptModes.firstIndex(where: { $0.id == mode.id }) else {
+                continue
+            }
+            config.promptModes[configIndex].sortOrder = sortOrder
+        }
+        normalizePromptModeSortOrder()
+    }
+
+    func promptModeName(modeID: String) -> String {
+        guard let mode = config.promptModes.first(where: { $0.id == modeID }) else {
+            return L10n.text("settings.mode.untitled")
+        }
+        return mode.name.isEmpty ? L10n.text("settings.mode.untitled") : mode.localizedName
+    }
+
+    func togglePromptModeVisibility(modeID: String) {
+        guard let index = config.promptModes.firstIndex(where: { $0.id == modeID }) else {
+            return
+        }
+
+        if config.promptModes[index].isVisible,
+           config.promptModes.filter(\.isVisible).count <= 1 {
+            message = L10n.text("settings.error.visibleModeRequired")
+            return
+        }
+
+        config.promptModes[index].isVisible.toggle()
+    }
+
+    func canMovePromptMode(modeID: String, direction: Int) -> Bool {
+        guard let currentIndex = orderedPromptModes.firstIndex(where: { $0.id == modeID }) else {
+            return false
+        }
+
+        return orderedPromptModes.indices.contains(currentIndex + direction)
+    }
+
+    private func normalizePromptModeSortOrder() {
+        let orderedModes = orderedPromptModes
+        for (sortOrder, mode) in orderedModes.enumerated() {
+            guard let index = config.promptModes.firstIndex(where: { $0.id == mode.id }) else {
+                continue
+            }
+            config.promptModes[index].sortOrder = sortOrder
+        }
+        config.promptModes.sort { lhs, rhs in
+            if lhs.sortOrder == rhs.sortOrder {
+                return lhs.name < rhs.name
+            }
+            return lhs.sortOrder < rhs.sortOrder
+        }
     }
 
     func save() {
@@ -188,10 +282,11 @@ final class SettingsViewModel: ObservableObject {
             FluentaLanguageStore.selectedLanguage = interfaceLanguage
             try configStore.save(config)
             for provider in LLMProviderPreset.all {
-                let trimmedKey = (providerAPIKeys[provider.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-                if !trimmedKey.isEmpty {
-                    try KeychainStore(service: provider.keychainService).saveAPIKey(trimmedKey)
-                }
+                apiKeyStore.deleteAPIKey(forProviderID: provider.id)
+            }
+            let trimmedKey = providerAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedKey.isEmpty {
+                apiKeyStore.saveAPIKey(trimmedKey, forProviderID: config.providerID)
             }
             message = L10n.text("settings.saved")
             NotificationCenter.default.post(name: .appConfigDidSave, object: nil)
@@ -259,6 +354,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @StateObject private var model = SettingsViewModel()
     @State private var selectedSection: SettingsSection = .general
+    @State private var promptModePendingDeletionID: String?
 
     private var isSavedMessage: Bool {
         model.message == L10n.text("settings.saved")
@@ -269,31 +365,40 @@ struct SettingsView: View {
             sidebar
             detail
         }
-        .frame(width: 800, height: 560)
+        .frame(width: 920, height: 560)
         .background(FluentaTheme.panelBackground)
         .clipShape(RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius))
+        .preferredColorScheme(model.config.appearance.colorScheme)
         .task {
             await model.refreshModelCatalogIfNeeded()
+        }
+        .alert(
+            L10n.text("settings.mode.deleteConfirmTitle"),
+            isPresented: Binding(
+                get: { promptModePendingDeletionID != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        promptModePendingDeletionID = nil
+                    }
+                }
+            )
+        ) {
+            Button(L10n.text("settings.mode.delete"), role: .destructive) {
+                if let promptModePendingDeletionID {
+                    model.deletePromptMode(modeID: promptModePendingDeletionID)
+                }
+                promptModePendingDeletionID = nil
+            }
+            Button(L10n.text("settings.cancel"), role: .cancel) {
+                promptModePendingDeletionID = nil
+            }
+        } message: {
+            Text(L10n.format("settings.mode.deleteConfirmMessage", model.promptModeName(modeID: promptModePendingDeletionID ?? "")))
         }
     }
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Button {
-                    NSApp.keyWindow?.close()
-                } label: {
-                    Circle().fill(Color(red: 1, green: 0.37, blue: 0.34)).frame(width: 12, height: 12)
-                }
-                .buttonStyle(.plain)
-                Circle().fill(Color(red: 1, green: 0.74, blue: 0.18)).frame(width: 12, height: 12)
-                Circle().fill(Color(red: 0.16, green: 0.78, blue: 0.25)).frame(width: 12, height: 12)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 13)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(alignment: .bottom) { Divider().opacity(0.45) }
-
             VStack(alignment: .leading, spacing: 2) {
                 Text("Fluenta")
                     .font(.system(size: 14, weight: .semibold))
@@ -302,7 +407,8 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 13)
+            .padding(.top, 14)
+            .padding(.bottom, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .overlay(alignment: .bottom) { Divider().opacity(0.45) }
 
@@ -331,7 +437,7 @@ struct SettingsView: View {
             .padding(.top, 6)
 
             Spacer()
-            Text("Version 1.0.0")
+            Text(L10n.format("settings.version", "1.0.0"))
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 16)
@@ -339,8 +445,8 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .overlay(alignment: .top) { Divider().opacity(0.45) }
         }
-        .frame(width: 200)
-        .background(Color(nsColor: .underPageBackgroundColor).opacity(0.75))
+        .frame(width: 180)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.45))
         .overlay(alignment: .trailing) { Divider().opacity(0.55) }
     }
 
@@ -348,21 +454,26 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             detailHeader
             Divider().opacity(0.55)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    switch selectedSection {
-                    case .general:
+
+            Group {
+                switch selectedSection {
+                case .general:
+                    ScrollView {
                         generalPanel
-                    case .providers:
-                        providersPanel
-                    case .promptModes:
-                        promptModesPanel
-                    case .permissions:
+                            .padding(24)
+                    }
+                case .providers:
+                    providersPanel
+                case .promptModes:
+                    promptModesPanel
+                case .permissions:
+                    ScrollView {
                         permissionsPanel
+                            .padding(24)
                     }
                 }
-                .padding(24)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider().opacity(0.5)
             footer
@@ -386,7 +497,8 @@ struct SettingsView: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 24)
-        .padding(.vertical, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 10)
     }
 
     private var sectionDescription: String {
@@ -408,6 +520,16 @@ struct SettingsView: View {
                 Picker("", selection: $model.interfaceLanguage) {
                     ForEach(InterfaceLanguage.allCases) { language in
                         Text(language.localizedDisplayName).tag(language)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(L10n.text("settings.row.appearance"), help: L10n.text("settings.help.appearance")) {
+                Picker("", selection: $model.config.appearance) {
+                    ForEach(AppAppearance.allCases) { appearance in
+                        Text(appearance.localizedDisplayName).tag(appearance)
                     }
                 }
                 .labelsHidden()
@@ -448,169 +570,109 @@ struct SettingsView: View {
     }
 
     private var providersPanel: some View {
-        let selectedProviderBinding = Binding(
-            get: { model.config.providerID },
-            set: { model.selectProvider($0) }
-        )
-        let selectedAPIKeyBinding = Binding(
-            get: { model.providerAPIKeys[model.config.providerID] ?? "" },
-            set: { model.providerAPIKeys[model.config.providerID] = $0 }
-        )
         let selectedModelBinding = Binding(
             get: { model.selectedModelMenuValue },
             set: { model.selectModelMenuValue($0) }
         )
+        let selectedProviderBinding = Binding(
+            get: { model.config.providerID },
+            set: { model.selectProvider($0) }
+        )
 
-        return HStack(alignment: .top, spacing: 0) {
+        return
             ScrollView {
-                VStack(spacing: 0) {
-                ForEach(LLMProviderPreset.all) { provider in
-                    Button {
-                        model.selectProvider(provider.id)
-                    } label: {
-                        HStack {
-                            Text(provider.name)
-                                .font(.system(size: 13, weight: provider.id == model.config.providerID ? .semibold : .regular))
-                            Spacer()
-                            if model.isProviderConfigured(provider) {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundStyle(FluentaTheme.success)
+                settingsPanel {
+                    settingsRow("Provider", help: "Choose the single provider Fluenta will use for every transform.") {
+                        Picker("", selection: selectedProviderBinding) {
+                            ForEach(LLMProviderPreset.all) { provider in
+                                Text(provider.name).tag(provider.id)
                             }
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            provider.id == model.config.providerID ? FluentaTheme.primary.opacity(0.14) : Color.clear
-                        )
+                        .labelsHidden()
+                        .frame(maxWidth: 320, alignment: .leading)
                     }
-                    .buttonStyle(.plain)
-                }
-            }
-            }
-            .frame(width: 200)
-            .overlay(alignment: .trailing) { Divider().opacity(0.55) }
 
-            VStack(alignment: .leading, spacing: 20) {
-                providerStatusHeader
-                settingsRow(L10n.text("settings.row.provider"), help: L10n.text("settings.help.provider")) {
-                    Picker("", selection: selectedProviderBinding) {
-                        ForEach(LLMProviderPreset.all) { provider in
-                            Text(provider.name).tag(provider.id)
+                    settingsRow(L10n.text("settings.row.apiKey"), help: L10n.text("settings.help.apiKey")) {
+                        SecureField(model.selectedProvider.apiKeyPlaceholder, text: $model.providerAPIKey)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    if model.isCustomOpenAICompatibleProvider {
+                        settingsRow(L10n.text("settings.row.endpoint"), help: L10n.text("settings.help.endpoint")) {
+                            TextField(
+                                LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString,
+                                text: $model.config.customOpenAICompatibleEndpoint
+                            )
+                            .textFieldStyle(.roundedBorder)
                         }
                     }
-                    .labelsHidden()
-                    .frame(maxWidth: 320, alignment: .leading)
-                }
 
-                settingsRow(L10n.text("settings.row.apiKey"), help: L10n.text("settings.help.apiKey")) {
-                    SecureField(model.selectedProvider.apiKeyPlaceholder, text: selectedAPIKeyBinding)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                if model.isCustomOpenAICompatibleProvider {
-                    settingsRow(L10n.text("settings.row.endpoint"), help: L10n.text("settings.help.endpoint")) {
-                        TextField(
-                            LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString,
-                            text: $model.config.customOpenAICompatibleEndpoint
-                        )
-                        .textFieldStyle(.roundedBorder)
-                    }
-                }
-
-                settingsRow(L10n.text("settings.row.model"), help: L10n.format("settings.help.model.default", model.selectedProvider.defaultModel)) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        if !model.selectedProviderModelOptions.isEmpty {
-                            Picker("", selection: selectedModelBinding) {
-                                ForEach(model.selectedProviderModelOptions, id: \.self) { modelID in
-                                    Text(modelID).tag(modelID)
+                    settingsRow(L10n.text("settings.row.model"), help: L10n.format("settings.help.model.default", model.selectedProvider.defaultModel)) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if !model.selectedProviderModelOptions.isEmpty {
+                                Picker("", selection: selectedModelBinding) {
+                                    ForEach(model.selectedProviderModelOptions, id: \.self) { modelID in
+                                        Text(model.modelMenuTitle(for: modelID)).tag(modelID)
+                                    }
+                                    Divider()
+                                    Text(L10n.text("settings.model.custom")).tag(SettingsViewModel.customModelMenuID)
                                 }
-                                Divider()
-                                Text(L10n.text("settings.model.custom")).tag(SettingsViewModel.customModelMenuID)
+                                .labelsHidden()
+                                .frame(maxWidth: 320, alignment: .leading)
                             }
-                            .labelsHidden()
-                            .frame(maxWidth: 320, alignment: .leading)
-                        }
 
-                        if model.shouldShowCustomModelField {
-                            TextField(model.selectedProvider.defaultModel, text: $model.config.model)
-                                .textFieldStyle(.roundedBorder)
-                        }
+                            if model.shouldShowCustomModelField {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    TextField(model.selectedProvider.defaultModel, text: $model.config.model)
+                                        .textFieldStyle(.roundedBorder)
+                                    if !model.selectedModelIsDefault {
+                                        Text(L10n.text("settings.model.customized"))
+                                            .font(.system(size: 11, weight: .medium))
+                                            .foregroundStyle(FluentaTheme.primary)
+                                    }
+                                }
+                            }
 
-                        if model.isRefreshingModelCatalog {
-                            Text(L10n.text("settings.model.refreshing"))
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
+                            if model.isRefreshingModelCatalog {
+                                Text(L10n.text("settings.model.refreshing"))
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }
+                .padding(24)
             }
-            .padding(24)
-        }
-    }
-
-    private var providerStatusHeader: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(model.selectedProvider.name)
-                    .font(.system(size: 16, weight: .semibold))
-                Text(model.isProviderConfigured(model.selectedProvider) ? "Configured" : "Not configured")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            if model.isProviderConfigured(model.selectedProvider) {
-                Text("Active")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(FluentaTheme.success)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(FluentaTheme.success.opacity(0.18), in: RoundedRectangle(cornerRadius: 6))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(FluentaTheme.success.opacity(0.3))
-                    }
-            }
-        }
     }
 
     private var promptModesPanel: some View {
         HStack(alignment: .top, spacing: 0) {
             VStack(spacing: 0) {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(model.config.promptModes) { mode in
-                            Button {
-                                model.selectedPromptModeID = mode.id
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "line.3.horizontal")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(.tertiary)
-                                    Text(mode.name.isEmpty ? L10n.text("settings.mode.untitled") : mode.localizedName)
-                                        .font(.system(size: 13, weight: mode.id == model.selectedPromptModeID ? .semibold : .regular))
-                                        .lineLimit(1)
-                                    Spacer()
-                                    Image(systemName: mode.isVisible ? "eye" : "eye.slash")
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(.tertiary)
-                                }
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .background(mode.id == model.selectedPromptModeID ? FluentaTheme.primary.opacity(0.14) : Color.clear)
-                            }
-                            .buttonStyle(.plain)
-                        }
+                PromptModeTableView(
+                    modes: model.orderedPromptModes,
+                    selectedModeID: $model.selectedPromptModeID,
+                    canDelete: model.config.promptModes.count > 1,
+                    onMove: { source, destination in
+                        model.movePromptModes(from: IndexSet(integer: source), to: destination)
+                    },
+                    onToggleVisibility: { modeID in
+                        model.togglePromptModeVisibility(modeID: modeID)
+                    },
+                    onDelete: { modeID in
+                        promptModePendingDeletionID = modeID
                     }
-                }
+                )
+                .padding(.top, 10)
+                .background(Color(nsColor: .controlBackgroundColor).opacity(0.16))
                 Divider().opacity(0.55)
                 Button {
                     model.addPromptMode()
                 } label: {
-                    Label("Add Mode", systemImage: "plus")
+                    Label(L10n.text("settings.mode.add"), systemImage: "plus")
                         .font(.system(size: 12, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
+                        .background(Color(nsColor: .controlBackgroundColor).opacity(0.35), in: RoundedRectangle(cornerRadius: 7))
                         .overlay {
                             RoundedRectangle(cornerRadius: 7)
                                 .stroke(style: StrokeStyle(lineWidth: 1, dash: [4]))
@@ -620,11 +682,15 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
                 .padding(12)
             }
-            .frame(width: 200)
+            .frame(width: 300)
             .overlay(alignment: .trailing) { Divider().opacity(0.55) }
 
             if let index = model.selectedPromptModeIndex {
-                promptModeDetail(index: index)
+                ScrollView {
+                    promptModeDetail(index: index)
+                        .frame(maxWidth: 560, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             } else {
                 Text(L10n.text("settings.mode.pick"))
                     .foregroundStyle(.secondary)
@@ -634,30 +700,16 @@ struct SettingsView: View {
     }
 
     private func promptModeDetail(index: Int) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top) {
-                VStack(spacing: 14) {
-                    settingsRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
-                        TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
-                            .textFieldStyle(.roundedBorder)
-                    }
-
-                    settingsRow(L10n.text("settings.row.description"), help: L10n.text("settings.help.description")) {
-                        TextField(L10n.text("settings.row.description"), text: $model.config.promptModes[index].description)
-                            .textFieldStyle(.roundedBorder)
-                    }
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(spacing: 13) {
+                settingsRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
+                    TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
+                        .textFieldStyle(.roundedBorder)
                 }
 
-                if !PromptMode.builtInIDs.contains(model.config.promptModes[index].id) {
-                    Button {
-                        model.deleteSelectedPromptMode()
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 30, height: 30)
-                    }
-                    .buttonStyle(.plain)
+                settingsRow(L10n.text("settings.row.description"), help: L10n.text("settings.help.description")) {
+                    TextField(L10n.text("settings.row.description"), text: $model.config.promptModes[index].description)
+                        .textFieldStyle(.roundedBorder)
                 }
             }
 
@@ -668,16 +720,20 @@ struct SettingsView: View {
                 TextEditor(text: $model.config.promptModes[index].systemPrompt)
                     .font(.system(size: 13))
                     .scrollContentBackground(.hidden)
-                    .frame(minHeight: 140)
+                    .frame(height: 190)
                     .padding(10)
                     .modifier(FluentaFieldModifier())
             }
 
-            VStack(spacing: 12) {
-                settingsToggle(title: "Visible in menu", subtitle: "Show this mode in the mode selector", isOn: $model.config.promptModes[index].isVisible)
-            }
+            settingsToggle(
+                title: L10n.text("settings.mode.visibleInMenu"),
+                subtitle: L10n.text("settings.mode.visibleInMenuHelp"),
+                isOn: $model.config.promptModes[index].isVisible
+            )
+            .padding(.top, 2)
         }
-        .padding(24)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 22)
     }
 
     private var permissionsPanel: some View {
@@ -691,7 +747,7 @@ struct SettingsView: View {
                         .background((model.isAccessibilityTrusted ? FluentaTheme.success : FluentaTheme.warning).opacity(0.18), in: RoundedRectangle(cornerRadius: 9))
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Accessibility")
+                        Text(L10n.text("settings.permission.accessibility"))
                             .font(.system(size: 14, weight: .semibold))
                         Text(L10n.text("settings.permission.description"))
                             .font(.system(size: 12))
@@ -723,12 +779,12 @@ struct SettingsView: View {
             }
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Privacy & Security")
+                Text(L10n.text("settings.privacy.title"))
                     .font(.system(size: 14, weight: .semibold))
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("• API keys are stored in macOS Keychain")
-                    Text("• Text is sent directly to the selected provider")
-                    Text("• Clipboard contents are restored after insertion")
+                    Text(L10n.text("settings.privacy.keychain"))
+                    Text(L10n.text("settings.privacy.provider"))
+                    Text(L10n.text("settings.privacy.clipboard"))
                 }
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
@@ -795,7 +851,7 @@ struct SettingsView: View {
                 Text(help)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -814,6 +870,324 @@ struct SettingsView: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
         }
+    }
+}
+
+private struct PromptModeTableView: NSViewRepresentable {
+    let modes: [PromptMode]
+    @Binding var selectedModeID: String
+    let canDelete: Bool
+    let onMove: (Int, Int) -> Void
+    let onToggleVisibility: (String) -> Void
+    let onDelete: (String) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(
+            modes: modes,
+            selectedModeID: $selectedModeID,
+            canDelete: canDelete,
+            onMove: onMove,
+            onToggleVisibility: onToggleVisibility,
+            onDelete: onDelete
+        )
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let tableView = NSTableView()
+        let column = NSTableColumn(identifier: Coordinator.columnIdentifier)
+        column.resizingMask = .autoresizingMask
+        tableView.addTableColumn(column)
+        tableView.headerView = nil
+        tableView.rowHeight = 40
+        tableView.intercellSpacing = NSSize(width: 0, height: 4)
+        tableView.backgroundColor = .clear
+        tableView.selectionHighlightStyle = .none
+        tableView.usesAlternatingRowBackgroundColors = false
+        tableView.delegate = context.coordinator
+        tableView.dataSource = context.coordinator
+        tableView.registerForDraggedTypes([Coordinator.dragPasteboardType])
+
+        let scrollView = NSScrollView()
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.documentView = tableView
+        context.coordinator.tableView = tableView
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        context.coordinator.modes = modes
+        context.coordinator.selectedModeID = $selectedModeID
+        context.coordinator.canDelete = canDelete
+        context.coordinator.onMove = onMove
+        context.coordinator.onToggleVisibility = onToggleVisibility
+        context.coordinator.onDelete = onDelete
+
+        guard let tableView = scrollView.documentView as? NSTableView else {
+            return
+        }
+
+        if tableView.tableColumns.first?.width != scrollView.bounds.width {
+            tableView.tableColumns.first?.width = scrollView.bounds.width
+        }
+
+        tableView.reloadData()
+        context.coordinator.syncSelection()
+    }
+
+    final class Coordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate {
+        static let columnIdentifier = NSUserInterfaceItemIdentifier("PromptModeColumn")
+        static let rowIdentifier = NSUserInterfaceItemIdentifier("PromptModeRow")
+        static let dragPasteboardType = NSPasteboard.PasteboardType("com.fluenta.prompt-mode")
+
+        var modes: [PromptMode]
+        var selectedModeID: Binding<String>
+        var canDelete: Bool
+        var onMove: (Int, Int) -> Void
+        var onToggleVisibility: (String) -> Void
+        var onDelete: (String) -> Void
+        weak var tableView: NSTableView?
+        private var isSyncingSelection = false
+
+        init(
+            modes: [PromptMode],
+            selectedModeID: Binding<String>,
+            canDelete: Bool,
+            onMove: @escaping (Int, Int) -> Void,
+            onToggleVisibility: @escaping (String) -> Void,
+            onDelete: @escaping (String) -> Void
+        ) {
+            self.modes = modes
+            self.selectedModeID = selectedModeID
+            self.canDelete = canDelete
+            self.onMove = onMove
+            self.onToggleVisibility = onToggleVisibility
+            self.onDelete = onDelete
+        }
+
+        func numberOfRows(in tableView: NSTableView) -> Int {
+            modes.count
+        }
+
+        func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+            guard modes.indices.contains(row) else {
+                return nil
+            }
+
+            let cell = (tableView.makeView(withIdentifier: Self.rowIdentifier, owner: self) as? PromptModeTableCellView)
+                ?? PromptModeTableCellView(identifier: Self.rowIdentifier)
+            let mode = modes[row]
+            cell.configure(
+                mode: mode,
+                isSelected: mode.id == selectedModeID.wrappedValue,
+                canDelete: canDelete,
+                target: self
+            )
+            return cell
+        }
+
+        func tableViewSelectionDidChange(_ notification: Notification) {
+            guard !isSyncingSelection,
+                  let tableView,
+                  modes.indices.contains(tableView.selectedRow)
+            else {
+                return
+            }
+
+            selectedModeID.wrappedValue = modes[tableView.selectedRow].id
+        }
+
+        func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
+            guard modes.indices.contains(row) else {
+                return nil
+            }
+
+            let item = NSPasteboardItem()
+            item.setString(modes[row].id, forType: Self.dragPasteboardType)
+            return item
+        }
+
+        func tableView(
+            _ tableView: NSTableView,
+            validateDrop info: NSDraggingInfo,
+            proposedRow row: Int,
+            proposedDropOperation dropOperation: NSTableView.DropOperation
+        ) -> NSDragOperation {
+            tableView.setDropRow(row, dropOperation: .above)
+            return .move
+        }
+
+        func tableView(
+            _ tableView: NSTableView,
+            acceptDrop info: NSDraggingInfo,
+            row: Int,
+            dropOperation: NSTableView.DropOperation
+        ) -> Bool {
+            guard let draggedModeID = info.draggingPasteboard.string(forType: Self.dragPasteboardType),
+                  let sourceIndex = modes.firstIndex(where: { $0.id == draggedModeID })
+            else {
+                return false
+            }
+
+            let destination = max(0, min(row, modes.count))
+            guard sourceIndex != destination, sourceIndex + 1 != destination else {
+                return false
+            }
+
+            onMove(sourceIndex, destination)
+            selectedModeID.wrappedValue = draggedModeID
+            return true
+        }
+
+        @MainActor
+        func syncSelection() {
+            guard let tableView else {
+                return
+            }
+
+            isSyncingSelection = true
+            defer { isSyncingSelection = false }
+
+            if let selectedIndex = modes.firstIndex(where: { $0.id == selectedModeID.wrappedValue }) {
+                tableView.selectRowIndexes(IndexSet(integer: selectedIndex), byExtendingSelection: false)
+            } else {
+                tableView.deselectAll(nil)
+            }
+        }
+
+        @MainActor
+        @objc func toggleVisibility(_ sender: NSButton) {
+            guard let modeID = sender.identifier?.rawValue else {
+                return
+            }
+            onToggleVisibility(modeID)
+        }
+
+        @MainActor
+        @objc func deleteMode(_ sender: NSButton) {
+            guard let modeID = sender.identifier?.rawValue else {
+                return
+            }
+            onDelete(modeID)
+        }
+    }
+}
+
+private final class PromptModeTableCellView: NSTableCellView {
+    private let selectionBackground = NSView()
+    private let dragHandle = NSImageView()
+    private let titleField = NSTextField(labelWithString: "")
+    private let visibilityButton = NSButton()
+    private let deleteButton = NSButton()
+
+    init(identifier: NSUserInterfaceItemIdentifier) {
+        super.init(frame: .zero)
+        self.identifier = identifier
+        buildView()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func configure(
+        mode: PromptMode,
+        isSelected: Bool,
+        canDelete: Bool,
+        target: PromptModeTableView.Coordinator
+    ) {
+        let symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
+        titleField.stringValue = mode.name.isEmpty ? L10n.text("settings.mode.untitled") : mode.localizedName
+        titleField.font = .systemFont(ofSize: 13, weight: isSelected ? .semibold : .regular)
+        titleField.textColor = isSelected ? .labelColor : .secondaryLabelColor
+        selectionBackground.layer?.backgroundColor = isSelected
+            ? NSColor.controlAccentColor.withAlphaComponent(0.12).cgColor
+            : NSColor.clear.cgColor
+        dragHandle.contentTintColor = isSelected ? .secondaryLabelColor : .tertiaryLabelColor
+        visibilityButton.image = NSImage(systemSymbolName: mode.isVisible ? "eye" : "eye.slash", accessibilityDescription: nil)?
+            .withSymbolConfiguration(symbolConfiguration)
+        visibilityButton.contentTintColor = mode.isVisible ? .secondaryLabelColor : .tertiaryLabelColor
+        visibilityButton.toolTip = mode.isVisible ? L10n.text("settings.mode.visible") : L10n.text("settings.mode.hidden")
+        visibilityButton.identifier = NSUserInterfaceItemIdentifier(mode.id)
+        visibilityButton.target = target
+        visibilityButton.action = #selector(PromptModeTableView.Coordinator.toggleVisibility(_:))
+
+        deleteButton.identifier = NSUserInterfaceItemIdentifier(mode.id)
+        deleteButton.target = target
+        deleteButton.action = #selector(PromptModeTableView.Coordinator.deleteMode(_:))
+        deleteButton.isEnabled = canDelete
+        deleteButton.contentTintColor = canDelete ? .secondaryLabelColor : .tertiaryLabelColor
+        deleteButton.toolTip = L10n.text("settings.mode.delete")
+    }
+
+    private func buildView() {
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+        selectionBackground.wantsLayer = true
+        selectionBackground.layer?.cornerRadius = 7
+        selectionBackground.layer?.cornerCurve = .continuous
+        selectionBackground.layer?.backgroundColor = NSColor.clear.cgColor
+        selectionBackground.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(selectionBackground)
+
+        let symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
+        dragHandle.image = NSImage(systemSymbolName: "line.3.horizontal", accessibilityDescription: nil)?
+            .withSymbolConfiguration(symbolConfiguration)
+        dragHandle.contentTintColor = .tertiaryLabelColor
+        dragHandle.setContentHuggingPriority(.required, for: .horizontal)
+        dragHandle.setContentCompressionResistancePriority(.required, for: .horizontal)
+        dragHandle.toolTip = L10n.text("settings.mode.dragToSort")
+        dragHandle.translatesAutoresizingMaskIntoConstraints = false
+
+        titleField.lineBreakMode = .byTruncatingTail
+        titleField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        titleField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        titleField.translatesAutoresizingMaskIntoConstraints = false
+
+        configureIconButton(visibilityButton)
+        configureIconButton(deleteButton)
+        deleteButton.image = NSImage(systemSymbolName: "trash", accessibilityDescription: nil)?
+            .withSymbolConfiguration(symbolConfiguration)
+        deleteButton.contentTintColor = .secondaryLabelColor
+
+        addSubview(dragHandle)
+        addSubview(titleField)
+        addSubview(visibilityButton)
+        addSubview(deleteButton)
+
+        NSLayoutConstraint.activate([
+            dragHandle.widthAnchor.constraint(equalToConstant: 18),
+            visibilityButton.widthAnchor.constraint(equalToConstant: 24),
+            visibilityButton.heightAnchor.constraint(equalToConstant: 24),
+            deleteButton.widthAnchor.constraint(equalToConstant: 24),
+            deleteButton.heightAnchor.constraint(equalToConstant: 24),
+            selectionBackground.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            selectionBackground.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            selectionBackground.topAnchor.constraint(equalTo: topAnchor, constant: 3),
+            selectionBackground.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -3),
+            dragHandle.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            dragHandle.centerYAnchor.constraint(equalTo: centerYAnchor),
+            titleField.leadingAnchor.constraint(equalTo: dragHandle.trailingAnchor, constant: 12),
+            titleField.trailingAnchor.constraint(equalTo: visibilityButton.leadingAnchor, constant: -12),
+            titleField.centerYAnchor.constraint(equalTo: centerYAnchor),
+            visibilityButton.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -10),
+            visibilityButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            deleteButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            deleteButton.centerYAnchor.constraint(equalTo: centerYAnchor)
+        ])
+    }
+
+    private func configureIconButton(_ button: NSButton) {
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.isBordered = false
+        button.bezelStyle = .regularSquare
+        button.setButtonType(.momentaryChange)
+        button.imagePosition = .imageOnly
+        button.focusRingType = .none
+        button.setContentHuggingPriority(.required, for: .horizontal)
+        button.setContentCompressionResistancePriority(.required, for: .horizontal)
     }
 }
 

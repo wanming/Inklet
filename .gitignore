@@ -2,4 +2,5 @@
 .worktrees/
 .DS_Store
 DerivedData/
+dist/
 *.xcuserdata/

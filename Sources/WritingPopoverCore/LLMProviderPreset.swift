@@ -37,7 +37,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
     public static let openAI = LLMProviderPreset(
         id: "openai",
         name: "OpenAI",
-        defaultModel: "gpt-4.1-mini",
+        defaultModel: "gpt-5.4-mini",
         apiKeyPlaceholder: "sk-...",
         keychainService: KeychainStore.defaultService,
         kind: .openAIResponses,
@@ -47,7 +47,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
     public static let customOpenAICompatible = openAICompatible(
         id: "custom-openai-compatible",
         name: "Custom OpenAI Compatible",
-        defaultModel: "gpt-4o-mini",
+        defaultModel: "gpt-5-mini",
         placeholder: "sk-...",
         service: "Fluenta.CustomOpenAICompatible",
         endpoint: "https://api.example.com/v1/chat/completions"
@@ -58,7 +58,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         LLMProviderPreset(
             id: "anthropic",
             name: "Anthropic",
-            defaultModel: "claude-3-5-haiku-latest",
+            defaultModel: "claude-haiku-4-5",
             apiKeyPlaceholder: "sk-ant-...",
             keychainService: "Fluenta.Anthropic",
             kind: .anthropicMessages,
@@ -67,7 +67,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         LLMProviderPreset(
             id: "gemini",
             name: "Google Gemini",
-            defaultModel: "gemini-1.5-flash",
+            defaultModel: "gemini-flash-latest",
             apiKeyPlaceholder: "AIza...",
             keychainService: "Fluenta.Gemini",
             kind: .geminiGenerateContent,
@@ -76,7 +76,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "deepseek",
             name: "DeepSeek",
-            defaultModel: "deepseek-chat",
+            defaultModel: "deepseek-v4-flash",
             placeholder: "sk-...",
             service: "Fluenta.DeepSeek",
             endpoint: "https://api.deepseek.com/chat/completions"
@@ -84,7 +84,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "qwen",
             name: "Alibaba Qwen",
-            defaultModel: "qwen-plus",
+            defaultModel: "qwen3.6-plus",
             placeholder: "sk-...",
             service: "Fluenta.Qwen",
             endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
@@ -92,7 +92,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "moonshot",
             name: "Moonshot Kimi",
-            defaultModel: "moonshot-v1-8k",
+            defaultModel: "kimi-k2.6",
             placeholder: "sk-...",
             service: "Fluenta.Moonshot",
             endpoint: "https://api.moonshot.cn/v1/chat/completions"
@@ -100,7 +100,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "zhipu",
             name: "Zhipu GLM",
-            defaultModel: "glm-4-flash",
+            defaultModel: "glm-4.7-flash",
             placeholder: "...",
             service: "Fluenta.Zhipu",
             endpoint: "https://open.bigmodel.cn/api/paas/v4/chat/completions"
@@ -108,7 +108,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "minimax",
             name: "MiniMax",
-            defaultModel: "MiniMax-M2",
+            defaultModel: "MiniMax-M2.7-highspeed",
             placeholder: "...",
             service: "Fluenta.MiniMax",
             endpoint: "https://api.minimax.io/v1/chat/completions"
@@ -116,7 +116,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "siliconflow",
             name: "SiliconFlow",
-            defaultModel: "Qwen/Qwen3-8B",
+            defaultModel: "deepseek-ai/deepseek-v4-flash",
             placeholder: "sk-...",
             service: "Fluenta.SiliconFlow",
             endpoint: "https://api.siliconflow.com/v1/chat/completions"
@@ -124,7 +124,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "volcengine",
             name: "Volcengine Ark",
-            defaultModel: "doubao-seed-1-6",
+            defaultModel: "doubao-seed-1-6-flash",
             placeholder: "...",
             service: "Fluenta.Volcengine",
             endpoint: "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
@@ -140,7 +140,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "baichuan",
             name: "Baichuan",
-            defaultModel: "Baichuan4",
+            defaultModel: "Baichuan4-Turbo",
             placeholder: "sk-...",
             service: "Fluenta.Baichuan",
             endpoint: "https://api.baichuan-ai.com/v1/chat/completions"
@@ -156,7 +156,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "xai",
             name: "xAI",
-            defaultModel: "grok-3-mini",
+            defaultModel: "grok-4-fast",
             placeholder: "xai-...",
             service: "Fluenta.xAI",
             endpoint: "https://api.x.ai/v1/chat/completions"
@@ -164,7 +164,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "groq",
             name: "Groq",
-            defaultModel: "llama-3.1-8b-instant",
+            defaultModel: "meta-llama/llama-4-scout-17b-16e-instruct",
             placeholder: "gsk_...",
             service: "Fluenta.Groq",
             endpoint: "https://api.groq.com/openai/v1/chat/completions"
@@ -180,7 +180,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "openrouter",
             name: "OpenRouter",
-            defaultModel: "openai/gpt-4.1-mini",
+            defaultModel: "openai/gpt-5.4-mini",
             placeholder: "sk-or-...",
             service: "Fluenta.OpenRouter",
             endpoint: "https://openrouter.ai/api/v1/chat/completions"
@@ -196,7 +196,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "together",
             name: "Together AI",
-            defaultModel: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+            defaultModel: "Qwen/Qwen3.6-Plus",
             placeholder: "...",
             service: "Fluenta.Together",
             endpoint: "https://api.together.xyz/v1/chat/completions"
@@ -204,7 +204,7 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         openAICompatible(
             id: "cerebras",
             name: "Cerebras",
-            defaultModel: "llama3.1-8b",
+            defaultModel: "gpt-oss-120b",
             placeholder: "csk-...",
             service: "Fluenta.Cerebras",
             endpoint: "https://api.cerebras.ai/v1/chat/completions"

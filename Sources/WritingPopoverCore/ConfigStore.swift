@@ -1,5 +1,13 @@
 import Foundation
 
+public enum AppAppearance: String, Codable, Equatable, Sendable, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    public var id: String { rawValue }
+}
+
 public struct AppConfig: Codable, Equatable, Sendable {
     public var version: Int
     public var providerID: String
@@ -7,6 +15,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
     public var temperature: Double
     public var timeoutSeconds: Double
     public var hotkey: String
+    public var appearance: AppAppearance
     public var defaultModeID: String
     public var promptModes: [PromptMode]
     public var customOpenAICompatibleEndpoint: String
@@ -18,6 +27,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         temperature: Double,
         timeoutSeconds: Double,
         hotkey: String,
+        appearance: AppAppearance = .system,
         defaultModeID: String,
         promptModes: [PromptMode],
         customOpenAICompatibleEndpoint: String = LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString
@@ -28,6 +38,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         self.temperature = temperature
         self.timeoutSeconds = timeoutSeconds
         self.hotkey = hotkey
+        self.appearance = appearance
         self.defaultModeID = defaultModeID
         self.promptModes = promptModes
         self.customOpenAICompatibleEndpoint = customOpenAICompatibleEndpoint
@@ -36,10 +47,11 @@ public struct AppConfig: Codable, Equatable, Sendable {
     public static func defaultConfig() -> AppConfig {
         AppConfig(
             providerID: LLMProviderPreset.openAI.id,
-            model: "gpt-4.1-mini",
+            model: LLMProviderPreset.openAI.defaultModel,
             temperature: 0.2,
             timeoutSeconds: 20,
             hotkey: "⌥Space",
+            appearance: .system,
             defaultModeID: PromptMode.translateToEnglishID,
             promptModes: PromptModeStore.defaultStore().modes
         )
@@ -80,6 +92,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         case temperature
         case timeoutSeconds
         case hotkey
+        case appearance
         case defaultModeID
         case promptModes
         case customOpenAICompatibleEndpoint
@@ -95,6 +108,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         temperature = try container.decodeIfPresent(Double.self, forKey: .temperature) ?? defaults.temperature
         timeoutSeconds = try container.decodeIfPresent(Double.self, forKey: .timeoutSeconds) ?? defaults.timeoutSeconds
         hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey) ?? defaults.hotkey
+        appearance = try container.decodeIfPresent(AppAppearance.self, forKey: .appearance) ?? defaults.appearance
         let decodedDefaultModeID = try container.decodeIfPresent(String.self, forKey: .defaultModeID) ?? defaults.defaultModeID
         promptModes = AppConfig.migratedPromptModes(
             try container.decodeIfPresent([PromptMode].self, forKey: .promptModes) ?? defaults.promptModes
@@ -117,6 +131,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         try container.encode(temperature, forKey: .temperature)
         try container.encode(timeoutSeconds, forKey: .timeoutSeconds)
         try container.encode(hotkey, forKey: .hotkey)
+        try container.encode(appearance, forKey: .appearance)
         try container.encode(defaultModeID, forKey: .defaultModeID)
         try container.encode(promptModes, forKey: .promptModes)
         try container.encode(customOpenAICompatibleEndpoint, forKey: .customOpenAICompatibleEndpoint)
@@ -201,5 +216,36 @@ public struct UserDefaultsConfigStore: ConfigStore {
         } catch {
             throw ConfigStoreError.encodingFailed
         }
+    }
+}
+
+public struct LocalAPIKeyStore: @unchecked Sendable {
+    public static let defaultKeyPrefix = "providerAPIKey"
+
+    private let userDefaults: UserDefaults
+    private let keyPrefix: String
+
+    public init(
+        userDefaults: UserDefaults = .standard,
+        keyPrefix: String = LocalAPIKeyStore.defaultKeyPrefix
+    ) {
+        self.userDefaults = userDefaults
+        self.keyPrefix = keyPrefix
+    }
+
+    public func loadAPIKey(forProviderID providerID: String) -> String? {
+        userDefaults.string(forKey: key(forProviderID: providerID))
+    }
+
+    public func saveAPIKey(_ apiKey: String, forProviderID providerID: String) {
+        userDefaults.set(apiKey, forKey: key(forProviderID: providerID))
+    }
+
+    public func deleteAPIKey(forProviderID providerID: String) {
+        userDefaults.removeObject(forKey: key(forProviderID: providerID))
+    }
+
+    private func key(forProviderID providerID: String) -> String {
+        "\(keyPrefix).\(providerID)"
     }
 }
