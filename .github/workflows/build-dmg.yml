@@ -154,25 +154,27 @@ jobs:
         run: |
           set -euo pipefail
 
-          release_flags=()
-          if [[ "$DRAFT" == "true" ]]; then
-            release_flags+=(--draft)
-          fi
-          if [[ "$PRERELEASE" == "true" ]]; then
-            release_flags+=(--prerelease)
-          fi
-
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             gh release edit "$TAG_NAME" \
               --title "$RELEASE_NAME" \
               --draft="$DRAFT" \
               --prerelease="$PRERELEASE"
           else
-            gh release create "$TAG_NAME" \
-              --target "$GITHUB_SHA" \
-              --title "$RELEASE_NAME" \
-              --notes "Manual macOS DMG build from workflow run ${GITHUB_RUN_NUMBER}." \
-              "${release_flags[@]}"
+            create_args=(
+              release create "$TAG_NAME"
+              --target "$GITHUB_SHA"
+              --title "$RELEASE_NAME"
+              --notes "Manual macOS DMG build from workflow run ${GITHUB_RUN_NUMBER}."
+            )
+
+            if [[ "$DRAFT" == "true" ]]; then
+              create_args+=(--draft)
+            fi
+            if [[ "$PRERELEASE" == "true" ]]; then
+              create_args+=(--prerelease)
+            fi
+
+            gh "${create_args[@]}"
           fi
 
           gh release upload "$TAG_NAME" dist/*.dmg dist/*.sha256 --clobber
