@@ -170,8 +170,8 @@ public final class GlobalHotkeyManager {
     public typealias Handler = @Sendable () -> Void
 
     nonisolated private let identity: HotkeyRegistrationIdentity
-    private var hotkeyRef: EventHotKeyRef?
-    private var handlerRef: EventHandlerRef?
+    nonisolated(unsafe) private var hotkeyRef: EventHotKeyRef?
+    nonisolated(unsafe) private var handlerRef: EventHandlerRef?
     private var handler: Handler?
 
     private static var nextHotkeyID: UInt32 = 1
@@ -183,7 +183,7 @@ public final class GlobalHotkeyManager {
         )
     }
 
-    isolated deinit {
+    deinit {
         if let hotkeyRef {
             UnregisterEventHotKey(hotkeyRef)
         }
