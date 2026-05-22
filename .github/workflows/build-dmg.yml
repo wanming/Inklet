@@ -1,0 +1,178 @@
+name: Build DMG
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to publish to. Leave empty to create manual-dmg-<run number>."
+        required: false
+        type: string
+      release_name:
+        description: "Release title. Leave empty to use the tag."
+        required: false
+        type: string
+      draft:
+        description: "Create the release as a draft."
+        required: true
+        default: false
+        type: boolean
+      prerelease:
+        description: "Mark the release as a prerelease."
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build-dmg:
+    name: Build and publish DMG
+    runs-on: macos-15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Resolve release metadata
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -n "${{ inputs.tag_name }}" ]]; then
+            tag_name="${{ inputs.tag_name }}"
+          elif [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            tag_name="$GITHUB_REF_NAME"
+          else
+            tag_name="manual-dmg-${GITHUB_RUN_NUMBER}"
+          fi
+
+          if [[ -n "${{ inputs.release_name }}" ]]; then
+            release_name="${{ inputs.release_name }}"
+          else
+            release_name="$tag_name"
+          fi
+
+          asset_tag="${tag_name//\//-}"
+
+          {
+            echo "tag_name=$tag_name"
+            echo "release_name=$release_name"
+            echo "asset_tag=$asset_tag"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build release binary
+        run: swift build -c release
+
+      - name: Run tests
+        run: swift test
+
+      - name: Package app bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          app_name="Fluenta"
+          bundle_id="com.fluenta.app"
+          bin_path="$(swift build -c release --show-bin-path)"
+          app_path="dist/${app_name}.app"
+
+          rm -rf dist
+          mkdir -p "$app_path/Contents/MacOS" "$app_path/Contents/Resources"
+
+          cp "$bin_path/$app_name" "$app_path/Contents/MacOS/$app_name"
+          chmod +x "$app_path/Contents/MacOS/$app_name"
+
+          if [[ -d "$bin_path/Fluenta_WritingPopoverCore.bundle" ]]; then
+            cp -R "$bin_path/Fluenta_WritingPopoverCore.bundle" "$app_path/Fluenta_WritingPopoverCore.bundle"
+            cp -R "$bin_path/Fluenta_WritingPopoverCore.bundle" "$app_path/Contents/Resources/Fluenta_WritingPopoverCore.bundle"
+          fi
+
+          cat > "$app_path/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleDevelopmentRegion</key>
+            <string>en</string>
+            <key>CFBundleExecutable</key>
+            <string>${app_name}</string>
+            <key>CFBundleIdentifier</key>
+            <string>${bundle_id}</string>
+            <key>CFBundleInfoDictionaryVersion</key>
+            <string>6.0</string>
+            <key>CFBundleName</key>
+            <string>${app_name}</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>0.0.${{ github.run_number }}</string>
+            <key>CFBundleVersion</key>
+            <string>${{ github.run_number }}</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>14.0</string>
+            <key>LSUIElement</key>
+            <true/>
+            <key>NSHumanReadableCopyright</key>
+            <string>Copyright (c) 2026 Fluenta contributors.</string>
+          </dict>
+          </plist>
+          PLIST
+
+          plutil -lint "$app_path/Contents/Info.plist"
+
+      - name: Create DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          dmg_root="dist/dmg-root"
+          dmg_path="dist/Fluenta-${{ steps.release.outputs.asset_tag }}.dmg"
+
+          mkdir -p "$dmg_root"
+          cp -R "dist/Fluenta.app" "$dmg_root/Fluenta.app"
+          ln -s /Applications "$dmg_root/Applications"
+
+          hdiutil create \
+            -volname "Fluenta" \
+            -srcfolder "$dmg_root" \
+            -ov \
+            -format UDZO \
+            "$dmg_path"
+
+          shasum -a 256 "$dmg_path" > "$dmg_path.sha256"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+          RELEASE_NAME: ${{ steps.release.outputs.release_name }}
+          DRAFT: ${{ inputs.draft }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_flags=()
+          if [[ "$DRAFT" == "true" ]]; then
+            release_flags+=(--draft)
+          fi
+          if [[ "$PRERELEASE" == "true" ]]; then
+            release_flags+=(--prerelease)
+          fi
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release edit "$TAG_NAME" \
+              --title "$RELEASE_NAME" \
+              --draft="$DRAFT" \
+              --prerelease="$PRERELEASE"
+          else
+            gh release create "$TAG_NAME" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_NAME" \
+              --notes "Manual macOS DMG build from workflow run ${GITHUB_RUN_NUMBER}." \
+              "${release_flags[@]}"
+          fi
+
+          gh release upload "$TAG_NAME" dist/*.dmg dist/*.sha256 --clobber
