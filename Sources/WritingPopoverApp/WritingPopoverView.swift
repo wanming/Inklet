@@ -80,11 +80,11 @@ final class WritingPopoverViewModel: ObservableObject {
     }
 
     func updateSourceText(_ text: String) {
-        sourceText = text
         guard !isTransforming, !isInserting else {
             return
         }
 
+        sourceText = text
         if !resultText.isEmpty {
             resultText = ""
         }
@@ -93,11 +93,11 @@ final class WritingPopoverViewModel: ObservableObject {
     }
 
     func updateResultText(_ text: String) {
-        resultText = text
         guard !isTransforming, !isInserting else {
             return
         }
 
+        resultText = text
         _ = stateMachine.send(.resultChanged(text))
     }
 
@@ -289,9 +289,9 @@ final class WritingPopoverViewModel: ObservableObject {
             return
         }
 
-        isInserting = true
         errorMessage = nil
         onHidePopover?()
+        isInserting = true
 
         let insertionSessionID = sessionID
         Task { [weak self] in
@@ -500,6 +500,7 @@ struct WritingPopoverView: View {
             .scrollContentBackground(.hidden)
             .background(TextEditorInsetNormalizer())
             .focused($isSourceFocused)
+            .disabled(isBusy)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -551,6 +552,7 @@ struct WritingPopoverView: View {
                 .scrollContentBackground(.hidden)
                 .background(TextEditorInsetNormalizer())
                 .focused($isResultFocused)
+                .disabled(isBusy)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
