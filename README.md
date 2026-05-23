@@ -1,6 +1,6 @@
-# Fluenta
+# Inklet
 
-**Fluenta** is a macOS AI writing popover for turning rough text into clear, natural writing without leaving the app you are already using.
+**Inklet** is a macOS AI writing popover for turning rough text into clear, natural writing without leaving the app you are already using.
 
 Press a global shortcut, type or paste text, choose a writing mode, let your preferred LLM transform it, then insert the result back into the original text field.
 
@@ -22,7 +22,7 @@ Press a global shortcut, type or paste text, choose a writing mode, let your pre
 
 ## Current Status
 
-Fluenta is an early MVP. The repository currently includes:
+Inklet is an early MVP. The repository currently includes:
 
 - A Swift Package for the macOS app and core writing engine.
 - A menu bar app with a writing popover and settings window.
@@ -35,15 +35,15 @@ Fluenta is an early MVP. The repository currently includes:
 - macOS 14 or newer.
 - Swift 6 toolchain.
 - Full Xcode is recommended for XCTest support.
-- Accessibility permission for Fluenta, required for returning focus to the previous app and pasting the generated result.
+- Accessibility permission for Inklet, required for returning focus to the previous app and pasting the generated result.
 - An API key for at least one configured LLM provider.
 
 ## Install
 
-Until Fluenta has Developer ID signing and notarization, the easiest install path is the script below. It downloads the latest DMG, verifies its checksum, copies Fluenta to `/Applications`, and removes the macOS quarantine flag that can otherwise show a misleading "damaged" warning.
+Until Inklet has Developer ID signing and notarization, the easiest install path is the script below. It downloads the latest DMG, verifies its checksum, copies Inklet to `/Applications`, and removes the macOS quarantine flag that can otherwise show a misleading "damaged" warning.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/wanming/Fluenta/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install.sh | bash
 ```
 
 If you are installing from a private fork or private release, pass a GitHub token that can read that repository:
@@ -51,14 +51,14 @@ If you are installing from a private fork or private release, pass a GitHub toke
 ```bash
 export GITHUB_TOKEN="$(gh auth token)"
 curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
-  https://raw.githubusercontent.com/wanming/Fluenta/main/scripts/install.sh | bash
+  https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install.sh | bash
 ```
 
 To install somewhere else:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/wanming/Fluenta/main/scripts/install.sh | \
-  FLUENTA_INSTALL_DIR="$HOME/Applications" bash
+curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install.sh | \
+  INKLET_INSTALL_DIR="$HOME/Applications" bash
 ```
 
 ## Build And Run
@@ -67,7 +67,7 @@ From the repository root:
 
 ```bash
 swift build
-swift run Fluenta
+swift run Inklet
 ```
 
 Run tests:
@@ -80,8 +80,8 @@ If tests fail because `XCTest` is unavailable, install the full Xcode app instea
 
 ## First-Time Setup
 
-1. Start the app with `swift run Fluenta`.
-2. Open Fluenta from the menu bar and go to Settings.
+1. Start the app with `swift run Inklet`.
+2. Open Inklet from the menu bar and go to Settings.
 3. Choose a provider and enter its API key.
 4. Confirm the model, timeout, temperature, and default writing mode.
 5. Grant Accessibility permission in macOS System Settings when prompted.
@@ -94,16 +94,16 @@ If tests fail because `XCTest` is unavailable, install the full Xcode app instea
 - `Command+Enter`: insert the original text without calling the model.
 - `Command+Up` / `Command+Down`: cycle through visible prompt modes.
 - `Escape`: clear the result or close the popover.
-- `Command+,`: open Settings while Fluenta is active.
+- `Command+,`: open Settings while Inklet is active.
 
 Prompt modes also have default shortcuts such as `Command+1` through `Command+6` in the mode list.
 
 ## Repository Layout
 
 ```text
-Sources/WritingPopoverApp/       macOS app, popover UI, settings UI, menu bar coordination
-Sources/WritingPopoverCore/      core config, providers, prompts, hotkeys, insertion, state machine
-Tests/WritingPopoverCoreTests/   unit tests for core behavior
+Sources/InkletApp/       macOS app, popover UI, settings UI, menu bar coordination
+Sources/InkletCore/      core config, providers, prompts, hotkeys, insertion, state machine
+Tests/InkletCoreTests/   unit tests for core behavior
 docs/                           manual QA and planning documents
 ```
 
@@ -116,10 +116,10 @@ docs/                           manual QA and planning documents
 
 ## Privacy
 
-- Fluenta uses your configured provider API key to call the selected LLM provider.
+- Inklet uses your configured provider API key to call the selected LLM provider.
 - API keys are stored locally on your Mac.
-- Fluenta uses Accessibility permission to return focus to the previous app and paste text.
-- Fluenta temporarily uses the clipboard for insertion and then restores the previous clipboard contents.
+- Inklet uses Accessibility permission to return focus to the previous app and paste text.
+- Inklet temporarily uses the clipboard for insertion and then restores the previous clipboard contents.
 - Do not send private text to a provider unless you trust that provider's data handling policies.
 
 ## Contributing
@@ -132,4 +132,4 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting and sensitive data gu
 
 ## License
 
-Fluenta is released under the [MIT License](LICENSE).
+Inklet is released under the [MIT License](LICENSE).

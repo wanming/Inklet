@@ -1,5 +1,5 @@
 import XCTest
-@testable import WritingPopoverCore
+@testable import InkletCore
 
 @MainActor
 final class AccessibilityPermissionServiceTests: XCTestCase {

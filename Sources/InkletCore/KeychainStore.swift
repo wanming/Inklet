@@ -29,7 +29,7 @@ public struct SecurityKeychainClient: KeychainClient {
 }
 
 public struct KeychainStore {
-    public static let defaultService = "Fluenta.OpenAI"
+    public static let defaultService = "Inklet.OpenAI"
     public static let defaultAccount = "apiKey"
 
     private let service: String

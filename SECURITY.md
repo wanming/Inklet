@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Fluenta is currently an early MVP. Security fixes target the latest commit on `main`.
+Inklet is currently an early MVP. Security fixes target the latest commit on `main`.
 
 ## Reporting a Vulnerability
 
@@ -14,12 +14,12 @@ Please include:
 
 - A clear description of the issue.
 - Steps to reproduce.
-- Affected macOS version, Fluenta version or commit, and relevant provider configuration.
+- Affected macOS version, Inklet version or commit, and relevant provider configuration.
 - Any logs or screenshots that do not include secrets or private user text.
 
 ## Sensitive Data
 
-Fluenta handles text that users type, select, transform, and paste. It also stores provider API keys locally. Security-sensitive areas include:
+Inklet handles text that users type, select, transform, and paste. It also stores provider API keys locally. Security-sensitive areas include:
 
 - API key storage.
 - Clipboard preservation and restoration.

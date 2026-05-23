@@ -1,6 +1,6 @@
 import AppKit
 import XCTest
-@testable import WritingPopoverCore
+@testable import InkletCore
 
 final class ClipboardServiceTests: XCTestCase {
     @MainActor
@@ -27,7 +27,7 @@ final class ClipboardServiceTests: XCTestCase {
     func testRestoresMultipleItemsAndTypes() throws {
         let pasteboard = NSPasteboard.withUniqueName()
         let service = ClipboardService(pasteboard: pasteboard)
-        let customType = NSPasteboard.PasteboardType("com.fluenta.test.binary")
+        let customType = NSPasteboard.PasteboardType("com.inklet.test.binary")
         let customData = Data([0x01, 0x02, 0x03])
         let firstItem = NSPasteboardItem()
         let secondItem = NSPasteboardItem()

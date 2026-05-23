@@ -3,7 +3,7 @@ import Combine
 import SwiftUI
 
 @MainActor
-private final class WritingPopoverPanel: NSPanel {
+private final class InkletPopoverPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 }
@@ -33,22 +33,22 @@ private final class ClearHostingView<Content: View>: NSHostingView<Content> {
 }
 
 @MainActor
-final class WritingPopoverWindowController: NSWindowController {
-    private let model: WritingPopoverViewModel
+final class InkletPopoverWindowController: NSWindowController {
+    private let model: InkletPopoverViewModel
     private var previousApplication: NSRunningApplication?
     private var cancellables = Set<AnyCancellable>()
     private let popoverWidth: CGFloat = 580
 
     init() {
-        self.model = WritingPopoverViewModel()
+        self.model = InkletPopoverViewModel()
 
-        let panel = WritingPopoverPanel(
+        let panel = InkletPopoverPanel(
             contentRect: NSRect(x: 0, y: 0, width: popoverWidth, height: 168),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
-        panel.title = "Fluenta"
+        panel.title = "Inklet"
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
@@ -56,7 +56,7 @@ final class WritingPopoverWindowController: NSWindowController {
         panel.isReleasedWhenClosed = false
         panel.level = .floating
         panel.collectionBehavior = [.fullScreenAuxiliary, .moveToActiveSpace]
-        panel.contentView = ClearHostingView(rootView: WritingPopoverView(model: model))
+        panel.contentView = ClearHostingView(rootView: InkletPopoverView(model: model))
 
         super.init(window: panel)
         shouldCascadeWindows = false

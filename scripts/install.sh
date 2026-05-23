@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo="${FLUENTA_REPO:-wanming/Fluenta}"
-install_dir="${FLUENTA_INSTALL_DIR:-/Applications}"
-app_name="Fluenta.app"
-asset_name="Fluenta.dmg"
+repo="${INKLET_REPO:-${FLUENTA_REPO:-wanming/Inklet}}"
+install_dir="${INKLET_INSTALL_DIR:-${FLUENTA_INSTALL_DIR:-/Applications}}"
+app_name="Inklet.app"
+legacy_app_name="Fluenta.app"
+asset_name="Inklet.dmg"
 api_url="https://api.github.com/repos/${repo}/releases"
 auth_token="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
 
-tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/fluenta-install.XXXXXX")"
-mount_dir="$(mktemp -d "${TMPDIR:-/tmp}/fluenta-mount.XXXXXX")"
+tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/inklet-install.XXXXXX")"
+mount_dir="$(mktemp -d "${TMPDIR:-/tmp}/inklet-mount.XXXXXX")"
 dmg_path="${tmp_dir}/${asset_name}"
 checksum_path="${tmp_dir}/${asset_name}.sha256"
 mounted=0
@@ -22,7 +23,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Downloading Fluenta..."
+echo "Downloading Inklet..."
 
 curl_api_args=(-fL --retry 3 --retry-delay 1)
 curl_download_args=(-fL --retry 3 --retry-delay 1)
@@ -119,18 +120,23 @@ fi
 target_app="${install_dir}/${app_name}"
 
 echo "Installing to ${target_app}..."
+osascript -e 'tell application "Inklet" to quit' >/dev/null 2>&1 || true
 osascript -e 'tell application "Fluenta" to quit' >/dev/null 2>&1 || true
+
+legacy_target_app="${install_dir}/${legacy_app_name}"
 
 if [[ -w "$install_dir" ]]; then
   rm -rf "$target_app"
+  rm -rf "$legacy_target_app"
   ditto "$source_app" "$target_app"
   xattr -dr com.apple.quarantine "$target_app" >/dev/null 2>&1 || true
 else
   sudo mkdir -p "$install_dir"
   sudo rm -rf "$target_app"
+  sudo rm -rf "$legacy_target_app"
   sudo ditto "$source_app" "$target_app"
   sudo xattr -dr com.apple.quarantine "$target_app" >/dev/null 2>&1 || true
 fi
 
-echo "Fluenta installed."
+echo "Inklet installed."
 echo "Open it from ${target_app}, then grant Accessibility permission when prompted."

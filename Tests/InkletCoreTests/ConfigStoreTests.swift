@@ -1,6 +1,6 @@
 import XCTest
 import Security
-@testable import WritingPopoverCore
+@testable import InkletCore
 
 final class ConfigStoreTests: XCTestCase {
     private final class FakeKeychainClient: KeychainClient {
@@ -97,6 +97,28 @@ final class ConfigStoreTests: XCTestCase {
         let loadedConfig = try store.load()
 
         XCTAssertEqual(loadedConfig, config)
+    }
+
+    func testConfigMigratesFromLegacyUserDefaults() throws {
+        let suiteName = "ConfigStoreTests.\(UUID().uuidString)"
+        let legacySuiteName = "ConfigStoreLegacyTests.\(UUID().uuidString)"
+        let userDefaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let legacyUserDefaults = try XCTUnwrap(UserDefaults(suiteName: legacySuiteName))
+        defer {
+            userDefaults.removePersistentDomain(forName: suiteName)
+            legacyUserDefaults.removePersistentDomain(forName: legacySuiteName)
+        }
+
+        var config = AppConfig.defaultConfig()
+        config.model = "legacy-model"
+        let data = try JSONEncoder().encode(config)
+        legacyUserDefaults.set(data, forKey: UserDefaultsConfigStore.defaultKey)
+
+        let store = UserDefaultsConfigStore(userDefaults: userDefaults, legacyUserDefaults: legacyUserDefaults)
+        let loadedConfig = try store.load()
+
+        XCTAssertEqual(loadedConfig, config)
+        XCTAssertEqual(userDefaults.data(forKey: UserDefaultsConfigStore.defaultKey), data)
     }
 
     func testConfigDecodeFallsBackToDefaultsForMissingFields() throws {
@@ -244,6 +266,26 @@ final class ConfigStoreTests: XCTestCase {
         store.deleteAPIKey(forProviderID: "openai")
 
         XCTAssertNil(store.loadAPIKey(forProviderID: "openai"))
+    }
+
+    func testLocalAPIKeyStoreMigratesLegacyProviderKey() throws {
+        let suiteName = "LocalAPIKeyStoreTests-\(UUID().uuidString)"
+        let legacySuiteName = "LocalAPIKeyStoreLegacyTests-\(UUID().uuidString)"
+        let userDefaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let legacyUserDefaults = try XCTUnwrap(UserDefaults(suiteName: legacySuiteName))
+        defer {
+            userDefaults.removePersistentDomain(forName: suiteName)
+            legacyUserDefaults.removePersistentDomain(forName: legacySuiteName)
+        }
+        let store = LocalAPIKeyStore(
+            userDefaults: userDefaults,
+            legacyUserDefaults: legacyUserDefaults,
+            keyPrefix: "testAPIKey"
+        )
+        legacyUserDefaults.set("legacy-key", forKey: "testAPIKey.openai")
+
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "openai"), "legacy-key")
+        XCTAssertEqual(userDefaults.string(forKey: "testAPIKey.openai"), "legacy-key")
     }
 
     func testSaveAPIKeyUpdatesExistingKeyWithoutAdding() throws {

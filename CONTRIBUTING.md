@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in Fluenta. This project is a native macOS Swift app, and contributions are welcome.
+Thanks for your interest in Inklet. This project is a native macOS Swift app, and contributions are welcome.
 
 ## Development Setup
 
@@ -14,7 +14,7 @@ Build and run:
 
 ```bash
 swift build
-swift run Fluenta
+swift run Inklet
 ```
 
 Run tests:

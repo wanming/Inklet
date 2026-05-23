@@ -73,8 +73,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          app_name="Fluenta"
-          bundle_id="com.fluenta.app"
+          app_name="Inklet"
+          bundle_id="com.inklet.app"
           bin_path="$(swift build -c release --show-bin-path)"
           app_path="dist/${app_name}.app"
 
@@ -84,9 +84,9 @@ jobs:
           cp "$bin_path/$app_name" "$app_path/Contents/MacOS/$app_name"
           chmod +x "$app_path/Contents/MacOS/$app_name"
 
-          if [[ -d "$bin_path/Fluenta_WritingPopoverCore.bundle" ]]; then
-            cp -R "$bin_path/Fluenta_WritingPopoverCore.bundle" "$app_path/Fluenta_WritingPopoverCore.bundle"
-            cp -R "$bin_path/Fluenta_WritingPopoverCore.bundle" "$app_path/Contents/Resources/Fluenta_WritingPopoverCore.bundle"
+          if [[ -d "$bin_path/Inklet_InkletCore.bundle" ]]; then
+            cp -R "$bin_path/Inklet_InkletCore.bundle" "$app_path/Inklet_InkletCore.bundle"
+            cp -R "$bin_path/Inklet_InkletCore.bundle" "$app_path/Contents/Resources/Inklet_InkletCore.bundle"
           fi
 
           cat > "$app_path/Contents/Info.plist" <<PLIST
@@ -115,7 +115,7 @@ jobs:
             <key>LSUIElement</key>
             <true/>
             <key>NSHumanReadableCopyright</key>
-            <string>Copyright (c) 2026 Fluenta contributors.</string>
+            <string>Copyright (c) 2026 Inklet contributors.</string>
           </dict>
           </plist>
           PLIST
@@ -128,14 +128,14 @@ jobs:
           set -euo pipefail
 
           dmg_root="dist/dmg-root"
-          dmg_path="dist/Fluenta.dmg"
+          dmg_path="dist/Inklet.dmg"
 
           mkdir -p "$dmg_root"
-          cp -R "dist/Fluenta.app" "$dmg_root/Fluenta.app"
+          cp -R "dist/Inklet.app" "$dmg_root/Inklet.app"
           ln -s /Applications "$dmg_root/Applications"
 
           hdiutil create \
-            -volname "Fluenta" \
+            -volname "Inklet" \
             -srcfolder "$dmg_root" \
             -ov \
             -format UDZO \

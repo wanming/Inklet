@@ -1,10 +1,10 @@
 import Combine
 import AppKit
 import SwiftUI
-import WritingPopoverCore
+import InkletCore
 
 @MainActor
-final class WritingPopoverViewModel: ObservableObject {
+final class InkletPopoverViewModel: ObservableObject {
     @Published var sourceText = ""
     @Published var resultText = ""
     @Published var errorMessage: String?
@@ -388,8 +388,8 @@ private extension Error {
     }
 }
 
-struct WritingPopoverView: View {
-    @ObservedObject var model: WritingPopoverViewModel
+struct InkletPopoverView: View {
+    @ObservedObject var model: InkletPopoverViewModel
     @FocusState private var isSourceFocused: Bool
     @FocusState private var isResultFocused: Bool
     @State private var sourceMeasuredHeight: CGFloat = 0
@@ -471,11 +471,11 @@ struct WritingPopoverView: View {
             )
         )
         .frame(width: 580, height: popoverHeight, alignment: .top)
-        .background(FluentaTheme.panelBackground.opacity(0.95))
-        .clipShape(RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius))
+        .background(InkletTheme.panelBackground.opacity(0.95))
+        .clipShape(RoundedRectangle(cornerRadius: InkletTheme.cornerRadius))
         .overlay {
-            RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius)
-                .stroke(FluentaTheme.strongBorder)
+            RoundedRectangle(cornerRadius: InkletTheme.cornerRadius)
+                .stroke(InkletTheme.strongBorder)
         }
         .preferredColorScheme(model.appearance.colorScheme)
         .onAppear {
@@ -557,7 +557,7 @@ struct WritingPopoverView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
-                .background(FluentaTheme.primary.opacity(0.08))
+                .background(InkletTheme.primary.opacity(0.08))
             }
             .frame(height: resultHeight)
             .background {
@@ -622,7 +622,7 @@ struct WritingPopoverView: View {
             HStack(spacing: 7) {
                 Text(model.currentProviderName)
                 Text("·")
-                    .foregroundStyle(FluentaTheme.subtleBorder)
+                    .foregroundStyle(InkletTheme.subtleBorder)
                 Text(model.currentModelName)
                     .font(.system(size: 11, design: .monospaced))
             }

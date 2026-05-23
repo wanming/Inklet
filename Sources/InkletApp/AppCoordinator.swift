@@ -1,5 +1,5 @@
 import AppKit
-import WritingPopoverCore
+import InkletCore
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -17,7 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 @MainActor
 final class AppCoordinator: NSObject {
     private let statusItem: NSStatusItem
-    private let windowController: WritingPopoverWindowController
+    private let windowController: InkletPopoverWindowController
     private let settingsController: SettingsWindowController
     private let hotkeyManager: GlobalHotkeyManager
     private let configStore: UserDefaultsConfigStore
@@ -31,7 +31,7 @@ final class AppCoordinator: NSObject {
 
     override init() {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        self.windowController = WritingPopoverWindowController()
+        self.windowController = InkletPopoverWindowController()
         self.settingsController = SettingsWindowController()
         self.hotkeyManager = GlobalHotkeyManager()
         self.configStore = UserDefaultsConfigStore()
@@ -67,7 +67,7 @@ final class AppCoordinator: NSObject {
         }
 
         languageObserver = NotificationCenter.default.addObserver(
-            forName: .fluentaLanguageDidChange,
+            forName: .inkletLanguageDidChange,
             object: nil,
             queue: .main
         ) { [weak self] _ in
@@ -212,8 +212,8 @@ final class AppCoordinator: NSObject {
                 .foregroundColor: NSColor.labelColor
             ]
         )
-        statusItem.button?.toolTip = "Fluenta"
-        statusItem.button?.setAccessibilityLabel("Fluenta")
+        statusItem.button?.toolTip = "Inklet"
+        statusItem.button?.setAccessibilityLabel("Inklet")
     }
 
     private func configureStatusItemMenu() {

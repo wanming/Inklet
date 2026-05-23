@@ -2,7 +2,7 @@ import AppKit
 import Carbon
 import Combine
 import SwiftUI
-import WritingPopoverCore
+import InkletCore
 
 @MainActor
 final class SettingsViewModel: ObservableObject {
@@ -32,7 +32,7 @@ final class SettingsViewModel: ObservableObject {
         self.modelCatalogService = modelCatalogService
         self.config = loadedConfig
         self.message = ""
-        self.interfaceLanguage = FluentaLanguageStore.selectedLanguage
+        self.interfaceLanguage = InkletLanguageStore.selectedLanguage
         self.providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: loadedConfig.providerID) ?? ""
         self.selectedPromptModeID = loadedConfig.defaultModeID
         self.cachedProviderModels = Dictionary(
@@ -279,7 +279,7 @@ final class SettingsViewModel: ObservableObject {
             }
 
             _ = try Hotkey.parse(config.hotkey)
-            FluentaLanguageStore.selectedLanguage = interfaceLanguage
+            InkletLanguageStore.selectedLanguage = interfaceLanguage
             try configStore.save(config)
             for provider in LLMProviderPreset.all {
                 apiKeyStore.deleteAPIKey(forProviderID: provider.id)
@@ -310,7 +310,7 @@ final class SettingsViewModel: ObservableObject {
 }
 
 extension Notification.Name {
-    static let appConfigDidSave = Notification.Name("FluentaAppConfigDidSave")
+    static let appConfigDidSave = Notification.Name("InkletAppConfigDidSave")
 }
 
 private extension PromptMode {
@@ -366,8 +366,8 @@ struct SettingsView: View {
             detail
         }
         .frame(width: 920, height: 560)
-        .background(FluentaTheme.panelBackground)
-        .clipShape(RoundedRectangle(cornerRadius: FluentaTheme.cornerRadius))
+        .background(InkletTheme.panelBackground)
+        .clipShape(RoundedRectangle(cornerRadius: InkletTheme.cornerRadius))
         .preferredColorScheme(model.config.appearance.colorScheme)
         .task {
             await model.refreshModelCatalogIfNeeded()
@@ -400,7 +400,7 @@ struct SettingsView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Fluenta")
+                Text("Inklet")
                     .font(.system(size: 14, weight: .semibold))
                 Text(L10n.text("settings.sidebar.preferences"))
                     .font(.system(size: 12))
@@ -428,7 +428,7 @@ struct SettingsView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 9)
                         .background(
-                            selectedSection == section ? FluentaTheme.primary.opacity(0.18) : Color.clear
+                            selectedSection == section ? InkletTheme.primary.opacity(0.18) : Color.clear
                         )
                     }
                     .buttonStyle(.plain)
@@ -582,7 +582,7 @@ struct SettingsView: View {
         return
             ScrollView {
                 settingsPanel {
-                    settingsRow("Provider", help: "Choose the single provider Fluenta will use for every transform.") {
+                    settingsRow("Provider", help: "Choose the single provider Inklet will use for every transform.") {
                         Picker("", selection: selectedProviderBinding) {
                             ForEach(LLMProviderPreset.all) { provider in
                                 Text(provider.name).tag(provider.id)
@@ -628,7 +628,7 @@ struct SettingsView: View {
                                     if !model.selectedModelIsDefault {
                                         Text(L10n.text("settings.model.customized"))
                                             .font(.system(size: 11, weight: .medium))
-                                            .foregroundStyle(FluentaTheme.primary)
+                                            .foregroundStyle(InkletTheme.primary)
                                     }
                                 }
                             }
@@ -676,7 +676,7 @@ struct SettingsView: View {
                         .overlay {
                             RoundedRectangle(cornerRadius: 7)
                                 .stroke(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                                .foregroundStyle(FluentaTheme.subtleBorder)
+                                .foregroundStyle(InkletTheme.subtleBorder)
                         }
                 }
                 .buttonStyle(.plain)
@@ -722,7 +722,7 @@ struct SettingsView: View {
                     .scrollContentBackground(.hidden)
                     .frame(height: 190)
                     .padding(10)
-                    .modifier(FluentaFieldModifier())
+                    .modifier(InkletFieldModifier())
             }
 
             settingsToggle(
@@ -742,9 +742,9 @@ struct SettingsView: View {
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: model.isAccessibilityTrusted ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
                         .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(model.isAccessibilityTrusted ? FluentaTheme.success : FluentaTheme.warning)
+                        .foregroundStyle(model.isAccessibilityTrusted ? InkletTheme.success : InkletTheme.warning)
                         .frame(width: 40, height: 40)
-                        .background((model.isAccessibilityTrusted ? FluentaTheme.success : FluentaTheme.warning).opacity(0.18), in: RoundedRectangle(cornerRadius: 9))
+                        .background((model.isAccessibilityTrusted ? InkletTheme.success : InkletTheme.warning).opacity(0.18), in: RoundedRectangle(cornerRadius: 9))
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text(L10n.text("settings.permission.accessibility"))
@@ -757,10 +757,10 @@ struct SettingsView: View {
                     Spacer()
                     Text(model.isAccessibilityTrusted ? L10n.text("settings.permission.authorized") : L10n.text("settings.permission.required"))
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(model.isAccessibilityTrusted ? FluentaTheme.success : FluentaTheme.warning)
+                        .foregroundStyle(model.isAccessibilityTrusted ? InkletTheme.success : InkletTheme.warning)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 5)
-                        .background((model.isAccessibilityTrusted ? FluentaTheme.success : FluentaTheme.warning).opacity(0.16), in: RoundedRectangle(cornerRadius: 6))
+                        .background((model.isAccessibilityTrusted ? InkletTheme.success : InkletTheme.warning).opacity(0.16), in: RoundedRectangle(cornerRadius: 6))
                 }
 
                 Button {
@@ -772,10 +772,10 @@ struct SettingsView: View {
                 .controlSize(.small)
             }
             .padding(16)
-            .background(FluentaTheme.elevatedBackground, in: RoundedRectangle(cornerRadius: 9))
+            .background(InkletTheme.elevatedBackground, in: RoundedRectangle(cornerRadius: 9))
             .overlay {
                 RoundedRectangle(cornerRadius: 9)
-                    .stroke(FluentaTheme.subtleBorder)
+                    .stroke(InkletTheme.subtleBorder)
             }
 
             VStack(alignment: .leading, spacing: 10) {
@@ -790,10 +790,10 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             }
             .padding(16)
-            .background(FluentaTheme.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
+            .background(InkletTheme.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
             .overlay {
                 RoundedRectangle(cornerRadius: 9)
-                    .stroke(FluentaTheme.subtleBorder)
+                    .stroke(InkletTheme.subtleBorder)
             }
         }
     }
@@ -939,7 +939,7 @@ private struct PromptModeTableView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTableViewDataSource, NSTableViewDelegate {
         static let columnIdentifier = NSUserInterfaceItemIdentifier("PromptModeColumn")
         static let rowIdentifier = NSUserInterfaceItemIdentifier("PromptModeRow")
-        static let dragPasteboardType = NSPasteboard.PasteboardType("com.fluenta.prompt-mode")
+        static let dragPasteboardType = NSPasteboard.PasteboardType("com.inklet.prompt-mode")
 
         var modes: [PromptMode]
         var selectedModeID: Binding<String>

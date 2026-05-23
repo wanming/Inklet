@@ -1,6 +1,6 @@
 import AppKit
 import SwiftUI
-import WritingPopoverCore
+import InkletCore
 
 @MainActor
 private final class SettingsWindow: NSWindow {

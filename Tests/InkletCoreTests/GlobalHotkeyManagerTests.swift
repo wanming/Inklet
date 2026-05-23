@@ -1,6 +1,6 @@
 import Carbon
 import XCTest
-@testable import WritingPopoverCore
+@testable import InkletCore
 
 @MainActor
 final class GlobalHotkeyManagerTests: XCTestCase {

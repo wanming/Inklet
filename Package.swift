@@ -2,29 +2,29 @@
 import PackageDescription
 
 let package = Package(
-    name: "Fluenta",
+    name: "Inklet",
     platforms: [
         .macOS(.v14)
     ],
     products: [
-        .library(name: "WritingPopoverCore", targets: ["WritingPopoverCore"]),
-        .executable(name: "Fluenta", targets: ["Fluenta"])
+        .library(name: "InkletCore", targets: ["InkletCore"]),
+        .executable(name: "Inklet", targets: ["Inklet"])
     ],
     targets: [
         .target(
-            name: "WritingPopoverCore",
+            name: "InkletCore",
             resources: [
                 .process("Resources")
             ]
         ),
         .executableTarget(
-            name: "Fluenta",
-            dependencies: ["WritingPopoverCore"],
-            path: "Sources/WritingPopoverApp"
+            name: "Inklet",
+            dependencies: ["InkletCore"],
+            path: "Sources/InkletApp"
         ),
         .testTarget(
-            name: "WritingPopoverCoreTests",
-            dependencies: ["WritingPopoverCore"]
+            name: "InkletCoreTests",
+            dependencies: ["InkletCore"]
         )
     ]
 )

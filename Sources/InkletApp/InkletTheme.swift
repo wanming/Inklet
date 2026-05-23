@@ -1,6 +1,6 @@
 import AppKit
 import SwiftUI
-import WritingPopoverCore
+import InkletCore
 
 extension AppAppearance {
     var colorScheme: ColorScheme? {
@@ -37,7 +37,7 @@ extension AppAppearance {
     }
 }
 
-enum FluentaTheme {
+enum InkletTheme {
     static let cornerRadius: CGFloat = 12
     static let controlRadius: CGFloat = 8
 
@@ -87,20 +87,20 @@ struct Keycap: View {
             .background(.quaternary.opacity(0.65), in: RoundedRectangle(cornerRadius: 5))
             .overlay {
                 RoundedRectangle(cornerRadius: 5)
-                    .stroke(FluentaTheme.subtleBorder)
+                    .stroke(InkletTheme.subtleBorder)
             }
     }
 }
 
-struct FluentaFieldModifier: ViewModifier {
+struct InkletFieldModifier: ViewModifier {
     var isFocused = false
 
     func body(content: Content) -> some View {
         content
-            .background(FluentaTheme.fieldBackground, in: RoundedRectangle(cornerRadius: 7))
+            .background(InkletTheme.fieldBackground, in: RoundedRectangle(cornerRadius: 7))
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
-                    .stroke(isFocused ? FluentaTheme.primary.opacity(0.75) : FluentaTheme.subtleBorder)
+                    .stroke(isFocused ? InkletTheme.primary.opacity(0.75) : InkletTheme.subtleBorder)
             }
     }
 }

@@ -1,5 +1,5 @@
 import XCTest
-@testable import WritingPopoverCore
+@testable import InkletCore
 
 final class OpenAIProviderTests: XCTestCase {
     func testBuildsResponsesAPIRequest() {

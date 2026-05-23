@@ -1,5 +1,5 @@
 import Foundation
-import WritingPopoverCore
+import InkletCore
 
 enum InterfaceLanguage: String, CaseIterable, Identifiable {
     case system
@@ -49,20 +49,31 @@ enum InterfaceLanguage: String, CaseIterable, Identifiable {
     }
 }
 
-enum FluentaLanguageStore {
-    private static let key = "FluentaInterfaceLanguage"
+enum InkletLanguageStore {
+    private static let key = "InkletInterfaceLanguage"
+    private static let legacyKey = "FluentaInterfaceLanguage"
+    private static let legacyBundleIdentifier = "com.fluenta.app"
 
     static var selectedLanguage: InterfaceLanguage {
         get {
-            guard let rawValue = UserDefaults.standard.string(forKey: key) else {
+            guard let rawValue = UserDefaults.standard.string(forKey: key) ?? migrateLegacyLanguageIfNeeded() else {
                 return .english
             }
             return InterfaceLanguage(rawValue: rawValue) ?? .english
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: key)
-            NotificationCenter.default.post(name: .fluentaLanguageDidChange, object: nil)
+            NotificationCenter.default.post(name: .inkletLanguageDidChange, object: nil)
         }
+    }
+
+    private static func migrateLegacyLanguageIfNeeded() -> String? {
+        let legacyDefaults = UserDefaults(suiteName: legacyBundleIdentifier)
+        guard let rawValue = legacyDefaults?.string(forKey: legacyKey) else {
+            return nil
+        }
+        UserDefaults.standard.set(rawValue, forKey: key)
+        return rawValue
     }
 }
 
@@ -80,7 +91,7 @@ enum L10n {
     }
 
     static var resolvedLanguage: InterfaceLanguage {
-        switch FluentaLanguageStore.selectedLanguage {
+        switch InkletLanguageStore.selectedLanguage {
         case .english:
             return .english
         case .simplifiedChinese:
@@ -135,11 +146,11 @@ enum L10n {
     }
 
     private static let en: [String: String] = [
-        "app.menu.openPopover": "Open Fluenta",
+        "app.menu.openPopover": "Open Inklet",
         "app.menu.settings": "Settings",
         "app.menu.quit": "Quit",
         "language.system": "System",
-        "settings.window.title": "Fluenta Settings",
+        "settings.window.title": "Inklet Settings",
         "settings.sidebar.preferences": "Preferences",
         "settings.sidebar.hint": "⌘S Save · ⌘, Open",
         "settings.version": "Version %@",
@@ -214,7 +225,7 @@ enum L10n {
         "settings.permission.authorized": "Accessibility authorized",
         "settings.permission.required": "Accessibility permission required",
         "settings.permission.accessibility": "Accessibility",
-        "settings.permission.description": "Fluenta needs this permission to paste generated text back into the current input field.",
+        "settings.permission.description": "Inklet needs this permission to paste generated text back into the current input field.",
         "settings.permission.open": "Open System Settings",
         "settings.privacy.title": "Privacy & Security",
         "settings.privacy.keychain": "• API keys are stored locally on this Mac",
@@ -271,11 +282,11 @@ enum L10n {
     ]
 
     private static let zhHans: [String: String] = [
-        "app.menu.openPopover": "打开 Fluenta",
+        "app.menu.openPopover": "打开 Inklet",
         "app.menu.settings": "设置",
         "app.menu.quit": "退出",
         "language.system": "跟随系统",
-        "settings.window.title": "Fluenta 设置",
+        "settings.window.title": "Inklet 设置",
         "settings.sidebar.preferences": "偏好设置",
         "settings.sidebar.hint": "⌘S 保存 · ⌘, 打开",
         "settings.version": "版本 %@",
@@ -350,7 +361,7 @@ enum L10n {
         "settings.permission.authorized": "Accessibility 已授权",
         "settings.permission.required": "需要 Accessibility 权限",
         "settings.permission.accessibility": "辅助功能",
-        "settings.permission.description": "Fluenta 需要该权限，才能把生成文本粘贴回当前输入框。",
+        "settings.permission.description": "Inklet 需要该权限，才能把生成文本粘贴回当前输入框。",
         "settings.permission.open": "打开系统权限设置",
         "settings.privacy.title": "隐私与安全",
         "settings.privacy.keychain": "• API Key 保存在本机",
@@ -407,11 +418,11 @@ enum L10n {
     ]
 
     private static let zhHant: [String: String] = [
-        "app.menu.openPopover": "開啟 Fluenta",
+        "app.menu.openPopover": "開啟 Inklet",
         "app.menu.settings": "設定",
         "app.menu.quit": "結束",
         "language.system": "跟隨系統",
-        "settings.window.title": "Fluenta 設定",
+        "settings.window.title": "Inklet 設定",
         "settings.sidebar.preferences": "偏好設定",
         "settings.sidebar.hint": "⌘S 儲存 · ⌘, 開啟",
         "settings.section.general": "一般",
@@ -440,7 +451,7 @@ enum L10n {
         "settings.characters": "%d 字元",
         "settings.permission.authorized": "Accessibility 已授權",
         "settings.permission.required": "需要 Accessibility 權限",
-        "settings.permission.description": "Fluenta 需要此權限，才能把生成文字貼回目前輸入框。",
+        "settings.permission.description": "Inklet 需要此權限，才能把生成文字貼回目前輸入框。",
         "settings.permission.open": "開啟系統權限設定",
         "settings.footer.pending": "變更會在儲存後套用到下一次浮窗開啟。",
         "settings.save": "儲存",
@@ -483,11 +494,11 @@ enum L10n {
     ]
 
     private static let ja: [String: String] = [
-        "app.menu.openPopover": "Fluenta を開く",
+        "app.menu.openPopover": "Inklet を開く",
         "app.menu.settings": "設定",
         "app.menu.quit": "終了",
         "language.system": "システムに合わせる",
-        "settings.window.title": "Fluenta 設定",
+        "settings.window.title": "Inklet 設定",
         "settings.sidebar.preferences": "環境設定",
         "settings.sidebar.hint": "⌘S 保存 · ⌘, 開く",
         "settings.section.general": "一般",
@@ -559,11 +570,11 @@ enum L10n {
     ]
 
     private static let ko: [String: String] = [
-        "app.menu.openPopover": "Fluenta 열기",
+        "app.menu.openPopover": "Inklet 열기",
         "app.menu.settings": "설정",
         "app.menu.quit": "종료",
         "language.system": "시스템 따르기",
-        "settings.window.title": "Fluenta 설정",
+        "settings.window.title": "Inklet 설정",
         "settings.sidebar.preferences": "환경설정",
         "settings.sidebar.hint": "⌘S 저장 · ⌘, 열기",
         "settings.section.general": "일반",
@@ -635,11 +646,11 @@ enum L10n {
     ]
 
     private static let es: [String: String] = [
-        "app.menu.openPopover": "Abrir Fluenta",
+        "app.menu.openPopover": "Abrir Inklet",
         "app.menu.settings": "Ajustes",
         "app.menu.quit": "Salir",
         "language.system": "Sistema",
-        "settings.window.title": "Ajustes de Fluenta",
+        "settings.window.title": "Ajustes de Inklet",
         "settings.sidebar.preferences": "Preferencias",
         "settings.sidebar.hint": "⌘S Guardar · ⌘, Abrir",
         "settings.section.general": "General",
@@ -668,7 +679,7 @@ enum L10n {
         "settings.characters": "%d caracteres",
         "settings.permission.authorized": "Accessibility autorizado",
         "settings.permission.required": "Se requiere permiso de Accessibility",
-        "settings.permission.description": "Fluenta necesita este permiso para pegar el texto generado en el campo actual.",
+        "settings.permission.description": "Inklet necesita este permiso para pegar el texto generado en el campo actual.",
         "settings.permission.open": "Abrir ajustes del sistema",
         "settings.footer.pending": "Los cambios se aplican la próxima vez que abras el panel.",
         "settings.save": "Guardar",
@@ -711,11 +722,11 @@ enum L10n {
     ]
 
     private static let fr: [String: String] = [
-        "app.menu.openPopover": "Ouvrir Fluenta",
+        "app.menu.openPopover": "Ouvrir Inklet",
         "app.menu.settings": "Réglages",
         "app.menu.quit": "Quitter",
         "language.system": "Système",
-        "settings.window.title": "Réglages de Fluenta",
+        "settings.window.title": "Réglages de Inklet",
         "settings.sidebar.preferences": "Préférences",
         "settings.sidebar.hint": "⌘S Enregistrer · ⌘, Ouvrir",
         "settings.section.general": "Général",
@@ -744,7 +755,7 @@ enum L10n {
         "settings.characters": "%d caractères",
         "settings.permission.authorized": "Accessibility autorisé",
         "settings.permission.required": "Autorisation Accessibility requise",
-        "settings.permission.description": "Fluenta a besoin de cette autorisation pour coller le texte généré dans le champ actif.",
+        "settings.permission.description": "Inklet a besoin de cette autorisation pour coller le texte généré dans le champ actif.",
         "settings.permission.open": "Ouvrir les réglages système",
         "settings.footer.pending": "Les changements s’appliquent à la prochaine ouverture du panneau.",
         "settings.save": "Enregistrer",
@@ -787,11 +798,11 @@ enum L10n {
     ]
 
     private static let de: [String: String] = [
-        "app.menu.openPopover": "Fluenta öffnen",
+        "app.menu.openPopover": "Inklet öffnen",
         "app.menu.settings": "Einstellungen",
         "app.menu.quit": "Beenden",
         "language.system": "System",
-        "settings.window.title": "Fluenta Einstellungen",
+        "settings.window.title": "Inklet Einstellungen",
         "settings.sidebar.preferences": "Einstellungen",
         "settings.sidebar.hint": "⌘S Speichern · ⌘, Öffnen",
         "settings.section.general": "Allgemein",
@@ -820,7 +831,7 @@ enum L10n {
         "settings.characters": "%d Zeichen",
         "settings.permission.authorized": "Accessibility autorisiert",
         "settings.permission.required": "Accessibility-Berechtigung erforderlich",
-        "settings.permission.description": "Fluenta benötigt diese Berechtigung, um generierten Text in das aktuelle Eingabefeld einzufügen.",
+        "settings.permission.description": "Inklet benötigt diese Berechtigung, um generierten Text in das aktuelle Eingabefeld einzufügen.",
         "settings.permission.open": "Systemeinstellungen öffnen",
         "settings.footer.pending": "Änderungen gelten beim nächsten Öffnen des Popovers.",
         "settings.save": "Speichern",
@@ -863,11 +874,11 @@ enum L10n {
     ]
 
     private static let pt: [String: String] = [
-        "app.menu.openPopover": "Abrir Fluenta",
+        "app.menu.openPopover": "Abrir Inklet",
         "app.menu.settings": "Ajustes",
         "app.menu.quit": "Sair",
         "language.system": "Sistema",
-        "settings.window.title": "Ajustes do Fluenta",
+        "settings.window.title": "Ajustes do Inklet",
         "settings.sidebar.preferences": "Preferências",
         "settings.sidebar.hint": "⌘S Salvar · ⌘, Abrir",
         "settings.section.general": "Geral",
@@ -896,7 +907,7 @@ enum L10n {
         "settings.characters": "%d caracteres",
         "settings.permission.authorized": "Accessibility autorizado",
         "settings.permission.required": "Permissão Accessibility necessária",
-        "settings.permission.description": "O Fluenta precisa desta permissão para colar o texto gerado no campo atual.",
+        "settings.permission.description": "O Inklet precisa desta permissão para colar o texto gerado no campo atual.",
         "settings.permission.open": "Abrir Ajustes do Sistema",
         "settings.footer.pending": "As alterações se aplicam na próxima vez que o painel abrir.",
         "settings.save": "Salvar",
@@ -939,11 +950,11 @@ enum L10n {
     ]
 
     private static let it: [String: String] = [
-        "app.menu.openPopover": "Apri Fluenta",
+        "app.menu.openPopover": "Apri Inklet",
         "app.menu.settings": "Impostazioni",
         "app.menu.quit": "Esci",
         "language.system": "Sistema",
-        "settings.window.title": "Impostazioni Fluenta",
+        "settings.window.title": "Impostazioni Inklet",
         "settings.sidebar.preferences": "Preferenze",
         "settings.sidebar.hint": "⌘S Salva · ⌘, Apri",
         "settings.section.general": "Generale",
@@ -972,7 +983,7 @@ enum L10n {
         "settings.characters": "%d caratteri",
         "settings.permission.authorized": "Accessibility autorizzato",
         "settings.permission.required": "Permesso Accessibility richiesto",
-        "settings.permission.description": "Fluenta ha bisogno di questo permesso per incollare il testo generato nel campo attivo.",
+        "settings.permission.description": "Inklet ha bisogno di questo permesso per incollare il testo generato nel campo attivo.",
         "settings.permission.open": "Apri Impostazioni di Sistema",
         "settings.footer.pending": "Le modifiche si applicano alla prossima apertura del pannello.",
         "settings.save": "Salva",
@@ -1016,7 +1027,7 @@ enum L10n {
 }
 
 extension Notification.Name {
-    static let fluentaLanguageDidChange = Notification.Name("FluentaLanguageDidChange")
+    static let inkletLanguageDidChange = Notification.Name("InkletLanguageDidChange")
 }
 
 extension PromptMode {
