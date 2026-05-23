@@ -51,12 +51,10 @@ enum InterfaceLanguage: String, CaseIterable, Identifiable {
 
 enum InkletLanguageStore {
     private static let key = "InkletInterfaceLanguage"
-    private static let legacyKey = "FluentaInterfaceLanguage"
-    private static let legacyBundleIdentifier = "com.fluenta.app"
 
     static var selectedLanguage: InterfaceLanguage {
         get {
-            guard let rawValue = UserDefaults.standard.string(forKey: key) ?? migrateLegacyLanguageIfNeeded() else {
+            guard let rawValue = UserDefaults.standard.string(forKey: key) else {
                 return .english
             }
             return InterfaceLanguage(rawValue: rawValue) ?? .english
@@ -65,15 +63,6 @@ enum InkletLanguageStore {
             UserDefaults.standard.set(newValue.rawValue, forKey: key)
             NotificationCenter.default.post(name: .inkletLanguageDidChange, object: nil)
         }
-    }
-
-    private static func migrateLegacyLanguageIfNeeded() -> String? {
-        let legacyDefaults = UserDefaults(suiteName: legacyBundleIdentifier)
-        guard let rawValue = legacyDefaults?.string(forKey: legacyKey) else {
-            return nil
-        }
-        UserDefaults.standard.set(rawValue, forKey: key)
-        return rawValue
     }
 }
 
@@ -201,6 +190,11 @@ enum L10n {
         "settings.mode.pick": "Select a Prompt Mode",
         "settings.mode.visibleInMenu": "Visible in menu",
         "settings.mode.visibleInMenuHelp": "Show this mode in the mode selector.",
+        "settings.mode.defaultCurrent": "Default mode",
+        "settings.mode.defaultAvailable": "Not default",
+        "settings.mode.defaultHelp": "The default mode is selected when the popover opens.",
+        "settings.mode.setDefault": "Set as Default",
+        "settings.mode.defaultPending": "Default mode will update after saving.",
         "settings.mode.moveUp": "Move up",
         "settings.mode.moveDown": "Move down",
         "settings.mode.dragToSort": "Drag to reorder",
@@ -337,6 +331,11 @@ enum L10n {
         "settings.mode.pick": "选择一个 Prompt Mode",
         "settings.mode.visibleInMenu": "在菜单中显示",
         "settings.mode.visibleInMenuHelp": "在浮窗的模式选择器中显示该模式。",
+        "settings.mode.defaultCurrent": "默认模式",
+        "settings.mode.defaultAvailable": "不是默认模式",
+        "settings.mode.defaultHelp": "默认模式会在浮窗打开时自动选中。",
+        "settings.mode.setDefault": "设为默认",
+        "settings.mode.defaultPending": "默认模式会在保存后更新。",
         "settings.mode.moveUp": "上移",
         "settings.mode.moveDown": "下移",
         "settings.mode.dragToSort": "拖动排序",

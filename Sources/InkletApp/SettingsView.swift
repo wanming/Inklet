@@ -230,6 +230,19 @@ final class SettingsViewModel: ObservableObject {
         }
 
         config.promptModes[index].isVisible.toggle()
+        if modeID == config.defaultModeID, !config.promptModes[index].isVisible {
+            config.defaultModeID = config.visibleModeID(preferredModeID: config.promptModes.first?.id ?? PromptMode.translateToEnglishID)
+        }
+    }
+
+    func setDefaultPromptMode(modeID: String) {
+        guard let index = config.promptModes.firstIndex(where: { $0.id == modeID }) else {
+            return
+        }
+
+        config.promptModes[index].isVisible = true
+        config.defaultModeID = modeID
+        message = L10n.text("settings.mode.defaultPending")
     }
 
     func canMovePromptMode(modeID: String, direction: Int) -> Bool {
@@ -262,6 +275,7 @@ final class SettingsViewModel: ObservableObject {
                 message = L10n.text("settings.error.visibleModeRequired")
                 return
             }
+            config.defaultModeID = config.visibleModeID(preferredModeID: config.defaultModeID)
 
             guard !config.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 message = L10n.text("settings.error.modelRequired")
@@ -701,6 +715,8 @@ struct SettingsView: View {
 
     private func promptModeDetail(index: Int) -> some View {
         VStack(alignment: .leading, spacing: 20) {
+            defaultPromptModeControl(index: index)
+
             VStack(spacing: 13) {
                 settingsRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
                     TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
@@ -734,6 +750,42 @@ struct SettingsView: View {
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 22)
+    }
+
+    private func defaultPromptModeControl(index: Int) -> some View {
+        let mode = model.config.promptModes[index]
+        let isDefault = mode.id == model.config.defaultModeID
+
+        return HStack(alignment: .center, spacing: 12) {
+            Image(systemName: isDefault ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(isDefault ? InkletTheme.primary : .secondary.opacity(0.45))
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(isDefault ? L10n.text("settings.mode.defaultCurrent") : L10n.text("settings.mode.defaultAvailable"))
+                    .font(.system(size: 13, weight: .semibold))
+                Text(L10n.text("settings.mode.defaultHelp"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if !isDefault {
+                Button(L10n.text("settings.mode.setDefault")) {
+                    model.setDefaultPromptMode(modeID: mode.id)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        .padding(12)
+        .background(InkletTheme.elevatedBackground, in: RoundedRectangle(cornerRadius: 9))
+        .overlay {
+            RoundedRectangle(cornerRadius: 9)
+                .stroke(InkletTheme.subtleBorder)
+        }
     }
 
     private var permissionsPanel: some View {

@@ -179,10 +179,8 @@ public protocol ConfigStore {
 
 public struct UserDefaultsConfigStore: ConfigStore {
     public static let defaultKey = "appConfig"
-    private static let legacyBundleIdentifier = "com.fluenta.app"
 
     private let userDefaults: UserDefaults
-    private let legacyUserDefaults: UserDefaults?
     private let key: String
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
@@ -190,19 +188,17 @@ public struct UserDefaultsConfigStore: ConfigStore {
     public init(
         userDefaults: UserDefaults = .standard,
         key: String = UserDefaultsConfigStore.defaultKey,
-        legacyUserDefaults: UserDefaults? = nil,
         encoder: JSONEncoder = JSONEncoder(),
         decoder: JSONDecoder = JSONDecoder()
     ) {
         self.userDefaults = userDefaults
-        self.legacyUserDefaults = legacyUserDefaults ?? Self.defaultLegacyUserDefaults(for: userDefaults)
         self.key = key
         self.encoder = encoder
         self.decoder = decoder
     }
 
     public func load() throws -> AppConfig {
-        guard let data = userDefaults.data(forKey: key) ?? migrateLegacyDataIfNeeded() else {
+        guard let data = userDefaults.data(forKey: key) else {
             return AppConfig.defaultConfig()
         }
 
@@ -221,72 +217,35 @@ public struct UserDefaultsConfigStore: ConfigStore {
             throw ConfigStoreError.encodingFailed
         }
     }
-
-    private static func defaultLegacyUserDefaults(for userDefaults: UserDefaults) -> UserDefaults? {
-        guard userDefaults === UserDefaults.standard else {
-            return nil
-        }
-        return UserDefaults(suiteName: legacyBundleIdentifier)
-    }
-
-    private func migrateLegacyDataIfNeeded() -> Data? {
-        guard let data = legacyUserDefaults?.data(forKey: key) else {
-            return nil
-        }
-        userDefaults.set(data, forKey: key)
-        return data
-    }
 }
 
 public struct LocalAPIKeyStore: @unchecked Sendable {
     public static let defaultKeyPrefix = "providerAPIKey"
-    private static let legacyBundleIdentifier = "com.fluenta.app"
 
     private let userDefaults: UserDefaults
-    private let legacyUserDefaults: UserDefaults?
     private let keyPrefix: String
 
     public init(
         userDefaults: UserDefaults = .standard,
-        legacyUserDefaults: UserDefaults? = nil,
         keyPrefix: String = LocalAPIKeyStore.defaultKeyPrefix
     ) {
         self.userDefaults = userDefaults
-        self.legacyUserDefaults = legacyUserDefaults ?? Self.defaultLegacyUserDefaults(for: userDefaults)
         self.keyPrefix = keyPrefix
     }
 
     public func loadAPIKey(forProviderID providerID: String) -> String? {
-        let currentKey = key(forProviderID: providerID)
-        if let apiKey = userDefaults.string(forKey: currentKey) {
-            return apiKey
-        }
-
-        guard let apiKey = legacyUserDefaults?.string(forKey: currentKey) else {
-            return nil
-        }
-        userDefaults.set(apiKey, forKey: currentKey)
-        return apiKey
+        userDefaults.string(forKey: key(forProviderID: providerID))
     }
 
     public func saveAPIKey(_ apiKey: String, forProviderID providerID: String) {
         userDefaults.set(apiKey, forKey: key(forProviderID: providerID))
-        legacyUserDefaults?.removeObject(forKey: key(forProviderID: providerID))
     }
 
     public func deleteAPIKey(forProviderID providerID: String) {
         userDefaults.removeObject(forKey: key(forProviderID: providerID))
-        legacyUserDefaults?.removeObject(forKey: key(forProviderID: providerID))
     }
 
     private func key(forProviderID providerID: String) -> String {
         "\(keyPrefix).\(providerID)"
-    }
-
-    private static func defaultLegacyUserDefaults(for userDefaults: UserDefaults) -> UserDefaults? {
-        guard userDefaults === UserDefaults.standard else {
-            return nil
-        }
-        return UserDefaults(suiteName: legacyBundleIdentifier)
     }
 }

@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo="${INKLET_REPO:-${FLUENTA_REPO:-wanming/Inklet}}"
-install_dir="${INKLET_INSTALL_DIR:-${FLUENTA_INSTALL_DIR:-/Applications}}"
+repo="${INKLET_REPO:-wanming/Inklet}"
+install_dir="${INKLET_INSTALL_DIR:-/Applications}"
 app_name="Inklet.app"
-legacy_app_name="Fluenta.app"
 asset_name="Inklet.dmg"
 api_url="https://api.github.com/repos/${repo}/releases"
 auth_token="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
@@ -121,19 +120,14 @@ target_app="${install_dir}/${app_name}"
 
 echo "Installing to ${target_app}..."
 osascript -e 'tell application "Inklet" to quit' >/dev/null 2>&1 || true
-osascript -e 'tell application "Fluenta" to quit' >/dev/null 2>&1 || true
-
-legacy_target_app="${install_dir}/${legacy_app_name}"
 
 if [[ -w "$install_dir" ]]; then
   rm -rf "$target_app"
-  rm -rf "$legacy_target_app"
   ditto "$source_app" "$target_app"
   xattr -dr com.apple.quarantine "$target_app" >/dev/null 2>&1 || true
 else
   sudo mkdir -p "$install_dir"
   sudo rm -rf "$target_app"
-  sudo rm -rf "$legacy_target_app"
   sudo ditto "$source_app" "$target_app"
   sudo xattr -dr com.apple.quarantine "$target_app" >/dev/null 2>&1 || true
 fi

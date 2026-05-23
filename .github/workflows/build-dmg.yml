@@ -88,6 +88,7 @@ jobs:
             cp -R "$bin_path/Inklet_InkletCore.bundle" "$app_path/Inklet_InkletCore.bundle"
             cp -R "$bin_path/Inklet_InkletCore.bundle" "$app_path/Contents/Resources/Inklet_InkletCore.bundle"
           fi
+          cp "Assets/AppIcon.icns" "$app_path/Contents/Resources/AppIcon.icns"
 
           cat > "$app_path/Contents/Info.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
@@ -104,6 +105,8 @@ jobs:
             <string>6.0</string>
             <key>CFBundleName</key>
             <string>${app_name}</string>
+            <key>CFBundleIconFile</key>
+            <string>AppIcon</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>CFBundleShortVersionString</key>
