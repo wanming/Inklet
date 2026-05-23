@@ -499,7 +499,14 @@ struct InkletPopoverView: View {
             .font(.system(size: 14))
             .lineSpacing(3)
             .scrollContentBackground(.hidden)
-            .background(TextEditorInsetNormalizer(onMarkedTextChange: { editorHasMarkedText = $0 }))
+            .background(
+                TextEditorInsetNormalizer(
+                    onMarkedTextChange: { editorHasMarkedText = $0 },
+                    onSubmit: { model.submit() },
+                    onInsertOriginal: { model.insertOriginal() },
+                    onEscape: { model.escape() }
+                )
+            )
             .focused($isSourceFocused)
             .disabled(isBusy)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -551,7 +558,13 @@ struct InkletPopoverView: View {
                 .font(.system(size: 14))
                 .lineSpacing(3)
                 .scrollContentBackground(.hidden)
-                .background(TextEditorInsetNormalizer())
+                .background(
+                    TextEditorInsetNormalizer(
+                        onSubmit: { model.submit() },
+                        onInsertOriginal: { model.insertOriginal() },
+                        onEscape: { model.escape() }
+                    )
+                )
                 .focused($isResultFocused)
                 .disabled(isBusy)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -797,9 +810,17 @@ private struct ResultEditorHeightPreferenceKey: PreferenceKey {
 
 private struct TextEditorInsetNormalizer: NSViewRepresentable {
     var onMarkedTextChange: ((Bool) -> Void)?
+    var onSubmit: (() -> Void)?
+    var onInsertOriginal: (() -> Void)?
+    var onEscape: (() -> Void)?
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onMarkedTextChange: onMarkedTextChange)
+        Coordinator(
+            onMarkedTextChange: onMarkedTextChange,
+            onSubmit: onSubmit,
+            onInsertOriginal: onInsertOriginal,
+            onEscape: onEscape
+        )
     }
 
     func makeNSView(context: Context) -> NSView {
@@ -812,18 +833,21 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSView, context: Context) {
         context.coordinator.onMarkedTextChange = onMarkedTextChange
+        context.coordinator.onSubmit = onSubmit
+        context.coordinator.onInsertOriginal = onInsertOriginal
+        context.coordinator.onEscape = onEscape
         DispatchQueue.main.async {
             normalizeTextEditors(from: nsView, coordinator: context.coordinator)
         }
     }
 
     private func normalizeTextEditors(from view: NSView, coordinator: Coordinator) {
-        guard let rootView = view.window?.contentView else {
+        let textViews = nearbyTextViews(from: view)
+        guard !textViews.isEmpty else {
             return
         }
 
-        let textViews = rootView.descendantTextViews
-        for textView in rootView.descendantTextViews {
+        for textView in textViews {
             textView.textContainerInset = .zero
             textView.textContainer?.lineFragmentPadding = 0
             textView.enclosingScrollView?.contentInsets = NSEdgeInsetsZero
@@ -837,19 +861,44 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
             textView.enclosingScrollView?.hasHorizontalScroller = false
             textView.backgroundColor = .clear
             textView.drawsBackground = false
+            textView.delegate = coordinator
         }
         coordinator.watch(textViews)
     }
 
-    final class Coordinator: NSObject, @unchecked Sendable {
+    private func nearbyTextViews(from view: NSView) -> [NSTextView] {
+        var candidate = view.superview
+        while let currentView = candidate {
+            let textViews = currentView.descendantTextViews
+            if !textViews.isEmpty {
+                return textViews
+            }
+            candidate = currentView.superview
+        }
+
+        return view.window?.contentView?.descendantTextViews ?? []
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate, @unchecked Sendable {
         var onMarkedTextChange: ((Bool) -> Void)?
+        var onSubmit: (() -> Void)?
+        var onInsertOriginal: (() -> Void)?
+        var onEscape: (() -> Void)?
         private var observedTextViewIDs: Set<ObjectIdentifier> = []
         private var eventMonitor: Any?
         private var textViews: [WeakTextView] = []
         private var lastMarkedTextState = false
 
-        init(onMarkedTextChange: ((Bool) -> Void)?) {
+        init(
+            onMarkedTextChange: ((Bool) -> Void)?,
+            onSubmit: (() -> Void)?,
+            onInsertOriginal: (() -> Void)?,
+            onEscape: (() -> Void)?
+        ) {
             self.onMarkedTextChange = onMarkedTextChange
+            self.onSubmit = onSubmit
+            self.onInsertOriginal = onInsertOriginal
+            self.onEscape = onEscape
             super.init()
         }
 
@@ -909,6 +958,37 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
 
         @objc @MainActor private func textViewStateDidChange() {
             publishMarkedTextState()
+        }
+
+        @MainActor
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            guard !textView.hasMarkedText() else {
+                return false
+            }
+
+            if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                onEscape?()
+                return true
+            }
+
+            guard commandSelector == #selector(NSResponder.insertNewline(_:))
+                    || commandSelector == #selector(NSResponder.insertNewlineIgnoringFieldEditor(_:))
+            else {
+                return false
+            }
+
+            let modifiers = NSApp.currentEvent?.modifierFlags.intersection(.deviceIndependentFlagsMask) ?? []
+            if modifiers.contains(.command) {
+                onInsertOriginal?()
+                return true
+            }
+
+            if modifiers.contains(.shift) || modifiers.contains(.option) {
+                return false
+            }
+
+            onSubmit?()
+            return true
         }
 
         @MainActor
@@ -1024,6 +1104,10 @@ private struct PopoverKeyEventHandler: NSViewRepresentable {
             }
 
             let isReturnKey = event.keyCode == 36 || event.keyCode == 76
+            if view?.window?.firstResponder is NSTextView, isReturnKey || event.keyCode == 53 {
+                return event
+            }
+
             if isComposingText, isReturnKey || event.keyCode == 53 {
                 return event
             }
