@@ -205,16 +205,27 @@ final class AppCoordinator: NSObject {
 
     private func configureStatusItemIcon() {
         statusItem.length = NSStatusItem.squareLength
-        statusItem.button?.image = nil
-        statusItem.button?.attributedTitle = NSAttributedString(
-            string: "I",
-            attributes: [
-                .font: NSFont.systemFont(ofSize: 15, weight: .semibold),
-                .foregroundColor: NSColor.labelColor
-            ]
-        )
+        statusItem.button?.attributedTitle = NSAttributedString()
+        statusItem.button?.image = makeMenuBarIcon()
+        statusItem.button?.imagePosition = .imageOnly
         statusItem.button?.toolTip = "Inklet"
         statusItem.button?.setAccessibilityLabel("Inklet")
+    }
+
+    private func makeMenuBarIcon() -> NSImage {
+        let image = NSImage(size: NSSize(width: 18, height: 18))
+        image.lockFocus()
+        defer {
+            image.unlockFocus()
+            image.isTemplate = true
+        }
+
+        NSColor.black.setFill()
+        NSBezierPath(roundedRect: NSRect(x: 4.5, y: 13.1, width: 9, height: 1.8), xRadius: 0.9, yRadius: 0.9).fill()
+        NSBezierPath(roundedRect: NSRect(x: 8.0, y: 4.0, width: 2, height: 10.4), xRadius: 1.0, yRadius: 1.0).fill()
+        NSBezierPath(roundedRect: NSRect(x: 4.2, y: 3.1, width: 9.6, height: 1.8), xRadius: 0.9, yRadius: 0.9).fill()
+
+        return image
     }
 
     private func configureStatusItemMenu() {
