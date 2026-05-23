@@ -417,6 +417,8 @@ struct SettingsView: View {
                             Image(systemName: section.icon)
                                 .frame(width: 18)
                             Text(section.title)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                             Spacer()
                         }
                         .font(.system(size: 13, weight: selectedSection == section ? .semibold : .regular))
@@ -441,7 +443,7 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .overlay(alignment: .top) { Divider().opacity(0.45) }
         }
-        .frame(width: 160)
+        .frame(width: 172)
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.45))
         .overlay(alignment: .trailing) { Divider().opacity(0.55) }
     }
@@ -706,6 +708,7 @@ struct SettingsView: View {
                 TextEditor(text: $model.config.promptModes[index].systemPrompt)
                     .font(.system(size: 13))
                     .scrollContentBackground(.hidden)
+                    .background(InkletTextEditorChromeNormalizer())
                     .frame(height: 178)
                     .padding(10)
                     .modifier(InkletFieldModifier())

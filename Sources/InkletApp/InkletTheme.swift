@@ -104,3 +104,65 @@ struct InkletFieldModifier: ViewModifier {
             }
     }
 }
+
+struct InkletTextEditorChromeNormalizer: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        DispatchQueue.main.async {
+            normalizeTextEditors(from: view)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            normalizeTextEditors(from: nsView)
+        }
+    }
+
+    private func normalizeTextEditors(from view: NSView) {
+        for textView in nearbyTextViews(from: view) {
+            textView.textContainerInset = .zero
+            textView.textContainer?.lineFragmentPadding = 0
+            textView.enclosingScrollView?.contentInsets = NSEdgeInsetsZero
+            textView.enclosingScrollView?.automaticallyAdjustsContentInsets = false
+            textView.enclosingScrollView?.drawsBackground = false
+            textView.enclosingScrollView?.autohidesScrollers = true
+            textView.enclosingScrollView?.scrollerStyle = .overlay
+            textView.enclosingScrollView?.hasVerticalScroller = false
+            textView.enclosingScrollView?.horizontalScrollElasticity = .none
+            textView.enclosingScrollView?.hasHorizontalScroller = false
+            textView.backgroundColor = .clear
+            textView.drawsBackground = false
+        }
+    }
+
+    private func nearbyTextViews(from view: NSView) -> [NSTextView] {
+        var candidate = view.superview
+        while let currentView = candidate {
+            let textViews = descendantTextViews(in: currentView)
+            if !textViews.isEmpty {
+                return textViews
+            }
+            candidate = currentView.superview
+        }
+
+        guard let contentView = view.window?.contentView else {
+            return []
+        }
+        return descendantTextViews(in: contentView)
+    }
+
+    private func descendantTextViews(in view: NSView) -> [NSTextView] {
+        var textViews: [NSTextView] = []
+        if let textView = view as? NSTextView {
+            textViews.append(textView)
+        }
+
+        for subview in view.subviews {
+            textViews.append(contentsOf: descendantTextViews(in: subview))
+        }
+
+        return textViews
+    }
+}

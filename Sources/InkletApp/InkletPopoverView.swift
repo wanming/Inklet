@@ -502,6 +502,7 @@ struct InkletPopoverView: View {
             .background(
                 TextEditorInsetNormalizer(
                     onMarkedTextChange: { editorHasMarkedText = $0 },
+                    onTextChange: { model.updateSourceText($0) },
                     onSubmit: { model.submit() },
                     onInsertOriginal: { model.insertOriginal() },
                     onEscape: { model.escape() }
@@ -560,6 +561,7 @@ struct InkletPopoverView: View {
                 .scrollContentBackground(.hidden)
                 .background(
                     TextEditorInsetNormalizer(
+                        onTextChange: { model.updateResultText($0) },
                         onSubmit: { model.submit() },
                         onInsertOriginal: { model.insertOriginal() },
                         onEscape: { model.escape() }
@@ -810,6 +812,7 @@ private struct ResultEditorHeightPreferenceKey: PreferenceKey {
 
 private struct TextEditorInsetNormalizer: NSViewRepresentable {
     var onMarkedTextChange: ((Bool) -> Void)?
+    var onTextChange: ((String) -> Void)?
     var onSubmit: (() -> Void)?
     var onInsertOriginal: (() -> Void)?
     var onEscape: (() -> Void)?
@@ -817,6 +820,7 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
     func makeCoordinator() -> Coordinator {
         Coordinator(
             onMarkedTextChange: onMarkedTextChange,
+            onTextChange: onTextChange,
             onSubmit: onSubmit,
             onInsertOriginal: onInsertOriginal,
             onEscape: onEscape
@@ -833,6 +837,7 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
 
     func updateNSView(_ nsView: NSView, context: Context) {
         context.coordinator.onMarkedTextChange = onMarkedTextChange
+        context.coordinator.onTextChange = onTextChange
         context.coordinator.onSubmit = onSubmit
         context.coordinator.onInsertOriginal = onInsertOriginal
         context.coordinator.onEscape = onEscape
@@ -855,8 +860,7 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
             textView.enclosingScrollView?.drawsBackground = false
             textView.enclosingScrollView?.autohidesScrollers = true
             textView.enclosingScrollView?.scrollerStyle = .overlay
-            textView.enclosingScrollView?.verticalScroller?.controlSize = .mini
-            textView.enclosingScrollView?.verticalScroller?.alphaValue = 0.0
+            textView.enclosingScrollView?.hasVerticalScroller = false
             textView.enclosingScrollView?.horizontalScrollElasticity = .none
             textView.enclosingScrollView?.hasHorizontalScroller = false
             textView.backgroundColor = .clear
@@ -881,6 +885,7 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
 
     final class Coordinator: NSObject, NSTextViewDelegate, @unchecked Sendable {
         var onMarkedTextChange: ((Bool) -> Void)?
+        var onTextChange: ((String) -> Void)?
         var onSubmit: (() -> Void)?
         var onInsertOriginal: (() -> Void)?
         var onEscape: (() -> Void)?
@@ -891,11 +896,13 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
 
         init(
             onMarkedTextChange: ((Bool) -> Void)?,
+            onTextChange: ((String) -> Void)?,
             onSubmit: (() -> Void)?,
             onInsertOriginal: (() -> Void)?,
             onEscape: (() -> Void)?
         ) {
             self.onMarkedTextChange = onMarkedTextChange
+            self.onTextChange = onTextChange
             self.onSubmit = onSubmit
             self.onInsertOriginal = onInsertOriginal
             self.onEscape = onEscape
@@ -927,13 +934,13 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
 
                 NotificationCenter.default.addObserver(
                     self,
-                    selector: #selector(textViewStateDidChange),
+                    selector: #selector(textViewStateDidChange(_:)),
                     name: NSText.didChangeNotification,
                     object: textView,
                 )
                 NotificationCenter.default.addObserver(
                     self,
-                    selector: #selector(textViewStateDidChange),
+                    selector: #selector(textViewStateDidChange(_:)),
                     name: NSTextView.didChangeSelectionNotification,
                     object: textView,
                 )
@@ -956,8 +963,17 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
             } as AnyObject
         }
 
-        @objc @MainActor private func textViewStateDidChange() {
+        @objc @MainActor private func textViewStateDidChange(_ notification: Notification) {
+            if let textView = notification.object as? NSTextView,
+               !textView.hasMarkedText() {
+                onTextChange?(textView.string)
+            }
             publishMarkedTextState()
+        }
+
+        @MainActor
+        func textDidChange(_ notification: Notification) {
+            textViewStateDidChange(notification)
         }
 
         @MainActor
@@ -1104,10 +1120,6 @@ private struct PopoverKeyEventHandler: NSViewRepresentable {
             }
 
             let isReturnKey = event.keyCode == 36 || event.keyCode == 76
-            if view?.window?.firstResponder is NSTextView, isReturnKey || event.keyCode == 53 {
-                return event
-            }
-
             if isComposingText, isReturnKey || event.keyCode == 53 {
                 return event
             }
