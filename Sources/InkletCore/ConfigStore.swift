@@ -16,7 +16,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
     public var timeoutSeconds: Double
     public var hotkey: String
     public var appearance: AppAppearance
-    public var defaultModeID: String
     public var promptModes: [PromptMode]
     public var customOpenAICompatibleEndpoint: String
 
@@ -28,7 +27,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
         timeoutSeconds: Double,
         hotkey: String,
         appearance: AppAppearance = .system,
-        defaultModeID: String,
         promptModes: [PromptMode],
         customOpenAICompatibleEndpoint: String = LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString
     ) {
@@ -39,7 +37,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
         self.timeoutSeconds = timeoutSeconds
         self.hotkey = hotkey
         self.appearance = appearance
-        self.defaultModeID = defaultModeID
         self.promptModes = promptModes
         self.customOpenAICompatibleEndpoint = customOpenAICompatibleEndpoint
     }
@@ -52,7 +49,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
             timeoutSeconds: 20,
             hotkey: "⌥Space",
             appearance: .system,
-            defaultModeID: PromptMode.translateToEnglishID,
             promptModes: PromptModeStore.defaultStore().modes
         )
     }
@@ -74,15 +70,17 @@ public struct AppConfig: Codable, Equatable, Sendable {
         promptModeStore.visibleModes
     }
 
+    public var defaultVisibleModeID: String {
+        visiblePromptModes.first?.id ?? PromptMode.translateToEnglishID
+    }
+
     public func visibleModeID(preferredModeID: String) -> String {
         let visibleModeIDs = Set(visiblePromptModes.map(\.id))
-        let fallbackIDs = [preferredModeID, defaultModeID]
-
-        for modeID in fallbackIDs where visibleModeIDs.contains(modeID) {
-            return modeID
+        if visibleModeIDs.contains(preferredModeID) {
+            return preferredModeID
         }
 
-        return visiblePromptModes.first?.id ?? PromptMode.translateToEnglishID
+        return defaultVisibleModeID
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -93,7 +91,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
         case timeoutSeconds
         case hotkey
         case appearance
-        case defaultModeID
         case promptModes
         case customOpenAICompatibleEndpoint
     }
@@ -109,13 +106,9 @@ public struct AppConfig: Codable, Equatable, Sendable {
         timeoutSeconds = try container.decodeIfPresent(Double.self, forKey: .timeoutSeconds) ?? defaults.timeoutSeconds
         hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey) ?? defaults.hotkey
         appearance = try container.decodeIfPresent(AppAppearance.self, forKey: .appearance) ?? defaults.appearance
-        let decodedDefaultModeID = try container.decodeIfPresent(String.self, forKey: .defaultModeID) ?? defaults.defaultModeID
         promptModes = AppConfig.migratedPromptModes(
             try container.decodeIfPresent([PromptMode].self, forKey: .promptModes) ?? defaults.promptModes
         )
-        defaultModeID = AppConfig.legacyPromptModeIDs.contains(decodedDefaultModeID)
-            ? defaults.defaultModeID
-            : decodedDefaultModeID
         customOpenAICompatibleEndpoint = try container.decodeIfPresent(
             String.self,
             forKey: .customOpenAICompatibleEndpoint
@@ -132,7 +125,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
         try container.encode(timeoutSeconds, forKey: .timeoutSeconds)
         try container.encode(hotkey, forKey: .hotkey)
         try container.encode(appearance, forKey: .appearance)
-        try container.encode(defaultModeID, forKey: .defaultModeID)
         try container.encode(promptModes, forKey: .promptModes)
         try container.encode(customOpenAICompatibleEndpoint, forKey: .customOpenAICompatibleEndpoint)
     }

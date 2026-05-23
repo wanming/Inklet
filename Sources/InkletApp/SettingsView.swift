@@ -34,7 +34,8 @@ final class SettingsViewModel: ObservableObject {
         self.message = ""
         self.interfaceLanguage = InkletLanguageStore.selectedLanguage
         self.providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: loadedConfig.providerID) ?? ""
-        self.selectedPromptModeID = loadedConfig.defaultModeID
+        self.selectedPromptModeID = loadedConfig.promptModes.sorted { $0.sortOrder < $1.sortOrder }.first?.id
+            ?? PromptMode.translateToEnglishID
         self.cachedProviderModels = Dictionary(
             uniqueKeysWithValues: LLMProviderPreset.all.compactMap { preset in
                 guard let modelIDs = modelCatalogService.cachedModelIDs(for: preset.id) else {
@@ -189,12 +190,8 @@ final class SettingsViewModel: ObservableObject {
             config.promptModes[firstIndex].isVisible = true
         }
 
-        if config.defaultModeID == modeID {
-            config.defaultModeID = config.visibleModeID(preferredModeID: config.promptModes.first?.id ?? PromptMode.translateToEnglishID)
-        }
-
         if selectedPromptModeID == modeID {
-            selectedPromptModeID = config.visibleModeID(preferredModeID: config.defaultModeID)
+            selectedPromptModeID = config.promptModes.first?.id ?? PromptMode.translateToEnglishID
         }
     }
 
@@ -230,19 +227,6 @@ final class SettingsViewModel: ObservableObject {
         }
 
         config.promptModes[index].isVisible.toggle()
-        if modeID == config.defaultModeID, !config.promptModes[index].isVisible {
-            config.defaultModeID = config.visibleModeID(preferredModeID: config.promptModes.first?.id ?? PromptMode.translateToEnglishID)
-        }
-    }
-
-    func setDefaultPromptMode(modeID: String) {
-        guard let index = config.promptModes.firstIndex(where: { $0.id == modeID }) else {
-            return
-        }
-
-        config.promptModes[index].isVisible = true
-        config.defaultModeID = modeID
-        message = L10n.text("settings.mode.defaultPending")
     }
 
     func canMovePromptMode(modeID: String, direction: Int) -> Bool {
@@ -275,8 +259,6 @@ final class SettingsViewModel: ObservableObject {
                 message = L10n.text("settings.error.visibleModeRequired")
                 return
             }
-            config.defaultModeID = config.visibleModeID(preferredModeID: config.defaultModeID)
-
             guard !config.model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 message = L10n.text("settings.error.modelRequired")
                 return
@@ -555,16 +537,6 @@ struct SettingsView: View {
                     .frame(width: 220, height: 34)
             }
 
-            settingsRow(L10n.text("settings.row.defaultMode"), help: L10n.text("settings.help.defaultMode")) {
-                Picker("", selection: $model.config.defaultModeID) {
-                    ForEach(model.config.promptModes) { mode in
-                        Text(mode.localizedName).tag(mode.id)
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: 320, alignment: .leading)
-            }
-
             settingsRow(L10n.text("settings.row.temperature"), help: L10n.text("settings.help.temperature")) {
                 HStack(spacing: 12) {
                     Slider(value: $model.config.temperature, in: 0...2, step: 0.1)
@@ -715,8 +687,6 @@ struct SettingsView: View {
 
     private func promptModeDetail(index: Int) -> some View {
         VStack(alignment: .leading, spacing: 20) {
-            defaultPromptModeControl(index: index)
-
             VStack(spacing: 13) {
                 settingsRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
                     TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
@@ -750,42 +720,6 @@ struct SettingsView: View {
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 22)
-    }
-
-    private func defaultPromptModeControl(index: Int) -> some View {
-        let mode = model.config.promptModes[index]
-        let isDefault = mode.id == model.config.defaultModeID
-
-        return HStack(alignment: .center, spacing: 12) {
-            Image(systemName: isDefault ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(isDefault ? InkletTheme.primary : .secondary.opacity(0.45))
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(isDefault ? L10n.text("settings.mode.defaultCurrent") : L10n.text("settings.mode.defaultAvailable"))
-                    .font(.system(size: 13, weight: .semibold))
-                Text(L10n.text("settings.mode.defaultHelp"))
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            if !isDefault {
-                Button(L10n.text("settings.mode.setDefault")) {
-                    model.setDefaultPromptMode(modeID: mode.id)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            }
-        }
-        .padding(12)
-        .background(InkletTheme.elevatedBackground, in: RoundedRectangle(cornerRadius: 9))
-        .overlay {
-            RoundedRectangle(cornerRadius: 9)
-                .stroke(InkletTheme.subtleBorder)
-        }
     }
 
     private var permissionsPanel: some View {

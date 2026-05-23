@@ -56,7 +56,7 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.timeoutSeconds, 20)
         XCTAssertEqual(config.hotkey, "⌥Space")
         XCTAssertEqual(config.appearance, .system)
-        XCTAssertEqual(config.defaultModeID, PromptMode.translateToEnglishID)
+        XCTAssertEqual(config.defaultVisibleModeID, PromptMode.translateToEnglishID)
         XCTAssertEqual(
             config.customOpenAICompatibleEndpoint,
             LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString
@@ -77,7 +77,6 @@ final class ConfigStoreTests: XCTestCase {
         config.timeoutSeconds = 9
         config.hotkey = "⌘Space"
         config.appearance = .dark
-        config.defaultModeID = PromptMode.improveWritingID
         config.customOpenAICompatibleEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
         config.promptModes = [
             PromptMode(
@@ -110,7 +109,7 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.timeoutSeconds, AppConfig.defaultConfig().timeoutSeconds)
         XCTAssertEqual(config.hotkey, AppConfig.defaultConfig().hotkey)
         XCTAssertEqual(config.appearance, AppConfig.defaultConfig().appearance)
-        XCTAssertEqual(config.defaultModeID, AppConfig.defaultConfig().defaultModeID)
+        XCTAssertEqual(config.defaultVisibleModeID, AppConfig.defaultConfig().defaultVisibleModeID)
         XCTAssertEqual(config.promptModes, AppConfig.defaultConfig().promptModes)
         XCTAssertEqual(
             config.customOpenAICompatibleEndpoint,
@@ -121,7 +120,6 @@ final class ConfigStoreTests: XCTestCase {
     func testConfigDecodeMigratesLegacyAutoModesToMultilingualDefaults() throws {
         let data = """
         {
-            "defaultModeID": "\(PromptMode.autoID)",
             "promptModes": [
                 {
                     "id": "\(PromptMode.autoID)",
@@ -162,7 +160,7 @@ final class ConfigStoreTests: XCTestCase {
 
         let config = try JSONDecoder().decode(AppConfig.self, from: data)
 
-        XCTAssertEqual(config.defaultModeID, PromptMode.translateToEnglishID)
+        XCTAssertEqual(config.defaultVisibleModeID, "custom-saved")
         XCTAssertFalse(config.promptModes.contains { $0.id == PromptMode.autoID })
         XCTAssertFalse(config.promptModes.contains { $0.id == PromptMode.chineseToEnglishID })
         XCTAssertTrue(config.promptModes.contains { $0.id == "custom-saved" })
@@ -183,7 +181,6 @@ final class ConfigStoreTests: XCTestCase {
 
     func testVisibleModeIDKeepsVisiblePreferredMode() {
         var config = AppConfig.defaultConfig()
-        config.defaultModeID = "fallback"
         config.promptModes = [
             mode(id: PromptMode.autoID, sortOrder: 0),
             mode(id: "preferred", sortOrder: 1),
@@ -193,27 +190,26 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.visibleModeID(preferredModeID: "preferred"), "preferred")
     }
 
-    func testVisibleModeIDFallsBackToVisibleDefaultMode() {
+    func testVisibleModeIDFallsBackToFirstVisibleMode() {
         var config = AppConfig.defaultConfig()
-        config.defaultModeID = "fallback"
         config.promptModes = [
-            mode(id: PromptMode.autoID, sortOrder: 0),
+            mode(id: "first-visible", sortOrder: 0),
             mode(id: "hidden-preferred", sortOrder: 1, isVisible: false),
             mode(id: "fallback", sortOrder: 2)
         ]
 
-        XCTAssertEqual(config.visibleModeID(preferredModeID: "hidden-preferred"), "fallback")
+        XCTAssertEqual(config.visibleModeID(preferredModeID: "hidden-preferred"), "first-visible")
     }
 
-    func testVisibleModeIDFallsBackToFirstVisibleModeWhenPreferredAndDefaultAreHidden() {
+    func testDefaultVisibleModeIDUsesFirstVisibleMode() {
         var config = AppConfig.defaultConfig()
-        config.defaultModeID = "hidden-default"
         config.promptModes = [
+            mode(id: "hidden-first", sortOrder: 0, isVisible: false),
             mode(id: "first-visible", sortOrder: 0),
             mode(id: "second-visible", sortOrder: 1),
-            mode(id: "hidden-default", sortOrder: 2, isVisible: false)
         ]
 
+        XCTAssertEqual(config.defaultVisibleModeID, "first-visible")
         XCTAssertEqual(config.visibleModeID(preferredModeID: "missing"), "first-visible")
     }
 

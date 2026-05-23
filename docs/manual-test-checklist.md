@@ -25,7 +25,7 @@
 ## Settings
 
 - `Command+,`: open Settings while Inklet is active.
-- General: change hotkey, default prompt mode, timeout, temperature, language, and appearance.
+- General: change hotkey, timeout, temperature, language, and appearance.
 - Providers: configure one provider, API key, model, and custom OpenAI-compatible endpoint when needed.
 - Prompt Modes: add, edit, hide, delete with confirmation, and reorder prompt modes.
 - Permissions: verify Accessibility status and the button that opens System Settings.

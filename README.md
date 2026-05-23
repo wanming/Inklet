@@ -16,7 +16,7 @@ Press a global shortcut, type or paste text, choose a writing mode, let your pre
   - Custom Prompt
 - Inserts generated text back into the previously focused app.
 - Restores your clipboard after insertion.
-- Lets you edit prompt modes, default mode, model, timeout, temperature, and hotkey.
+- Lets you edit prompt modes, model, timeout, temperature, and hotkey.
 - Supports multiple LLM providers, including OpenAI, Anthropic, Google Gemini, DeepSeek, Qwen, Moonshot Kimi, Zhipu GLM, MiniMax, SiliconFlow, Volcengine Ark, Tencent Hunyuan, Baichuan, 01.AI Yi, xAI, Groq, Mistral, OpenRouter, Perplexity, Together AI, Cerebras, and custom OpenAI-compatible endpoints.
 - Provides English and Chinese app UI localization.
 
@@ -83,7 +83,7 @@ If tests fail because `XCTest` is unavailable, install the full Xcode app instea
 1. Start the app with `swift run Inklet`.
 2. Open Inklet from the menu bar and go to Settings.
 3. Choose a provider and enter its API key.
-4. Confirm the model, timeout, temperature, and default writing mode.
+4. Confirm the model, timeout, temperature, and prompt mode order.
 5. Grant Accessibility permission in macOS System Settings when prompted.
 6. Focus any text field in another app, press `Option+Space`, enter text, press `Enter` to transform, then press `Enter` again to insert.
 
@@ -97,6 +97,7 @@ If tests fail because `XCTest` is unavailable, install the full Xcode app instea
 - `Command+,`: open Settings while Inklet is active.
 
 Prompt modes also have default shortcuts such as `Command+1` through `Command+6` in the mode list.
+The first visible prompt mode in Settings is selected when the popover opens.
 
 ## Repository Layout
 

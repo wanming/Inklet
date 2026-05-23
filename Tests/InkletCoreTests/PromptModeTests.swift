@@ -28,12 +28,35 @@ final class PromptModeTests: XCTestCase {
         XCTAssertEqual(mode.id, PromptMode.makeConciseID)
     }
 
-    func testResolveFallsBackToTranslateToEnglishForMissingMode() {
-        let store = PromptModeStore.defaultStore()
+    func testResolveFallsBackToFirstVisibleModeForMissingMode() {
+        let store = PromptModeStore(modes: [
+            PromptMode(
+                id: "first-visible",
+                name: "First Visible",
+                description: "first visible mode",
+                systemPrompt: "first visible prompt",
+                shortcut: nil,
+                participatesInAuto: false,
+                autoRule: .none,
+                sortOrder: 0,
+                isVisible: true
+            ),
+            PromptMode(
+                id: PromptMode.translateToEnglishID,
+                name: "Translate to English",
+                description: "translate mode",
+                systemPrompt: "translate prompt",
+                shortcut: nil,
+                participatesInAuto: false,
+                autoRule: .none,
+                sortOrder: 1,
+                isVisible: true
+            )
+        ])
 
         let mode = store.resolve(modeID: "missing", sourceText: "hello")
 
-        XCTAssertEqual(mode.id, PromptMode.translateToEnglishID)
+        XCTAssertEqual(mode.id, "first-visible")
     }
 
     func testHiddenModesAreExcludedFromVisibleModes() {

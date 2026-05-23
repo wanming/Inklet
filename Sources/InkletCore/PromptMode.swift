@@ -160,8 +160,7 @@ public struct PromptModeStore: Equatable, Sendable {
             return mode
         }
 
-        return visibleModes.first { $0.id == PromptMode.translateToEnglishID }
-            ?? visibleModes.first
+        return visibleModes.first
             ?? PromptModeStore.defaultTranslateToEnglishMode
     }
 

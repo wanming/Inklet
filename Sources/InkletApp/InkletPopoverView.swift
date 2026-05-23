@@ -53,7 +53,7 @@ final class InkletPopoverViewModel: ObservableObject {
         let loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         self.config = loadedConfig
         self.modes = loadedConfig.visiblePromptModes
-        self.selectedModeID = loadedConfig.visibleModeID(preferredModeID: loadedConfig.defaultModeID)
+        self.selectedModeID = loadedConfig.defaultVisibleModeID
         self.appearance = loadedConfig.appearance
     }
 
@@ -66,7 +66,7 @@ final class InkletPopoverViewModel: ObservableObject {
 
         config = (try? configStore.load()) ?? AppConfig.defaultConfig()
         modes = config.visiblePromptModes
-        selectedModeID = config.visibleModeID(preferredModeID: selectedModeID)
+        selectedModeID = config.defaultVisibleModeID
         appearance = config.appearance
         sourceText = ""
         resultText = ""
