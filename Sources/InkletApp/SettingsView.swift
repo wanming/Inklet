@@ -361,7 +361,7 @@ struct SettingsView: View {
             sidebar
             detail
         }
-        .frame(width: 920, height: 560)
+        .frame(width: 860, height: 540)
         .background(InkletTheme.panelBackground)
         .clipShape(RoundedRectangle(cornerRadius: InkletTheme.cornerRadius))
         .preferredColorScheme(model.config.appearance.colorScheme)
@@ -402,7 +402,7 @@ struct SettingsView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 14)
             .padding(.top, 14)
             .padding(.bottom, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -421,8 +421,8 @@ struct SettingsView: View {
                         }
                         .font(.system(size: 13, weight: selectedSection == section ? .semibold : .regular))
                         .foregroundStyle(selectedSection == section ? .primary : .secondary)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
                         .background(
                             selectedSection == section ? InkletTheme.primary.opacity(0.18) : Color.clear
                         )
@@ -436,12 +436,12 @@ struct SettingsView: View {
             Text(L10n.format("settings.version", "1.0.0"))
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 14)
                 .padding(.vertical, 13)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .overlay(alignment: .top) { Divider().opacity(0.45) }
         }
-        .frame(width: 180)
+        .frame(width: 160)
         .background(Color(nsColor: .controlBackgroundColor).opacity(0.45))
         .overlay(alignment: .trailing) { Divider().opacity(0.55) }
     }
@@ -456,7 +456,7 @@ struct SettingsView: View {
                 case .general:
                     ScrollView {
                         generalPanel
-                            .padding(24)
+                            .padding(20)
                     }
                 case .providers:
                     providersPanel
@@ -465,7 +465,7 @@ struct SettingsView: View {
                 case .permissions:
                     ScrollView {
                         permissionsPanel
-                            .padding(24)
+                            .padding(20)
                     }
                 }
             }
@@ -492,9 +492,9 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 10)
-        .padding(.bottom, 10)
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
     }
 
     private var sectionDescription: String {
@@ -627,7 +627,7 @@ struct SettingsView: View {
                         }
                     }
                 }
-                .padding(24)
+                .padding(20)
             }
     }
 
@@ -648,7 +648,7 @@ struct SettingsView: View {
                         promptModePendingDeletionID = modeID
                     }
                 )
-                .padding(.top, 10)
+                .padding(.top, 8)
                 .background(Color(nsColor: .controlBackgroundColor).opacity(0.16))
                 Divider().opacity(0.55)
                 Button {
@@ -666,9 +666,9 @@ struct SettingsView: View {
                         }
                 }
                 .buttonStyle(.plain)
-                .padding(12)
+                .padding(10)
             }
-            .frame(width: 300)
+            .frame(width: 288)
             .overlay(alignment: .trailing) { Divider().opacity(0.55) }
 
             if let index = model.selectedPromptModeIndex {
@@ -686,8 +686,8 @@ struct SettingsView: View {
     }
 
     private func promptModeDetail(index: Int) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(spacing: 13) {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(spacing: 11) {
                 settingsRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
                     TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
                         .textFieldStyle(.roundedBorder)
@@ -706,7 +706,7 @@ struct SettingsView: View {
                 TextEditor(text: $model.config.promptModes[index].systemPrompt)
                     .font(.system(size: 13))
                     .scrollContentBackground(.hidden)
-                    .frame(height: 190)
+                    .frame(height: 178)
                     .padding(10)
                     .modifier(InkletFieldModifier())
             }
@@ -718,8 +718,8 @@ struct SettingsView: View {
             )
             .padding(.top, 2)
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 22)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
     }
 
     private var permissionsPanel: some View {
@@ -806,13 +806,13 @@ struct SettingsView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
         .background(.regularMaterial)
     }
 
     private func settingsPanel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             content()
         }
         .padding(0)
@@ -824,7 +824,7 @@ struct SettingsView: View {
         help: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
@@ -884,8 +884,8 @@ private struct PromptModeTableView: NSViewRepresentable {
         column.resizingMask = .autoresizingMask
         tableView.addTableColumn(column)
         tableView.headerView = nil
-        tableView.rowHeight = 40
-        tableView.intercellSpacing = NSSize(width: 0, height: 4)
+        tableView.rowHeight = 36
+        tableView.intercellSpacing = NSSize(width: 0, height: 2)
         tableView.backgroundColor = .clear
         tableView.selectionHighlightStyle = .none
         tableView.usesAlternatingRowBackgroundColors = false
@@ -896,6 +896,8 @@ private struct PromptModeTableView: NSViewRepresentable {
         let scrollView = NSScrollView()
         scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.horizontalScrollElasticity = .none
         scrollView.autohidesScrollers = true
         scrollView.documentView = tableView
         context.coordinator.tableView = tableView
