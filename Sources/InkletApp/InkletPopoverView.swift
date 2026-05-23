@@ -720,6 +720,8 @@ struct InkletPopoverView: View {
             "sparkles"
         case PromptMode.chineseToEnglishID:
             "globe.asia.australia"
+        case PromptMode.chineseSummaryID:
+            "text.alignleft"
         case PromptMode.polishEnglishID:
             "wand.and.stars"
         default:

@@ -130,16 +130,21 @@ public struct AppConfig: Codable, Equatable, Sendable {
     }
 
     private static func migratedPromptModes(_ modes: [PromptMode]) -> [PromptMode] {
-        let legacyIDs = legacyPromptModeIDs
-        guard modes.contains(where: { legacyIDs.contains($0.id) }) else {
+        let defaultModes = PromptModeStore.defaultStore().modes
+        let defaultIDs = Set(defaultModes.map(\.id))
+        let retiredIDs = retiredBuiltInPromptModeIDs
+        let shouldMigrateBuiltIns = modes.contains { retiredIDs.contains($0.id) }
+            || modes.contains { $0.id == PromptMode.translateToEnglishID && $0.name != defaultModes[0].name }
+
+        guard shouldMigrateBuiltIns else {
             return modes
         }
 
-        let modesWithoutLegacy = modes.filter { !legacyIDs.contains($0.id) }
-        let existingIDs = Set(modesWithoutLegacy.map(\.id))
-        let missingDefaults = PromptModeStore.defaultStore().modes.filter { !existingIDs.contains($0.id) }
+        let customModes = modes.filter { mode in
+            !retiredIDs.contains(mode.id) && !defaultIDs.contains(mode.id)
+        }
 
-        return (modesWithoutLegacy + missingDefaults)
+        return (defaultModes + customModes)
             .enumerated()
             .map { index, mode in
                 var migratedMode = mode
@@ -150,11 +155,16 @@ public struct AppConfig: Codable, Equatable, Sendable {
             }
     }
 
-    private static var legacyPromptModeIDs: Set<String> {
+    private static var retiredBuiltInPromptModeIDs: Set<String> {
         [
             PromptMode.autoID,
             PromptMode.chineseToEnglishID,
-            PromptMode.polishEnglishID
+            PromptMode.polishEnglishID,
+            PromptMode.improveWritingID,
+            PromptMode.makeConciseID,
+            PromptMode.professionalToneID,
+            PromptMode.friendlyReplyID,
+            PromptMode.customPromptID
         ]
     }
 }

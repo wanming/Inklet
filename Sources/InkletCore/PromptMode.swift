@@ -6,6 +6,7 @@ public struct PromptMode: Codable, Equatable, Identifiable, Sendable {
     public static let professionalToneID = "professional-tone"
     public static let friendlyReplyID = "friendly-reply"
     public static let customPromptID = "custom-prompt"
+    public static let chineseSummaryID = "chinese-summary"
     public static let chineseToEnglishID = "chinese-to-english"
     public static let polishEnglishID = "polish-english"
 
@@ -76,9 +77,16 @@ public struct PromptModeStore: Equatable, Sendable {
         PromptModeStore(modes: [
             PromptMode(
                 id: PromptMode.translateToEnglishID,
-                name: "Translate to English",
-                description: "把任意语言翻译成自然英文",
-                systemPrompt: "Translate the user's text into natural English. Preserve meaning, tone, names, formatting, and intent. Return only the translated text.",
+                name: "To Simple and Correct English",
+                description: "Rewrite or translate into simple, correct English",
+                systemPrompt: """
+                Rewrite the user's text into simple, correct, natural English.
+                If the input is not English, translate it into English first.
+                Fix grammar, spelling, word choice, and awkward phrasing.
+                Keep the original meaning, names, numbers, formatting, and intent.
+                Do not add explanations, alternatives, quotes, or markdown.
+                Return only the final rewritten text.
+                """,
                 shortcut: "⌘1",
                 participatesInAuto: false,
                 autoRule: .none,
@@ -86,58 +94,22 @@ public struct PromptModeStore: Equatable, Sendable {
                 isVisible: true
             ),
             PromptMode(
-                id: PromptMode.improveWritingID,
-                name: "Improve Writing",
-                description: "保持原语言，润色语法、表达和清晰度",
-                systemPrompt: "Improve the user's writing while keeping the original language. Fix grammar, spelling, word choice, clarity, and flow while preserving meaning and tone. Return only the improved text.",
+                id: PromptMode.chineseSummaryID,
+                name: "To Chinese Summary",
+                description: "Summarize any text into concise Simplified Chinese",
+                systemPrompt: """
+                Summarize the user's text in concise, natural Simplified Chinese.
+                Capture the key facts, decisions, dates, names, numbers, and action items.
+                Remove repetition and minor details unless they are important.
+                Use clear paragraphs or short bullet points when that improves readability.
+                Do not add information that is not in the original text.
+                Do not include explanations about the task.
+                Return only the Chinese summary.
+                """,
                 shortcut: "⌘2",
                 participatesInAuto: false,
                 autoRule: .none,
                 sortOrder: 1,
-                isVisible: true
-            ),
-            PromptMode(
-                id: PromptMode.makeConciseID,
-                name: "Make Concise",
-                description: "保持原语言，压缩文字并保留重点",
-                systemPrompt: "Make the user's text more concise while keeping the original language. Remove redundancy, keep the key points, and preserve the intended tone. Return only the concise version.",
-                shortcut: "⌘3",
-                participatesInAuto: false,
-                autoRule: .none,
-                sortOrder: 2,
-                isVisible: true
-            ),
-            PromptMode(
-                id: PromptMode.professionalToneID,
-                name: "Professional Tone",
-                description: "保持原语言，改成更职业、清楚、礼貌的语气",
-                systemPrompt: "Rewrite the user's text in a more professional, clear, and polite tone while keeping the original language and preserving the meaning. Return only the rewritten text.",
-                shortcut: "⌘4",
-                participatesInAuto: false,
-                autoRule: .none,
-                sortOrder: 3,
-                isVisible: true
-            ),
-            PromptMode(
-                id: PromptMode.friendlyReplyID,
-                name: "Friendly Reply",
-                description: "保持原语言，改成自然、友好、适合回复的表达",
-                systemPrompt: "Rewrite the user's text as a natural, friendly reply while keeping the original language and preserving the meaning. Return only the reply.",
-                shortcut: "⌘5",
-                participatesInAuto: false,
-                autoRule: .none,
-                sortOrder: 4,
-                isVisible: true
-            ),
-            PromptMode(
-                id: PromptMode.customPromptID,
-                name: "Custom Prompt",
-                description: "使用用户自定义 prompt",
-                systemPrompt: "Transform the user's text according to the user's custom instruction. Return only the transformed text.",
-                shortcut: "⌘6",
-                participatesInAuto: false,
-                autoRule: .none,
-                sortOrder: 5,
                 isVisible: true
             )
         ])
@@ -167,9 +139,16 @@ public struct PromptModeStore: Equatable, Sendable {
     private static var defaultTranslateToEnglishMode: PromptMode {
         PromptMode(
             id: PromptMode.translateToEnglishID,
-            name: "Translate to English",
-            description: "把任意语言翻译成自然英文",
-            systemPrompt: "Translate the user's text into natural English. Preserve meaning, tone, names, formatting, and intent. Return only the translated text.",
+            name: "To Simple and Correct English",
+            description: "Rewrite or translate into simple, correct English",
+            systemPrompt: """
+            Rewrite the user's text into simple, correct, natural English.
+            If the input is not English, translate it into English first.
+            Fix grammar, spelling, word choice, and awkward phrasing.
+            Keep the original meaning, names, numbers, formatting, and intent.
+            Do not add explanations, alternatives, quotes, or markdown.
+            Return only the final rewritten text.
+            """,
             shortcut: "⌘1",
             participatesInAuto: false,
             autoRule: .none,

@@ -117,7 +117,7 @@ final class ConfigStoreTests: XCTestCase {
         )
     }
 
-    func testConfigDecodeMigratesLegacyAutoModesToMultilingualDefaults() throws {
+    func testConfigDecodeMigratesLegacyModesToFocusedDefaults() throws {
         let data = """
         {
             "promptModes": [
@@ -144,6 +144,17 @@ final class ConfigStoreTests: XCTestCase {
                     "isVisible": true
                 },
                 {
+                    "id": "\(PromptMode.improveWritingID)",
+                    "name": "Improve Writing",
+                    "description": "Improve",
+                    "systemPrompt": "Improve writing.",
+                    "shortcut": "⌘2",
+                    "participatesInAuto": false,
+                    "autoRule": "none",
+                    "sortOrder": 2,
+                    "isVisible": true
+                },
+                {
                     "id": "custom-saved",
                     "name": "Saved Custom",
                     "description": "Saved custom mode",
@@ -151,7 +162,7 @@ final class ConfigStoreTests: XCTestCase {
                     "shortcut": null,
                     "participatesInAuto": true,
                     "autoRule": "englishHeavy",
-                    "sortOrder": 2,
+                    "sortOrder": 3,
                     "isVisible": true
                 }
             ]
@@ -160,11 +171,15 @@ final class ConfigStoreTests: XCTestCase {
 
         let config = try JSONDecoder().decode(AppConfig.self, from: data)
 
-        XCTAssertEqual(config.defaultVisibleModeID, "custom-saved")
+        XCTAssertEqual(config.defaultVisibleModeID, PromptMode.translateToEnglishID)
         XCTAssertFalse(config.promptModes.contains { $0.id == PromptMode.autoID })
         XCTAssertFalse(config.promptModes.contains { $0.id == PromptMode.chineseToEnglishID })
+        XCTAssertFalse(config.promptModes.contains { $0.id == PromptMode.improveWritingID })
         XCTAssertTrue(config.promptModes.contains { $0.id == "custom-saved" })
-        XCTAssertTrue(config.promptModes.contains { $0.id == PromptMode.translateToEnglishID })
+        XCTAssertEqual(
+            config.promptModes.prefix(2).map(\.id),
+            [PromptMode.translateToEnglishID, PromptMode.chineseSummaryID]
+        )
         XCTAssertTrue(config.promptModes.allSatisfy { !$0.participatesInAuto && $0.autoRule == .none })
     }
 

@@ -260,7 +260,9 @@ enum L10n {
         "error.provider.prefix": "%@ request failed: %@",
         "hotkey.error.unsupported": "Unsupported hotkey “%@”. Supported: ⌥Space, Option+Space, Alt+Space, ⌘Space, Command+Space, Cmd+Space.",
         "hotkey.error.registrationFailed": "Hotkey registration failed (%d).",
-        "prompt.translateToEnglish.description": "Translate any language into natural English",
+        "prompt.simpleCorrectEnglish.description": "Rewrite or translate into simple, correct English",
+        "prompt.chineseSummary.description": "Summarize any text into concise Simplified Chinese",
+        "prompt.translateToEnglish.description": "Rewrite or translate into simple, correct English",
         "prompt.improveWriting.description": "Improve writing while keeping the original language",
         "prompt.makeConcise.description": "Shorten text while keeping the original language and key points",
         "prompt.professionalTone.description": "Rewrite with a clearer, more professional tone",
@@ -394,7 +396,9 @@ enum L10n {
         "error.provider.prefix": "%@ 请求失败：%@",
         "hotkey.error.unsupported": "暂不支持快捷键“%@”。目前支持 ⌥Space、Option+Space、Alt+Space、⌘Space、Command+Space、Cmd+Space。",
         "hotkey.error.registrationFailed": "快捷键注册失败（%d）。",
-        "prompt.translateToEnglish.description": "把任意语言翻译成自然英文",
+        "prompt.simpleCorrectEnglish.description": "改写或翻译成简单、正确的英文",
+        "prompt.chineseSummary.description": "把任意文本总结成简洁中文",
+        "prompt.translateToEnglish.description": "改写或翻译成简单、正确的英文",
         "prompt.improveWriting.description": "保持原语言，润色语法、表达和清晰度",
         "prompt.makeConcise.description": "保持原语言，压缩文字并保留重点",
         "prompt.professionalTone.description": "改成更职业、清楚、礼貌的语气",
@@ -1003,6 +1007,7 @@ extension PromptMode {
     var localizedName: String {
         switch id {
         case PromptMode.translateToEnglishID,
+             PromptMode.chineseSummaryID,
              PromptMode.improveWritingID,
              PromptMode.makeConciseID,
              PromptMode.professionalToneID,
@@ -1017,7 +1022,9 @@ extension PromptMode {
     var localizedDescription: String {
         switch id {
         case PromptMode.translateToEnglishID:
-            L10n.text("prompt.translateToEnglish.description")
+            L10n.text("prompt.simpleCorrectEnglish.description")
+        case PromptMode.chineseSummaryID:
+            L10n.text("prompt.chineseSummary.description")
         case PromptMode.improveWritingID:
             L10n.text("prompt.improveWriting.description")
         case PromptMode.makeConciseID:

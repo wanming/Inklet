@@ -312,11 +312,7 @@ extension Notification.Name {
 private extension PromptMode {
     static let builtInIDs: Set<String> = [
         PromptMode.translateToEnglishID,
-        PromptMode.improveWritingID,
-        PromptMode.makeConciseID,
-        PromptMode.professionalToneID,
-        PromptMode.friendlyReplyID,
-        PromptMode.customPromptID
+        PromptMode.chineseSummaryID
     ]
 }
 

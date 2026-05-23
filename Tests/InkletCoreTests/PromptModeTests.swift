@@ -10,12 +10,12 @@ final class PromptModeTests: XCTestCase {
         let store = PromptModeStore.defaultStore()
 
         XCTAssertEqual(store.visibleModes.map(\.name), [
-            "Translate to English",
-            "Improve Writing",
-            "Make Concise",
-            "Professional Tone",
-            "Friendly Reply",
-            "Custom Prompt"
+            "To Simple and Correct English",
+            "To Chinese Summary"
+        ])
+        XCTAssertEqual(store.visibleModes.map(\.id), [
+            PromptMode.translateToEnglishID,
+            PromptMode.chineseSummaryID
         ])
         XCTAssertFalse(store.visibleModes.contains { $0.id == PromptMode.autoID })
     }
@@ -23,9 +23,9 @@ final class PromptModeTests: XCTestCase {
     func testResolveReturnsSelectedModeWhenAvailable() {
         let store = PromptModeStore.defaultStore()
 
-        let mode = store.resolve(modeID: PromptMode.makeConciseID, sourceText: "Please make this shorter.")
+        let mode = store.resolve(modeID: PromptMode.chineseSummaryID, sourceText: "Please summarize this.")
 
-        XCTAssertEqual(mode.id, PromptMode.makeConciseID)
+        XCTAssertEqual(mode.id, PromptMode.chineseSummaryID)
     }
 
     func testResolveFallsBackToFirstVisibleModeForMissingMode() {
@@ -43,7 +43,7 @@ final class PromptModeTests: XCTestCase {
             ),
             PromptMode(
                 id: PromptMode.translateToEnglishID,
-                name: "Translate to English",
+                name: "To Simple and Correct English",
                 description: "translate mode",
                 systemPrompt: "translate prompt",
                 shortcut: nil,

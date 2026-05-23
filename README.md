@@ -8,12 +8,8 @@ Press a global shortcut, type or paste text, choose a writing mode, let your pre
 
 - Opens from a global macOS hotkey. The default is `Option+Space`.
 - Transforms text with built-in prompt modes:
-  - Translate to English
-  - Improve Writing
-  - Make Concise
-  - Professional Tone
-  - Friendly Reply
-  - Custom Prompt
+  - To Simple and Correct English
+  - To Chinese Summary
 - Inserts generated text back into the previously focused app.
 - Restores your clipboard after insertion.
 - Lets you edit prompt modes, model, timeout, temperature, and hotkey.
