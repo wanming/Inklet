@@ -37,7 +37,6 @@ Fluenta is an early MVP. The repository currently includes:
 - Unit tests for core behavior.
 - Manual test notes in [docs/manual-test-checklist.md](docs/manual-test-checklist.md).
 - Product/design planning notes in `docs/superpowers/`.
-- A separate `mac-os-efficiency-tool/` Next.js prototype used for UI exploration.
 
 ## Requirements
 
@@ -66,7 +65,8 @@ curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
 To install somewhere else:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/wanming/Fluenta/main/scripts/install.sh | FLUENTA_INSTALL_DIR="$HOME/Applications" bash
+curl -fsSL https://raw.githubusercontent.com/wanming/Fluenta/main/scripts/install.sh | \
+  FLUENTA_INSTALL_DIR="$HOME/Applications" bash
 ```
 
 ## Build And Run
@@ -112,7 +112,6 @@ Sources/WritingPopoverApp/       macOS app, popover UI, settings UI, menu bar co
 Sources/WritingPopoverCore/      core config, providers, prompts, hotkeys, insertion, state machine
 Tests/WritingPopoverCoreTests/   unit tests for core behavior
 docs/                           manual QA and planning documents
-mac-os-efficiency-tool/          Next.js UI prototype and design exploration
 ```
 
 ## Development Notes
