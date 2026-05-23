@@ -4,3 +4,10 @@
 DerivedData/
 dist/
 *.xcuserdata/
+.env
+.env.*
+*.dmg
+*.p8
+*.p12
+*.mobileprovision
+*.provisionprofile

@@ -4,13 +4,6 @@
 
 Press a global shortcut, type or paste text, choose a writing mode, let your preferred LLM transform it, then insert the result back into the original text field.
 
-## Languages
-
-- English: this file
-- [简体中文](README.zh-CN.md)
-- [日本語](README.ja.md)
-- [Español](README.es.md)
-
 ## What It Does
 
 - Opens from a global macOS hotkey. The default is `Option+Space`.
@@ -36,7 +29,6 @@ Fluenta is an early MVP. The repository currently includes:
 - Provider adapters and configuration storage.
 - Unit tests for core behavior.
 - Manual test notes in [docs/manual-test-checklist.md](docs/manual-test-checklist.md).
-- Product/design planning notes in `docs/superpowers/`.
 
 ## Requirements
 
@@ -54,7 +46,7 @@ Until Fluenta has Developer ID signing and notarization, the easiest install pat
 curl -fsSL https://raw.githubusercontent.com/wanming/Fluenta/main/scripts/install.sh | bash
 ```
 
-For a private repository or private release, pass a GitHub token that can read the repository:
+If you are installing from a private fork or private release, pass a GitHub token that can read that repository:
 
 ```bash
 export GITHUB_TOKEN="$(gh auth token)"
@@ -100,6 +92,7 @@ If tests fail because `XCTest` is unavailable, install the full Xcode app instea
 - `Option+Space`: open the writing popover.
 - `Enter`: transform the source text, or insert the generated result when a result is already shown.
 - `Command+Enter`: insert the original text without calling the model.
+- `Command+Up` / `Command+Down`: cycle through visible prompt modes.
 - `Escape`: clear the result or close the popover.
 - `Command+,`: open Settings while Fluenta is active.
 
@@ -120,3 +113,23 @@ docs/                           manual QA and planning documents
 - Use [docs/manual-test-checklist.md](docs/manual-test-checklist.md) before shipping user-facing app changes.
 - Treat the clipboard and Accessibility flows carefully; they are central to the app experience.
 - The project is still MVP-stage, so README details should track the code rather than future plans.
+
+## Privacy
+
+- Fluenta uses your configured provider API key to call the selected LLM provider.
+- API keys are stored locally on your Mac.
+- Fluenta uses Accessibility permission to return focus to the previous app and paste text.
+- Fluenta temporarily uses the clipboard for insertion and then restores the previous clipboard contents.
+- Do not send private text to a provider unless you trust that provider's data handling policies.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting and sensitive data guidance.
+
+## License
+
+Fluenta is released under the [MIT License](LICENSE).

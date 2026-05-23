@@ -1,28 +1,39 @@
-# 手动测试清单
+# Manual Test Checklist
 
-## 准备
+## Preparation
 
-- 从 Xcode 或 `swift run Fluenta` 启动 App。
-- 在设置里配置 OpenAI API key。
-- 在 macOS System Settings 中授予 Accessibility 权限。
-- 默认快捷键为 Option+Space。
+- Launch Fluenta from Xcode, `swift run Fluenta`, or the installed app bundle.
+- Configure an LLM provider and API key in Settings.
+- Grant Accessibility permission in macOS System Settings.
+- Confirm the default global hotkey is `Option+Space`, unless you intentionally changed it.
 
-## 核心流程
+## Core Flow
 
-- TextEdit：聚焦输入框，按 Option+Space，输入中文，Enter 转换，再 Enter 插入英文。
-- TextEdit：输入英文病句，Enter 润色，再 Enter 插入。
-- Notes：重复中文转英文流程。
-- Safari 或 Chrome：在网页文本框中重复中文转英文流程。
-- Cmd+Enter：不调用 LLM，直接插入原文。
-- Escape：关闭浮窗，不插入内容。
-- 缺少 API key：显示错误，原文不丢失。
-- 断网或 provider 失败：显示错误，原文不丢失。
-- 粘贴失败：保留生成结果，并允许复制。
-- 插入后剪贴板恢复为插入前内容。
+- TextEdit: focus a text field, press `Option+Space`, enter text, press `Enter` to transform, then press `Enter` again to insert the result.
+- TextEdit: enter a rough English sentence, improve it, then insert the result.
+- Notes: repeat the transform and insert flow.
+- Safari or Chrome: repeat the flow in a web text field.
+- Selected text: select text in another app, open Fluenta, and confirm the selected text appears in the source editor.
+- `Command+Enter`: insert the original source text without calling the model.
+- `Command+Up` / `Command+Down`: cycle through visible prompt modes.
+- `Escape`: close the popover without inserting text.
+- Missing API key: show an inline error while preserving the source text.
+- Network or provider failure: show an inline error while preserving the source text.
+- Paste failure: keep the generated result visible so the user can copy or retry.
+- Clipboard restoration: after insertion, confirm the previous clipboard contents are restored.
 
-## 观察性兼容
+## Settings
 
-- Slack 或 Discord。
-- Notion。
-- VS Code 或 Cursor。
-- Terminal 或 iTerm，只记录表现，不作为 MVP 阻断项。
+- `Command+,`: open Settings while Fluenta is active.
+- General: change hotkey, default prompt mode, timeout, temperature, language, and appearance.
+- Providers: configure one provider, API key, model, and custom OpenAI-compatible endpoint when needed.
+- Prompt Modes: add, edit, hide, delete with confirmation, and reorder prompt modes.
+- Permissions: verify Accessibility status and the button that opens System Settings.
+- Save behavior: confirm changes persist after quitting and reopening Fluenta.
+
+## Compatibility Smoke Tests
+
+- Slack or Discord.
+- Notion.
+- VS Code or Cursor.
+- Terminal or iTerm. Record behavior, but do not treat terminal insertion issues as release blockers for the MVP.
