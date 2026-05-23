@@ -605,6 +605,9 @@ struct InkletPopoverView: View {
                         .font(.system(size: 13, weight: .medium))
                     Text(selectedMode?.localizedName ?? L10n.text("popover.mode.picker"))
                         .font(.system(size: 12, weight: .semibold))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: 170, alignment: .leading)
                     Image(systemName: "chevron.down")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
@@ -629,6 +632,8 @@ struct InkletPopoverView: View {
             .font(.system(size: 12))
             .foregroundStyle(.secondary)
             .lineLimit(1)
+            .truncationMode(.middle)
+            .frame(maxWidth: 250, alignment: .trailing)
         }
         .padding(.horizontal, 12)
         .frame(height: headerHeight)
@@ -823,6 +828,13 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
             textView.textContainer?.lineFragmentPadding = 0
             textView.enclosingScrollView?.contentInsets = NSEdgeInsetsZero
             textView.enclosingScrollView?.automaticallyAdjustsContentInsets = false
+            textView.enclosingScrollView?.drawsBackground = false
+            textView.enclosingScrollView?.autohidesScrollers = true
+            textView.enclosingScrollView?.scrollerStyle = .overlay
+            textView.enclosingScrollView?.verticalScroller?.controlSize = .mini
+            textView.enclosingScrollView?.verticalScroller?.alphaValue = 0.0
+            textView.enclosingScrollView?.horizontalScrollElasticity = .none
+            textView.enclosingScrollView?.hasHorizontalScroller = false
             textView.backgroundColor = .clear
             textView.drawsBackground = false
         }
