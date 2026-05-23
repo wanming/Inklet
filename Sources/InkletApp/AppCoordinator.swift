@@ -205,13 +205,14 @@ final class AppCoordinator: NSObject {
 
     private func configureStatusItemIcon() {
         statusItem.length = NSStatusItem.squareLength
-        let image = NSImage(
-            systemSymbolName: "pencil.and.scribble",
-            accessibilityDescription: "Inklet"
-        ) ?? NSImage(systemSymbolName: "pencil", accessibilityDescription: "Inklet")
-        image?.isTemplate = true
-        statusItem.button?.image = image
-        statusItem.button?.imagePosition = .imageOnly
+        statusItem.button?.image = nil
+        statusItem.button?.attributedTitle = NSAttributedString(
+            string: "I",
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 15, weight: .semibold),
+                .foregroundColor: NSColor.labelColor
+            ]
+        )
         statusItem.button?.toolTip = "Inklet"
         statusItem.button?.setAccessibilityLabel("Inklet")
     }
