@@ -394,6 +394,7 @@ struct WritingPopoverView: View {
     @FocusState private var isResultFocused: Bool
     @State private var sourceMeasuredHeight: CGFloat = 0
     @State private var resultMeasuredHeight: CGFloat = 0
+    @State private var editorHasMarkedText = false
 
     private let minEditorRows: CGFloat = 2
     private let maxSourceEditorRows: CGFloat = 7
@@ -498,14 +499,14 @@ struct WritingPopoverView: View {
             .font(.system(size: 14))
             .lineSpacing(3)
             .scrollContentBackground(.hidden)
-            .background(TextEditorInsetNormalizer())
+            .background(TextEditorInsetNormalizer(onMarkedTextChange: { editorHasMarkedText = $0 }))
             .focused($isSourceFocused)
             .disabled(isBusy)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
 
-            if model.sourceText.isEmpty {
+            if model.sourceText.isEmpty && !editorHasMarkedText {
                 Text(L10n.text("popover.input.placeholder"))
                     .font(.system(size: 14))
                     .foregroundStyle(.secondary.opacity(0.55))
@@ -790,25 +791,33 @@ private struct ResultEditorHeightPreferenceKey: PreferenceKey {
 }
 
 private struct TextEditorInsetNormalizer: NSViewRepresentable {
+    var onMarkedTextChange: ((Bool) -> Void)?
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onMarkedTextChange: onMarkedTextChange)
+    }
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView(frame: .zero)
         DispatchQueue.main.async {
-            normalizeTextEditors(from: view)
+            normalizeTextEditors(from: view, coordinator: context.coordinator)
         }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.onMarkedTextChange = onMarkedTextChange
         DispatchQueue.main.async {
-            normalizeTextEditors(from: nsView)
+            normalizeTextEditors(from: nsView, coordinator: context.coordinator)
         }
     }
 
-    private func normalizeTextEditors(from view: NSView) {
+    private func normalizeTextEditors(from view: NSView, coordinator: Coordinator) {
         guard let rootView = view.window?.contentView else {
             return
         }
 
+        let textViews = rootView.descendantTextViews
         for textView in rootView.descendantTextViews {
             textView.textContainerInset = .zero
             textView.textContainer?.lineFragmentPadding = 0
@@ -817,6 +826,95 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
             textView.backgroundColor = .clear
             textView.drawsBackground = false
         }
+        coordinator.watch(textViews)
+    }
+
+    final class Coordinator: NSObject, @unchecked Sendable {
+        var onMarkedTextChange: ((Bool) -> Void)?
+        private var observedTextViewIDs: Set<ObjectIdentifier> = []
+        private var eventMonitor: Any?
+        private var textViews: [WeakTextView] = []
+        private var lastMarkedTextState = false
+
+        init(onMarkedTextChange: ((Bool) -> Void)?) {
+            self.onMarkedTextChange = onMarkedTextChange
+            super.init()
+        }
+
+        deinit {
+            NotificationCenter.default.removeObserver(self)
+            if let eventMonitor {
+                NSEvent.removeMonitor(eventMonitor)
+            }
+        }
+
+        @MainActor
+        func watch(_ textViews: [NSTextView]) {
+            guard onMarkedTextChange != nil else {
+                return
+            }
+
+            self.textViews = textViews.map(WeakTextView.init)
+            installEventMonitorIfNeeded()
+
+            for textView in textViews {
+                let id = ObjectIdentifier(textView)
+                guard !observedTextViewIDs.contains(id) else {
+                    continue
+                }
+                observedTextViewIDs.insert(id)
+
+                NotificationCenter.default.addObserver(
+                    self,
+                    selector: #selector(textViewStateDidChange),
+                    name: NSText.didChangeNotification,
+                    object: textView,
+                )
+                NotificationCenter.default.addObserver(
+                    self,
+                    selector: #selector(textViewStateDidChange),
+                    name: NSTextView.didChangeSelectionNotification,
+                    object: textView,
+                )
+            }
+
+            publishMarkedTextState()
+        }
+
+        @MainActor
+        private func installEventMonitorIfNeeded() {
+            guard eventMonitor == nil else {
+                return
+            }
+
+            eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+                DispatchQueue.main.async {
+                    self?.publishMarkedTextState()
+                }
+                return event
+            } as AnyObject
+        }
+
+        @objc @MainActor private func textViewStateDidChange() {
+            publishMarkedTextState()
+        }
+
+        @MainActor
+        private func publishMarkedTextState() {
+            let hasMarkedText = textViews.contains { textView in
+                textView.value?.hasMarkedText() == true
+            }
+            guard hasMarkedText != lastMarkedTextState else {
+                return
+            }
+
+            lastMarkedTextState = hasMarkedText
+            onMarkedTextChange?(hasMarkedText)
+        }
+    }
+
+    private struct WeakTextView {
+        weak var value: NSTextView?
     }
 }
 
