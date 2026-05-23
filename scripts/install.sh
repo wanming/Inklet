@@ -5,7 +5,8 @@ repo="${FLUENTA_REPO:-wanming/Fluenta}"
 install_dir="${FLUENTA_INSTALL_DIR:-/Applications}"
 app_name="Fluenta.app"
 asset_name="Fluenta.dmg"
-base_url="https://github.com/${repo}/releases/latest/download"
+api_url="https://api.github.com/repos/${repo}/releases"
+auth_token="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
 
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/fluenta-install.XXXXXX")"
 mount_dir="$(mktemp -d "${TMPDIR:-/tmp}/fluenta-mount.XXXXXX")"
@@ -22,9 +23,72 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Downloading Fluenta..."
-curl -fL --retry 3 --retry-delay 1 "${base_url}/${asset_name}" -o "$dmg_path"
 
-if curl -fL --retry 3 --retry-delay 1 "${base_url}/${asset_name}.sha256" -o "$checksum_path" >/dev/null 2>&1; then
+curl_api_args=(-fL --retry 3 --retry-delay 1)
+curl_download_args=(-fL --retry 3 --retry-delay 1)
+if [[ -n "$auth_token" ]]; then
+  curl_api_args+=(
+    -H "Authorization: Bearer ${auth_token}"
+    -H "Accept: application/vnd.github+json"
+  )
+  curl_download_args+=(
+    -H "Authorization: Bearer ${auth_token}"
+    -H "Accept: application/octet-stream"
+  )
+fi
+
+resolve_asset_url() {
+  local requested_asset_name="$1"
+  local releases_json
+  releases_json="$(curl "${curl_api_args[@]}" "$api_url")"
+
+  if command -v /usr/bin/python3 >/dev/null 2>&1; then
+    ASSET_NAME="$requested_asset_name" HAS_AUTH="$([[ -n "$auth_token" ]] && echo 1 || echo 0)" /usr/bin/python3 -c '
+import json
+import os
+import sys
+
+asset_name = os.environ["ASSET_NAME"]
+url_key = "url" if os.environ.get("HAS_AUTH") == "1" else "browser_download_url"
+for release in json.load(sys.stdin):
+    if release.get("draft") or release.get("prerelease"):
+        continue
+    for asset in release.get("assets", []):
+        if asset.get("name") == asset_name:
+            print(asset[url_key])
+            raise SystemExit(0)
+raise SystemExit(1)
+' <<<"$releases_json"
+    return
+  fi
+
+  if command -v /usr/bin/ruby >/dev/null 2>&1; then
+    ASSET_NAME="$requested_asset_name" HAS_AUTH="$([[ -n "$auth_token" ]] && echo 1 || echo 0)" /usr/bin/ruby -rjson -e '
+asset_name = ENV.fetch("ASSET_NAME")
+url_key = ENV["HAS_AUTH"] == "1" ? "url" : "browser_download_url"
+JSON.parse(STDIN.read).each do |release|
+  next if release["draft"] || release["prerelease"]
+  asset = release.fetch("assets", []).find { |candidate| candidate["name"] == asset_name }
+  if asset
+    puts asset.fetch(url_key)
+    exit 0
+  end
+end
+exit 1
+' <<<"$releases_json"
+    return
+  fi
+
+  echo "Could not find python3 or ruby to parse GitHub release metadata." >&2
+  return 1
+}
+
+dmg_url="$(resolve_asset_url "$asset_name")"
+checksum_url="$(resolve_asset_url "${asset_name}.sha256" || true)"
+
+curl "${curl_download_args[@]}" "$dmg_url" -o "$dmg_path"
+
+if [[ -n "$checksum_url" ]] && curl "${curl_download_args[@]}" "$checksum_url" -o "$checksum_path" >/dev/null 2>&1; then
   expected_hash="$(awk '{print $1}' "$checksum_path")"
   actual_hash="$(shasum -a 256 "$dmg_path" | awk '{print $1}')"
   if [[ "$expected_hash" != "$actual_hash" ]]; then

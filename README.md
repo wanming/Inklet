@@ -55,6 +55,14 @@ Until Fluenta has Developer ID signing and notarization, the easiest install pat
 curl -fsSL https://raw.githubusercontent.com/wanming/Fluenta/main/scripts/install.sh | bash
 ```
 
+For a private repository or private release, pass a GitHub token that can read the repository:
+
+```bash
+export GITHUB_TOKEN="$(gh auth token)"
+curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://raw.githubusercontent.com/wanming/Fluenta/main/scripts/install.sh | bash
+```
+
 To install somewhere else:
 
 ```bash
