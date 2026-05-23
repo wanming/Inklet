@@ -128,7 +128,7 @@ jobs:
           set -euo pipefail
 
           dmg_root="dist/dmg-root"
-          dmg_path="dist/Fluenta-${{ steps.release.outputs.asset_tag }}.dmg"
+          dmg_path="dist/Fluenta.dmg"
 
           mkdir -p "$dmg_root"
           cp -R "dist/Fluenta.app" "$dmg_root/Fluenta.app"

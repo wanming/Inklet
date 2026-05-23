@@ -47,6 +47,20 @@ Fluenta is an early MVP. The repository currently includes:
 - Accessibility permission for Fluenta, required for returning focus to the previous app and pasting the generated result.
 - An API key for at least one configured LLM provider.
 
+## Install
+
+Until Fluenta has Developer ID signing and notarization, the easiest install path is the script below. It downloads the latest DMG, verifies its checksum, copies Fluenta to `/Applications`, and removes the macOS quarantine flag that can otherwise show a misleading "damaged" warning.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wanming/Fluenta/main/scripts/install.sh | bash
+```
+
+To install somewhere else:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wanming/Fluenta/main/scripts/install.sh | FLUENTA_INSTALL_DIR="$HOME/Applications" bash
+```
+
 ## Build And Run
 
 From the repository root:
