@@ -10,7 +10,7 @@ private final class InkletPopoverPanel: NSPanel {
 
 @MainActor
 private final class ClearHostingView<Content: View>: NSHostingView<Content> {
-    private let cornerRadius: CGFloat = 12
+    private let cornerRadius: CGFloat = 16
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -37,7 +37,16 @@ final class InkletPopoverWindowController: NSWindowController {
     private let model: InkletPopoverViewModel
     private var previousApplication: NSRunningApplication?
     private var cancellables = Set<AnyCancellable>()
-    private let popoverWidth: CGFloat = 580
+    private let popoverWidth: CGFloat = 600
+
+    var onOpenSettings: (() -> Void)? {
+        get {
+            model.onOpenSettings
+        }
+        set {
+            model.onOpenSettings = newValue
+        }
+    }
 
     init() {
         self.model = InkletPopoverViewModel()
@@ -92,9 +101,11 @@ final class InkletPopoverWindowController: NSWindowController {
         window?.appearance = model.appearance.nsAppearance
         resizePopover(to: model.preferredPopoverHeight)
         focusPopover()
+        focusSourceTextView()
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.resizePopover(to: self.model.preferredPopoverHeight)
+            self.focusSourceTextView()
         }
     }
 
@@ -106,6 +117,16 @@ final class InkletPopoverWindowController: NSWindowController {
         window?.center()
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    private func focusSourceTextView() {
+        guard let window,
+              let textView = window.contentView?.descendantTextViews.first
+        else {
+            return
+        }
+
+        window.makeFirstResponder(textView)
     }
 
     private func resizePopover(to height: CGFloat) {
@@ -125,5 +146,20 @@ final class InkletPopoverWindowController: NSWindowController {
         window.contentView?.frame = NSRect(x: 0, y: 0, width: popoverWidth, height: height)
         window.contentView?.needsLayout = true
         window.contentView?.layoutSubtreeIfNeeded()
+    }
+}
+
+private extension NSView {
+    var descendantTextViews: [NSTextView] {
+        var textViews: [NSTextView] = []
+        if let textView = self as? NSTextView {
+            textViews.append(textView)
+        }
+
+        for subview in subviews {
+            textViews.append(contentsOf: subview.descendantTextViews)
+        }
+
+        return textViews
     }
 }

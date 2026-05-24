@@ -18,6 +18,7 @@ final class InkletPopoverViewModel: ObservableObject {
 
     var onHidePopover: (() -> Void)?
     var onFocusPopover: (() -> Void)?
+    var onOpenSettings: (() -> Void)?
 
     var currentProviderName: String {
         LLMProviderPreset.preset(id: config.providerID).name
@@ -198,6 +199,11 @@ final class InkletPopoverViewModel: ObservableObject {
             actions = stateMachine.send(.close)
         }
         handle(actions: actions)
+    }
+
+    func openSettings() {
+        onHidePopover?()
+        onOpenSettings?()
     }
 
     private func handle(actions: [PopoverStateMachine.Action]) {
@@ -394,16 +400,15 @@ struct InkletPopoverView: View {
     @FocusState private var isResultFocused: Bool
     @State private var sourceMeasuredHeight: CGFloat = 0
     @State private var resultMeasuredHeight: CGFloat = 0
-    @State private var editorHasMarkedText = false
 
     private let minEditorRows: CGFloat = 2
     private let maxSourceEditorRows: CGFloat = 7
     private let maxResultEditorRows: CGFloat = 13
     private let editorLineHeight: CGFloat = 20
-    private let editorVerticalPadding: CGFloat = 20
+    private let editorVerticalPadding: CGFloat = 24
     private let editorEstimatedCharactersPerLine: CGFloat = 72
-    private let headerHeight: CGFloat = 44
-    private let actionBarHeight: CGFloat = 44
+    private let headerHeight: CGFloat = 46
+    private let actionBarHeight: CGFloat = 36
     private let dividerHeight: CGFloat = 1
     private let statusHeight: CGFloat = 34
     private var isBusy: Bool {
@@ -424,6 +429,13 @@ struct InkletPopoverView: View {
 
     private var modeIconName: String {
         modeIcon(for: model.selectedModeID)
+    }
+
+    private var selectedModeDisplayName: String {
+        guard let selectedMode else {
+            return L10n.text("popover.mode.picker")
+        }
+        return selectedMode.localizedName
     }
 
     private var popoverHeight: CGFloat {
@@ -470,13 +482,15 @@ struct InkletPopoverView: View {
                 onCycleMode: { model.cyclePromptMode(direction: $0) }
             )
         )
-        .frame(width: 580, height: popoverHeight, alignment: .top)
-        .background(InkletTheme.panelBackground.opacity(0.95))
-        .clipShape(RoundedRectangle(cornerRadius: InkletTheme.cornerRadius))
+        .frame(width: 600, height: popoverHeight, alignment: .top)
+        .background(InkletTheme.panelBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
         .overlay {
-            RoundedRectangle(cornerRadius: InkletTheme.cornerRadius)
+            RoundedRectangle(cornerRadius: 16)
                 .stroke(InkletTheme.strongBorder)
         }
+        .shadow(color: .black.opacity(0.75), radius: 48, x: 0, y: 28)
+        .shadow(color: .white.opacity(0.03), radius: 0, x: 0, y: 1)
         .preferredColorScheme(model.appearance.colorScheme)
         .onAppear {
             publishPopoverHeight()
@@ -492,39 +506,20 @@ struct InkletPopoverView: View {
 
     private var commandInput: some View {
         ZStack(alignment: .bottomTrailing) {
-            TextEditor(text: Binding(
-                get: { model.sourceText },
-                set: { model.updateSourceText($0) }
-            ))
-            .font(.system(size: 14))
-            .lineSpacing(3)
-            .scrollContentBackground(.hidden)
-            .background(
-                TextEditorInsetNormalizer(
-                    onMarkedTextChange: { editorHasMarkedText = $0 },
-                    onTextChange: { model.updateSourceText($0) },
-                    onSubmit: { model.submit() },
-                    onInsertOriginal: { model.insertOriginal() },
-                    onEscape: { model.escape() }
-                )
+            InkletTextView(
+                text: Binding(
+                    get: { model.sourceText },
+                    set: { model.updateSourceText($0) }
+                ),
+                placeholder: L10n.text("popover.input.placeholder"),
+                isEditable: !isBusy,
+                onSubmit: { model.submit() },
+                onInsertOriginal: { model.insertOriginal() },
+                onEscape: { model.escape() }
             )
-            .focused($isSourceFocused)
-            .disabled(isBusy)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-
-            if model.sourceText.isEmpty && !editorHasMarkedText {
-                Text(L10n.text("popover.input.placeholder"))
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary.opacity(0.55))
-                    .allowsHitTesting(false)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(.leading, 12)
-                    .padding(.trailing, 12)
-                    .padding(.top, 10)
-                    .padding(.bottom, 10)
-            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
 
             if isBusy {
                 HStack(spacing: 6) {
@@ -532,10 +527,10 @@ struct InkletPopoverView: View {
                         .controlSize(.small)
                     Text(busyTitle)
                         .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(InkletTheme.textSecondary)
                 }
-                .padding(.trailing, 12)
-                .padding(.bottom, 10)
+                .padding(.trailing, 16)
+                .padding(.bottom, 12)
             }
         }
         .frame(height: inputHeight)
@@ -552,26 +547,19 @@ struct InkletPopoverView: View {
         if !model.resultText.isEmpty {
             Divider().opacity(0.45)
             ZStack(alignment: .topTrailing) {
-                TextEditor(text: Binding(
-                    get: { model.resultText },
-                    set: { model.updateResultText($0) }
-                ))
-                .font(.system(size: 14))
-                .lineSpacing(3)
-                .scrollContentBackground(.hidden)
-                .background(
-                    TextEditorInsetNormalizer(
-                        onTextChange: { model.updateResultText($0) },
-                        onSubmit: { model.submit() },
-                        onInsertOriginal: { model.insertOriginal() },
-                        onEscape: { model.escape() }
-                    )
+                InkletTextView(
+                    text: Binding(
+                        get: { model.resultText },
+                        set: { model.updateResultText($0) }
+                    ),
+                    isEditable: !isBusy,
+                    onSubmit: { model.submit() },
+                    onInsertOriginal: { model.insertOriginal() },
+                    onEscape: { model.escape() }
                 )
-                .focused($isResultFocused)
-                .disabled(isBusy)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
                 .background(InkletTheme.primary.opacity(0.08))
             }
             .frame(height: resultHeight)
@@ -596,16 +584,16 @@ struct InkletPopoverView: View {
             Divider().opacity(0.45)
             Text(errorMessage)
                 .font(.system(size: 12))
-                .foregroundStyle(.red)
+                .foregroundStyle(.red.opacity(0.9))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.red.opacity(0.1))
+                .background(Color.red.opacity(0.13))
         }
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: 6) {
             Menu {
                 ForEach(model.modes) { mode in
                     Button {
@@ -617,49 +605,58 @@ struct InkletPopoverView: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: modeIconName)
-                        .font(.system(size: 13, weight: .medium))
-                    Text(selectedMode?.localizedName ?? L10n.text("popover.mode.picker"))
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(InkletTheme.primary.opacity(0.82))
+                    Text(selectedModeDisplayName)
                         .font(.system(size: 12, weight: .semibold))
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .layoutPriority(1)
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(InkletTheme.textSecondary.opacity(0.78))
                 }
-                .foregroundStyle(.primary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .frame(maxWidth: 260, alignment: .leading)
-                .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 7))
+                .foregroundStyle(InkletTheme.textPrimary.opacity(0.92))
+                .padding(.horizontal, 7)
+                .padding(.vertical, 5)
+                .background(Color.clear, in: RoundedRectangle(cornerRadius: 9))
             }
             .buttonStyle(.plain)
             .menuIndicator(.hidden)
 
             Spacer()
 
-            HStack(spacing: 7) {
-                Text(model.currentProviderName)
-                Text("·")
-                    .foregroundStyle(InkletTheme.subtleBorder)
-                Text(model.currentModelName)
-                    .font(.system(size: 11, design: .monospaced))
+            Text("\(model.currentProviderName)  ·  \(model.currentModelName)")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(InkletTheme.textSecondary.opacity(0.62))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: 188, alignment: .trailing)
+                .padding(.trailing, 1)
+
+            Button {
+                model.openSettings()
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(InkletTheme.textSecondary.opacity(0.72))
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
             }
-            .font(.system(size: 12))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .truncationMode(.middle)
-            .frame(maxWidth: 250, alignment: .trailing)
+            .buttonStyle(.plain)
+            .help(L10n.text("app.menu.settings"))
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .frame(height: headerHeight)
-        .background(.regularMaterial.opacity(0.75))
+        .background(Color.white.opacity(0.018))
     }
 
     private var actionBar: some View {
-        HStack(alignment: .center, spacing: 12) {
-            HStack(spacing: 12) {
-                shortcutHint(keys: ["↵"], label: primaryActionTitle) {
+        HStack(alignment: .center, spacing: 4) {
+            if isBusy {
+                loadingIndicator
+            } else {
+                shortcutHint(keys: ["↵"], label: primaryActionTitle, primary: !model.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !model.resultText.isEmpty) {
                     model.submit()
                 }
                 shortcutHint(keys: ["⌘", "↵"], label: L10n.text("popover.action.insertOriginal")) {
@@ -671,30 +668,54 @@ struct InkletPopoverView: View {
                 shortcutHint(keys: ["⌘", "↑/↓"], label: L10n.text("popover.hint.mode")) {
                     model.cyclePromptMode(direction: 1)
                 }
-            }
 
-            Spacer()
+                Spacer()
 
-            shortcutHint(keys: ["esc"], label: model.resultText.isEmpty ? L10n.text("popover.hint.close") : L10n.text("popover.hint.back")) {
-                model.escape()
+                shortcutHint(keys: ["esc"], label: model.resultText.isEmpty ? L10n.text("popover.hint.close") : L10n.text("popover.hint.back")) {
+                    model.escape()
+                }
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 8)
         .frame(height: actionBarHeight)
-        .background(.regularMaterial.opacity(0.55))
+        .background(InkletTheme.toolbarBackground)
         .accessibilityLabel(L10n.text("popover.hint.accessibility"))
     }
 
-    private func shortcutHint(keys: [String], label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private var loadingIndicator: some View {
+        HStack(spacing: 10) {
             HStack(spacing: 4) {
+                ForEach(0..<3) { index in
+                    Circle()
+                        .fill(InkletTheme.primary.opacity(0.85))
+                        .frame(width: 5, height: 5)
+                        .opacity(index == 1 ? 0.65 : 1)
+                }
+            }
+            Text(busyTitle)
+                .font(.system(size: 11))
+                .foregroundStyle(InkletTheme.textSecondary)
+            Spacer()
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private func shortcutHint(keys: [String], label: String, primary: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 3) {
                 ForEach(keys, id: \.self) { key in
                     Keycap(title: key)
                 }
                 Text(label)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(primary ? Color.white : InkletTheme.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
+            .padding(.horizontal, primary ? 7 : 5)
+            .padding(.vertical, 3)
+            .background(primary ? InkletTheme.primary : Color.white.opacity(0.001), in: RoundedRectangle(cornerRadius: 7))
+            .shadow(color: primary ? InkletTheme.primary.opacity(0.35) : .clear, radius: 8, x: 0, y: 1)
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())
@@ -782,8 +803,8 @@ struct InkletPopoverView: View {
             .font(.system(size: 14))
             .lineSpacing(3)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .hidden()
             .background {
@@ -813,170 +834,210 @@ private struct ResultEditorHeightPreferenceKey: PreferenceKey {
     }
 }
 
-private struct TextEditorInsetNormalizer: NSViewRepresentable {
-    var onMarkedTextChange: ((Bool) -> Void)?
-    var onTextChange: ((String) -> Void)?
+private final class InkletTextContainerView: NSView {
+    let scrollView = NSScrollView()
+    let placeholderLabel = NSTextField(labelWithString: "")
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
+        placeholderLabel.font = .systemFont(ofSize: 14)
+        placeholderLabel.textColor = .placeholderTextColor
+        placeholderLabel.lineBreakMode = .byTruncatingTail
+        placeholderLabel.maximumNumberOfLines = 1
+        placeholderLabel.isEditable = false
+        placeholderLabel.isSelectable = false
+        placeholderLabel.backgroundColor = .clear
+        placeholderLabel.drawsBackground = false
+
+        addSubview(scrollView)
+        addSubview(placeholderLabel)
+
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            placeholderLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
+            placeholderLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor),
+            placeholderLabel.topAnchor.constraint(equalTo: topAnchor),
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @MainActor
+    func updatePlaceholderVisibility() {
+        let textView = scrollView.documentView as? NSTextView
+        placeholderLabel.isHidden = placeholderLabel.stringValue.isEmpty
+            || textView?.string.isEmpty == false
+            || textView?.hasMarkedText() == true
+    }
+}
+
+private final class InkletNativeTextView: NSTextView {
+    var onInputStateChange: (() -> Void)?
+
+    override func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
+        super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
+        onInputStateChange?()
+    }
+
+    override func unmarkText() {
+        super.unmarkText()
+        onInputStateChange?()
+    }
+
+    override func insertText(_ insertString: Any, replacementRange: NSRange) {
+        super.insertText(insertString, replacementRange: replacementRange)
+        onInputStateChange?()
+    }
+}
+
+private struct InkletTextView: NSViewRepresentable {
+    @Binding var text: String
+    var placeholder: String?
+    var isEditable: Bool
     var onSubmit: (() -> Void)?
     var onInsertOriginal: (() -> Void)?
     var onEscape: (() -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
-            onMarkedTextChange: onMarkedTextChange,
-            onTextChange: onTextChange,
+            text: $text,
             onSubmit: onSubmit,
             onInsertOriginal: onInsertOriginal,
             onEscape: onEscape
         )
     }
 
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView(frame: .zero)
-        DispatchQueue.main.async {
-            normalizeTextEditors(from: view, coordinator: context.coordinator)
+    func makeNSView(context: Context) -> InkletTextContainerView {
+        let container = InkletTextContainerView()
+        let scrollView = container.scrollView
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = false
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
+        scrollView.contentInsets = NSEdgeInsetsZero
+        scrollView.automaticallyAdjustsContentInsets = false
+        scrollView.horizontalScrollElasticity = .none
+
+        let textView = InkletNativeTextView()
+        textView.string = text
+        textView.delegate = context.coordinator
+        textView.onInputStateChange = { [weak coordinator = context.coordinator, weak textView, weak container] in
+            guard let textView else {
+                return
+            }
+            coordinator?.syncText(from: textView)
+            container?.updatePlaceholderVisibility()
         }
-        return view
+        textView.isEditable = isEditable
+        textView.isSelectable = true
+        textView.isRichText = false
+        textView.importsGraphics = false
+        textView.allowsUndo = true
+        textView.usesFindBar = false
+        textView.drawsBackground = false
+        textView.backgroundColor = .clear
+        textView.font = .systemFont(ofSize: 14)
+        textView.textColor = .labelColor
+        textView.insertionPointColor = .controlAccentColor
+        textView.textContainerInset = .zero
+        textView.textContainer?.lineFragmentPadding = 0
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(width: scrollView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        textView.isHorizontallyResizable = false
+        textView.isVerticallyResizable = true
+        textView.autoresizingMask = [.width]
+        textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        scrollView.documentView = textView
+        context.coordinator.textView = textView
+        container.placeholderLabel.stringValue = placeholder ?? ""
+        container.updatePlaceholderVisibility()
+        return container
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
-        context.coordinator.onMarkedTextChange = onMarkedTextChange
-        context.coordinator.onTextChange = onTextChange
-        context.coordinator.onSubmit = onSubmit
-        context.coordinator.onInsertOriginal = onInsertOriginal
-        context.coordinator.onEscape = onEscape
-        DispatchQueue.main.async {
-            normalizeTextEditors(from: nsView, coordinator: context.coordinator)
-        }
-    }
-
-    private func normalizeTextEditors(from view: NSView, coordinator: Coordinator) {
-        let textViews = nearbyTextViews(from: view)
-        guard !textViews.isEmpty else {
+    func updateNSView(_ container: InkletTextContainerView, context: Context) {
+        let scrollView = container.scrollView
+        guard let textView = scrollView.documentView as? NSTextView else {
             return
         }
 
-        for textView in textViews {
-            textView.textContainerInset = .zero
-            textView.textContainer?.lineFragmentPadding = 0
-            textView.enclosingScrollView?.contentInsets = NSEdgeInsetsZero
-            textView.enclosingScrollView?.automaticallyAdjustsContentInsets = false
-            textView.enclosingScrollView?.drawsBackground = false
-            textView.enclosingScrollView?.autohidesScrollers = true
-            textView.enclosingScrollView?.scrollerStyle = .overlay
-            textView.enclosingScrollView?.hasVerticalScroller = false
-            textView.enclosingScrollView?.horizontalScrollElasticity = .none
-            textView.enclosingScrollView?.hasHorizontalScroller = false
-            textView.backgroundColor = .clear
-            textView.drawsBackground = false
-            textView.delegate = coordinator
-        }
-        coordinator.watch(textViews)
-    }
+        context.coordinator.text = $text
+        context.coordinator.onSubmit = onSubmit
+        context.coordinator.onInsertOriginal = onInsertOriginal
+        context.coordinator.onEscape = onEscape
+        context.coordinator.textView = textView
 
-    private func nearbyTextViews(from view: NSView) -> [NSTextView] {
-        var candidate = view.superview
-        while let currentView = candidate {
-            let textViews = currentView.descendantTextViews
-            if !textViews.isEmpty {
-                return textViews
-            }
-            candidate = currentView.superview
-        }
+        textView.isEditable = isEditable
+        textView.font = .systemFont(ofSize: 14)
+        textView.textColor = .labelColor
+        textView.insertionPointColor = .controlAccentColor
+        container.placeholderLabel.stringValue = placeholder ?? ""
 
-        return view.window?.contentView?.descendantTextViews ?? []
+        if !textView.hasMarkedText(), textView.string != text {
+            textView.string = text
+        }
+        container.updatePlaceholderVisibility()
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate, @unchecked Sendable {
-        var onMarkedTextChange: ((Bool) -> Void)?
-        var onTextChange: ((String) -> Void)?
+        var text: Binding<String>
         var onSubmit: (() -> Void)?
         var onInsertOriginal: (() -> Void)?
         var onEscape: (() -> Void)?
-        private var observedTextViewIDs: Set<ObjectIdentifier> = []
-        private var eventMonitor: Any?
-        private var textViews: [WeakTextView] = []
-        private var lastMarkedTextState = false
+        weak var textView: NSTextView?
 
         init(
-            onMarkedTextChange: ((Bool) -> Void)?,
-            onTextChange: ((String) -> Void)?,
+            text: Binding<String>,
             onSubmit: (() -> Void)?,
             onInsertOriginal: (() -> Void)?,
             onEscape: (() -> Void)?
         ) {
-            self.onMarkedTextChange = onMarkedTextChange
-            self.onTextChange = onTextChange
+            self.text = text
             self.onSubmit = onSubmit
             self.onInsertOriginal = onInsertOriginal
             self.onEscape = onEscape
             super.init()
         }
 
-        deinit {
-            NotificationCenter.default.removeObserver(self)
-            if let eventMonitor {
-                NSEvent.removeMonitor(eventMonitor)
-            }
-        }
-
-        @MainActor
-        func watch(_ textViews: [NSTextView]) {
-            guard onMarkedTextChange != nil else {
-                return
-            }
-
-            self.textViews = textViews.map(WeakTextView.init)
-            installEventMonitorIfNeeded()
-
-            for textView in textViews {
-                let id = ObjectIdentifier(textView)
-                guard !observedTextViewIDs.contains(id) else {
-                    continue
-                }
-                observedTextViewIDs.insert(id)
-
-                NotificationCenter.default.addObserver(
-                    self,
-                    selector: #selector(textViewStateDidChange(_:)),
-                    name: NSText.didChangeNotification,
-                    object: textView,
-                )
-                NotificationCenter.default.addObserver(
-                    self,
-                    selector: #selector(textViewStateDidChange(_:)),
-                    name: NSTextView.didChangeSelectionNotification,
-                    object: textView,
-                )
-            }
-
-            publishMarkedTextState()
-        }
-
-        @MainActor
-        private func installEventMonitorIfNeeded() {
-            guard eventMonitor == nil else {
-                return
-            }
-
-            eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
-                DispatchQueue.main.async {
-                    self?.publishMarkedTextState()
-                }
-                return event
-            } as AnyObject
-        }
-
-        @objc @MainActor private func textViewStateDidChange(_ notification: Notification) {
-            if let textView = notification.object as? NSTextView,
-               !textView.hasMarkedText() {
-                onTextChange?(textView.string)
-            }
-            publishMarkedTextState()
-        }
-
         @MainActor
         func textDidChange(_ notification: Notification) {
-            textViewStateDidChange(notification)
+            guard let textView = notification.object as? NSTextView else {
+                return
+            }
+
+            syncText(from: textView)
+            textView.enclosingScrollView?.superview
+                .flatMap { $0 as? InkletTextContainerView }?
+                .updatePlaceholderVisibility()
+        }
+
+        @MainActor
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else {
+                return
+            }
+
+            textView.enclosingScrollView?.superview
+                .flatMap { $0 as? InkletTextContainerView }?
+                .updatePlaceholderVisibility()
+        }
+
+        @MainActor
+        func syncText(from textView: NSTextView) {
+            text.wrappedValue = textView.string
         }
 
         @MainActor
@@ -1009,23 +1070,6 @@ private struct TextEditorInsetNormalizer: NSViewRepresentable {
             onSubmit?()
             return true
         }
-
-        @MainActor
-        private func publishMarkedTextState() {
-            let hasMarkedText = textViews.contains { textView in
-                textView.value?.hasMarkedText() == true
-            }
-            guard hasMarkedText != lastMarkedTextState else {
-                return
-            }
-
-            lastMarkedTextState = hasMarkedText
-            onMarkedTextChange?(hasMarkedText)
-        }
-    }
-
-    private struct WeakTextView {
-        weak var value: NSTextView?
     }
 }
 

@@ -9,14 +9,37 @@ private final class SettingsWindow: NSWindow {
 }
 
 @MainActor
+private final class RoundedSettingsHostingView<Content: View>: NSHostingView<Content> {
+    private let cornerRadius: CGFloat = 16
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        configureLayer()
+    }
+
+    override func layout() {
+        super.layout()
+        configureLayer()
+    }
+
+    private func configureLayer() {
+        wantsLayer = true
+        guard let layer else { return }
+        layer.backgroundColor = NSColor.clear.cgColor
+        layer.cornerRadius = cornerRadius
+        layer.cornerCurve = .continuous
+        layer.masksToBounds = true
+    }
+}
+
+@MainActor
 final class SettingsWindowController: NSWindowController {
     private let configStore: UserDefaultsConfigStore
 
     init() {
         self.configStore = UserDefaultsConfigStore()
-        let hostingController = NSHostingController(rootView: SettingsView())
         let window = SettingsWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 920, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 860, height: 560),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -26,7 +49,7 @@ final class SettingsWindowController: NSWindowController {
         window.isOpaque = false
         window.hasShadow = true
         window.isMovableByWindowBackground = true
-        window.contentViewController = hostingController
+        window.contentView = RoundedSettingsHostingView(rootView: SettingsView())
         window.isReleasedWhenClosed = false
 
         super.init(window: window)

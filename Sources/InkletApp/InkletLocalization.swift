@@ -141,7 +141,7 @@ enum L10n {
         "language.system": "System",
         "settings.window.title": "Inklet Settings",
         "settings.sidebar.preferences": "Preferences",
-        "settings.sidebar.hint": "⌘S Save · ⌘, Open",
+        "settings.sidebar.hint": "Auto-saved · ⌘, Open",
         "settings.version": "Version %@",
         "settings.section.general": "General",
         "settings.section.providers": "Providers",
@@ -171,7 +171,7 @@ enum L10n {
         "settings.row.provider": "Provider",
         "settings.help.provider": "Current provider.",
         "settings.row.apiKey": "API Key",
-        "settings.help.apiKey": "Stored locally on this Mac. Clear the field and save to remove it.",
+        "settings.help.apiKey": "Stored locally on this Mac. Clear the field to remove it.",
         "settings.row.endpoint": "Endpoint",
         "settings.help.endpoint": "Full OpenAI-compatible /chat/completions URL.",
         "settings.row.model": "Model",
@@ -218,7 +218,7 @@ enum L10n {
         "settings.privacy.keychain": "• API keys are stored locally on this Mac",
         "settings.privacy.provider": "• Text is sent directly to the selected provider",
         "settings.privacy.clipboard": "• Clipboard contents are restored after insertion",
-        "settings.footer.pending": "Changes apply the next time the popover opens.",
+        "settings.footer.pending": "Changes are saved automatically and apply the next time the popover opens.",
         "settings.save": "Save",
         "settings.saved": "Saved",
         "settings.error.visibleModeRequired": "Keep at least one visible mode.",
@@ -277,7 +277,7 @@ enum L10n {
         "language.system": "跟随系统",
         "settings.window.title": "Inklet 设置",
         "settings.sidebar.preferences": "偏好设置",
-        "settings.sidebar.hint": "⌘S 保存 · ⌘, 打开",
+        "settings.sidebar.hint": "自动保存 · ⌘, 打开",
         "settings.version": "版本 %@",
         "settings.section.general": "通用",
         "settings.section.providers": "模型服务商",
@@ -307,7 +307,7 @@ enum L10n {
         "settings.row.provider": "Provider",
         "settings.help.provider": "当前服务商。",
         "settings.row.apiKey": "API Key",
-        "settings.help.apiKey": "API Key 会保存在本机；清空输入框并保存即可删除。",
+        "settings.help.apiKey": "API Key 会保存在本机；清空输入框即可删除。",
         "settings.row.endpoint": "Endpoint",
         "settings.help.endpoint": "完整的 OpenAI-compatible /chat/completions URL。",
         "settings.row.model": "Model",
@@ -354,7 +354,7 @@ enum L10n {
         "settings.privacy.keychain": "• API Key 保存在本机",
         "settings.privacy.provider": "• 文本会直接发送到当前选择的服务商",
         "settings.privacy.clipboard": "• 插入后会恢复原剪贴板内容",
-        "settings.footer.pending": "更改会在保存后应用到下一次浮窗打开。",
+        "settings.footer.pending": "更改会自动保存，并在下一次浮窗打开时应用。",
         "settings.save": "保存",
         "settings.saved": "已保存",
         "settings.error.visibleModeRequired": "至少需要保留一个可见模式。",
@@ -413,7 +413,7 @@ enum L10n {
         "language.system": "跟隨系統",
         "settings.window.title": "Inklet 設定",
         "settings.sidebar.preferences": "偏好設定",
-        "settings.sidebar.hint": "⌘S 儲存 · ⌘, 開啟",
+        "settings.sidebar.hint": "自動儲存 · ⌘, 開啟",
         "settings.section.general": "一般",
         "settings.section.providers": "模型服務商",
         "settings.section.promptModes": "Prompt 模式",
@@ -440,7 +440,7 @@ enum L10n {
         "settings.permission.required": "需要 Accessibility 權限",
         "settings.permission.description": "Inklet 需要此權限，才能把生成文字貼回目前輸入框。",
         "settings.permission.open": "開啟系統權限設定",
-        "settings.footer.pending": "變更會在儲存後套用到下一次浮窗開啟。",
+        "settings.footer.pending": "變更會自動儲存，並在下次浮窗開啟時套用。",
         "settings.save": "儲存",
         "settings.saved": "已儲存",
         "settings.error.visibleModeRequired": "至少需要保留一個可見模式。",
@@ -487,7 +487,7 @@ enum L10n {
         "language.system": "システムに合わせる",
         "settings.window.title": "Inklet 設定",
         "settings.sidebar.preferences": "環境設定",
-        "settings.sidebar.hint": "⌘S 保存 · ⌘, 開く",
+        "settings.sidebar.hint": "自動保存 · ⌘, 開く",
         "settings.section.general": "一般",
         "settings.section.providers": "プロバイダー",
         "settings.section.promptModes": "Prompt モード",
@@ -514,7 +514,7 @@ enum L10n {
         "settings.permission.required": "Accessibility 権限が必要です",
         "settings.permission.description": "生成したテキストを現在の入力欄へ貼り戻すために、この権限が必要です。",
         "settings.permission.open": "システム設定を開く",
-        "settings.footer.pending": "変更は保存後、次回ポップオーバーを開いたときに適用されます。",
+        "settings.footer.pending": "変更は自動保存され、次回ポップオーバーを開いたときに適用されます。",
         "settings.save": "保存",
         "settings.saved": "保存しました",
         "settings.error.visibleModeRequired": "少なくとも 1 つの表示モードが必要です。",
@@ -561,7 +561,7 @@ enum L10n {
         "language.system": "시스템 따르기",
         "settings.window.title": "Inklet 설정",
         "settings.sidebar.preferences": "환경설정",
-        "settings.sidebar.hint": "⌘S 저장 · ⌘, 열기",
+        "settings.sidebar.hint": "자동 저장 · ⌘, 열기",
         "settings.section.general": "일반",
         "settings.section.providers": "Provider",
         "settings.section.promptModes": "Prompt Modes",
@@ -588,7 +588,7 @@ enum L10n {
         "settings.permission.required": "Accessibility 권한 필요",
         "settings.permission.description": "생성된 텍스트를 현재 입력 필드에 붙여넣으려면 이 권한이 필요합니다.",
         "settings.permission.open": "시스템 설정 열기",
-        "settings.footer.pending": "변경 사항은 저장 후 다음 팝오버부터 적용됩니다.",
+        "settings.footer.pending": "변경 사항은 자동 저장되며 다음 팝오버부터 적용됩니다.",
         "settings.save": "저장",
         "settings.saved": "저장됨",
         "settings.error.visibleModeRequired": "표시되는 모드를 하나 이상 유지하세요.",
@@ -635,7 +635,7 @@ enum L10n {
         "language.system": "Sistema",
         "settings.window.title": "Ajustes de Inklet",
         "settings.sidebar.preferences": "Preferencias",
-        "settings.sidebar.hint": "⌘S Guardar · ⌘, Abrir",
+        "settings.sidebar.hint": "Autoguardado · ⌘, Abrir",
         "settings.section.general": "General",
         "settings.section.providers": "Proveedores",
         "settings.section.promptModes": "Modos de prompt",
@@ -662,7 +662,7 @@ enum L10n {
         "settings.permission.required": "Se requiere permiso de Accessibility",
         "settings.permission.description": "Inklet necesita este permiso para pegar el texto generado en el campo actual.",
         "settings.permission.open": "Abrir ajustes del sistema",
-        "settings.footer.pending": "Los cambios se aplican la próxima vez que abras el panel.",
+        "settings.footer.pending": "Los cambios se guardan automáticamente y se aplican la próxima vez que abras el panel.",
         "settings.save": "Guardar",
         "settings.saved": "Guardado",
         "settings.error.visibleModeRequired": "Mantén al menos un modo visible.",
@@ -709,7 +709,7 @@ enum L10n {
         "language.system": "Système",
         "settings.window.title": "Réglages de Inklet",
         "settings.sidebar.preferences": "Préférences",
-        "settings.sidebar.hint": "⌘S Enregistrer · ⌘, Ouvrir",
+        "settings.sidebar.hint": "Auto-enregistré · ⌘, Ouvrir",
         "settings.section.general": "Général",
         "settings.section.providers": "Fournisseurs",
         "settings.section.promptModes": "Modes de prompt",
@@ -736,7 +736,7 @@ enum L10n {
         "settings.permission.required": "Autorisation Accessibility requise",
         "settings.permission.description": "Inklet a besoin de cette autorisation pour coller le texte généré dans le champ actif.",
         "settings.permission.open": "Ouvrir les réglages système",
-        "settings.footer.pending": "Les changements s’appliquent à la prochaine ouverture du panneau.",
+        "settings.footer.pending": "Les changements sont enregistrés automatiquement et s’appliquent à la prochaine ouverture du panneau.",
         "settings.save": "Enregistrer",
         "settings.saved": "Enregistré",
         "settings.error.visibleModeRequired": "Conservez au moins un mode visible.",
@@ -783,7 +783,7 @@ enum L10n {
         "language.system": "System",
         "settings.window.title": "Inklet Einstellungen",
         "settings.sidebar.preferences": "Einstellungen",
-        "settings.sidebar.hint": "⌘S Speichern · ⌘, Öffnen",
+        "settings.sidebar.hint": "Automatisch gespeichert · ⌘, Öffnen",
         "settings.section.general": "Allgemein",
         "settings.section.providers": "Anbieter",
         "settings.section.promptModes": "Prompt-Modi",
@@ -810,7 +810,7 @@ enum L10n {
         "settings.permission.required": "Accessibility-Berechtigung erforderlich",
         "settings.permission.description": "Inklet benötigt diese Berechtigung, um generierten Text in das aktuelle Eingabefeld einzufügen.",
         "settings.permission.open": "Systemeinstellungen öffnen",
-        "settings.footer.pending": "Änderungen gelten beim nächsten Öffnen des Popovers.",
+        "settings.footer.pending": "Änderungen werden automatisch gespeichert und gelten beim nächsten Öffnen des Popovers.",
         "settings.save": "Speichern",
         "settings.saved": "Gespeichert",
         "settings.error.visibleModeRequired": "Mindestens ein sichtbarer Modus ist erforderlich.",
@@ -857,7 +857,7 @@ enum L10n {
         "language.system": "Sistema",
         "settings.window.title": "Ajustes do Inklet",
         "settings.sidebar.preferences": "Preferências",
-        "settings.sidebar.hint": "⌘S Salvar · ⌘, Abrir",
+        "settings.sidebar.hint": "Salvo automaticamente · ⌘, Abrir",
         "settings.section.general": "Geral",
         "settings.section.providers": "Provedores",
         "settings.section.promptModes": "Modos de prompt",
@@ -884,7 +884,7 @@ enum L10n {
         "settings.permission.required": "Permissão Accessibility necessária",
         "settings.permission.description": "O Inklet precisa desta permissão para colar o texto gerado no campo atual.",
         "settings.permission.open": "Abrir Ajustes do Sistema",
-        "settings.footer.pending": "As alterações se aplicam na próxima vez que o painel abrir.",
+        "settings.footer.pending": "As alterações são salvas automaticamente e se aplicam na próxima vez que o painel abrir.",
         "settings.save": "Salvar",
         "settings.saved": "Salvo",
         "settings.error.visibleModeRequired": "Mantenha pelo menos um modo visível.",
@@ -931,7 +931,7 @@ enum L10n {
         "language.system": "Sistema",
         "settings.window.title": "Impostazioni Inklet",
         "settings.sidebar.preferences": "Preferenze",
-        "settings.sidebar.hint": "⌘S Salva · ⌘, Apri",
+        "settings.sidebar.hint": "Salvataggio automatico · ⌘, Apri",
         "settings.section.general": "Generale",
         "settings.section.providers": "Provider",
         "settings.section.promptModes": "Modalità prompt",
@@ -958,7 +958,7 @@ enum L10n {
         "settings.permission.required": "Permesso Accessibility richiesto",
         "settings.permission.description": "Inklet ha bisogno di questo permesso per incollare il testo generato nel campo attivo.",
         "settings.permission.open": "Apri Impostazioni di Sistema",
-        "settings.footer.pending": "Le modifiche si applicano alla prossima apertura del pannello.",
+        "settings.footer.pending": "Le modifiche vengono salvate automaticamente e si applicano alla prossima apertura del pannello.",
         "settings.save": "Salva",
         "settings.saved": "Salvato",
         "settings.error.visibleModeRequired": "Mantieni almeno una modalità visibile.",
@@ -1019,26 +1019,6 @@ extension PromptMode {
         }
     }
 
-    var localizedDescription: String {
-        switch id {
-        case PromptMode.translateToEnglishID:
-            L10n.text("prompt.simpleCorrectEnglish.description")
-        case PromptMode.chineseSummaryID:
-            L10n.text("prompt.chineseSummary.description")
-        case PromptMode.improveWritingID:
-            L10n.text("prompt.improveWriting.description")
-        case PromptMode.makeConciseID:
-            L10n.text("prompt.makeConcise.description")
-        case PromptMode.professionalToneID:
-            L10n.text("prompt.professionalTone.description")
-        case PromptMode.friendlyReplyID:
-            L10n.text("prompt.friendlyReply.description")
-        case PromptMode.customPromptID:
-            L10n.text("prompt.custom.description")
-        default:
-            description
-        }
-    }
 }
 
 extension HotkeyError {

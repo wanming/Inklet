@@ -23,11 +23,13 @@ final class AppCoordinator: NSObject {
     private let configStore: UserDefaultsConfigStore
     private let accessibilityPermissionService: AccessibilityPermissionService
     private var configObserver: NSObjectProtocol?
+    private var hotkeyRecordingObserver: NSObjectProtocol?
     private var languageObserver: NSObjectProtocol?
     private var activeApplicationObserver: NSObjectProtocol?
     private var settingsShortcutMonitor: Any?
     private var lastTargetApplication: NSRunningApplication?
     private var didRequestAccessibilityPermissionThisLaunch = false
+    private var isRecordingHotkey = false
 
     override init() {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -37,6 +39,10 @@ final class AppCoordinator: NSObject {
         self.configStore = UserDefaultsConfigStore()
         self.accessibilityPermissionService = AccessibilityPermissionService()
         super.init()
+
+        self.windowController.onOpenSettings = { [weak self] in
+            self?.openSettings()
+        }
     }
 
     func start() {
@@ -62,7 +68,21 @@ final class AppCoordinator: NSObject {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
+                guard self?.isRecordingHotkey == false else {
+                    return
+                }
                 self?.registerConfiguredHotkey()
+            }
+        }
+
+        hotkeyRecordingObserver = NotificationCenter.default.addObserver(
+            forName: .hotkeyRecordingDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            let isRecording = notification.userInfo?["isRecording"] as? Bool ?? false
+            Task { @MainActor in
+                self?.setHotkeyRecording(isRecording)
             }
         }
 
@@ -85,6 +105,10 @@ final class AppCoordinator: NSObject {
         if let configObserver {
             NotificationCenter.default.removeObserver(configObserver)
             self.configObserver = nil
+        }
+        if let hotkeyRecordingObserver {
+            NotificationCenter.default.removeObserver(hotkeyRecordingObserver)
+            self.hotkeyRecordingObserver = nil
         }
         if let languageObserver {
             NotificationCenter.default.removeObserver(languageObserver)
@@ -174,6 +198,10 @@ final class AppCoordinator: NSObject {
     }
 
     private func registerConfiguredHotkey() {
+        guard !isRecordingHotkey else {
+            return
+        }
+
         do {
             let config = try configStore.load()
             let hotkey: Hotkey
@@ -191,6 +219,19 @@ final class AppCoordinator: NSObject {
             }
         } catch {
             NSLog("Failed to register configured hotkey: \(String(describing: error))")
+        }
+    }
+
+    private func setHotkeyRecording(_ isRecording: Bool) {
+        guard isRecordingHotkey != isRecording else {
+            return
+        }
+
+        isRecordingHotkey = isRecording
+        if isRecording {
+            hotkeyManager.unregister()
+        } else {
+            registerConfiguredHotkey()
         }
     }
 

@@ -18,6 +18,8 @@ final class SettingsViewModel: ObservableObject {
     private let configStore: UserDefaultsConfigStore
     private let apiKeyStore: LocalAPIKeyStore
     private let modelCatalogService: ModelCatalogService
+    private var cancellables = Set<AnyCancellable>()
+    private var isLoadingProviderKey = false
 
     static let customModelMenuID = "__custom_model__"
 
@@ -26,7 +28,8 @@ final class SettingsViewModel: ObservableObject {
         apiKeyStore: LocalAPIKeyStore = LocalAPIKeyStore(),
         modelCatalogService: ModelCatalogService = ModelCatalogService()
     ) {
-        let loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
+        var loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
+        loadedConfig.temperature = min(max(loadedConfig.temperature, 0), 1)
         self.configStore = configStore
         self.apiKeyStore = apiKeyStore
         self.modelCatalogService = modelCatalogService
@@ -46,6 +49,8 @@ final class SettingsViewModel: ObservableObject {
         )
         self.isRefreshingModelCatalog = false
         self.isEditingCustomModel = false
+
+        installAutoSave()
     }
 
     var selectedProvider: LLMProviderPreset {
@@ -120,8 +125,11 @@ final class SettingsViewModel: ObservableObject {
     func selectProvider(_ providerID: String) {
         config.providerID = providerID
         config.model = LLMProviderPreset.preset(id: providerID).defaultModel
+        isLoadingProviderKey = true
         providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: providerID) ?? ""
+        isLoadingProviderKey = false
         isEditingCustomModel = false
+        save()
     }
 
     func selectModelMenuValue(_ value: String) {
@@ -132,6 +140,7 @@ final class SettingsViewModel: ObservableObject {
 
         isEditingCustomModel = false
         config.model = value
+        save()
     }
 
     func refreshModelCatalogIfNeeded() async {
@@ -159,7 +168,7 @@ final class SettingsViewModel: ObservableObject {
         let mode = PromptMode(
             id: "custom-\(Int(Date().timeIntervalSince1970))",
             name: L10n.text("settings.mode.newName"),
-            description: L10n.text("settings.mode.newDescription"),
+            description: "",
             systemPrompt: "",
             shortcut: nil,
             participatesInAuto: false,
@@ -170,6 +179,7 @@ final class SettingsViewModel: ObservableObject {
         config.promptModes.append(mode)
         selectedPromptModeID = mode.id
         normalizePromptModeSortOrder()
+        save()
     }
 
     func deleteSelectedPromptMode() {
@@ -193,6 +203,7 @@ final class SettingsViewModel: ObservableObject {
         if selectedPromptModeID == modeID {
             selectedPromptModeID = config.promptModes.first?.id ?? PromptMode.translateToEnglishID
         }
+        save()
     }
 
     func movePromptModes(from source: IndexSet, to destination: Int) {
@@ -206,6 +217,7 @@ final class SettingsViewModel: ObservableObject {
             config.promptModes[configIndex].sortOrder = sortOrder
         }
         normalizePromptModeSortOrder()
+        save()
     }
 
     func promptModeName(modeID: String) -> String {
@@ -227,6 +239,24 @@ final class SettingsViewModel: ObservableObject {
         }
 
         config.promptModes[index].isVisible.toggle()
+        save()
+    }
+
+    func promptModeVisibilityBinding(modeID: String) -> Binding<Bool> {
+        Binding(
+            get: { [weak self] in
+                self?.config.promptModes.first(where: { $0.id == modeID })?.isVisible ?? false
+            },
+            set: { [weak self] newValue in
+                guard let self,
+                      let mode = self.config.promptModes.first(where: { $0.id == modeID }),
+                      mode.isVisible != newValue
+                else {
+                    return
+                }
+                self.togglePromptModeVisibility(modeID: modeID)
+            }
+        )
     }
 
     func canMovePromptMode(modeID: String, direction: Int) -> Bool {
@@ -263,6 +293,7 @@ final class SettingsViewModel: ObservableObject {
                 message = L10n.text("settings.error.modelRequired")
                 return
             }
+            config.temperature = min(max(config.temperature, 0), 1)
 
             if isCustomOpenAICompatibleProvider {
                 guard let endpoint = URL(string: config.customOpenAICompatibleEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -293,6 +324,19 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
+    private func installAutoSave() {
+        Publishers.CombineLatest3($config, $providerAPIKey, $interfaceLanguage)
+            .dropFirst()
+            .debounce(for: .milliseconds(450), scheduler: RunLoop.main)
+            .sink { [weak self] _, _, _ in
+                guard let self, !self.isLoadingProviderKey else {
+                    return
+                }
+                self.save()
+            }
+            .store(in: &cancellables)
+    }
+
     func openAccessibilitySettings() {
         guard let url = URL(
             string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
@@ -307,6 +351,7 @@ final class SettingsViewModel: ObservableObject {
 
 extension Notification.Name {
     static let appConfigDidSave = Notification.Name("InkletAppConfigDidSave")
+    static let hotkeyRecordingDidChange = Notification.Name("InkletHotkeyRecordingDidChange")
 }
 
 private extension PromptMode {
@@ -357,9 +402,14 @@ struct SettingsView: View {
             sidebar
             detail
         }
-        .frame(width: 860, height: 540)
+        .frame(width: 860, height: 560)
         .background(InkletTheme.panelBackground)
-        .clipShape(RoundedRectangle(cornerRadius: InkletTheme.cornerRadius))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(InkletTheme.strongBorder)
+        }
+        .shadow(color: .black.opacity(0.75), radius: 48, x: 0, y: 28)
         .preferredColorScheme(model.config.appearance.colorScheme)
         .task {
             await model.refreshModelCatalogIfNeeded()
@@ -392,19 +442,32 @@ struct SettingsView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Inklet")
-                    .font(.system(size: 14, weight: .semibold))
-                Text(L10n.text("settings.sidebar.preferences"))
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(InkletTheme.primary)
+                        .frame(width: 28, height: 28)
+                        .background(InkletTheme.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(InkletTheme.primary.opacity(0.20))
+                        }
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Inklet")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(InkletTheme.textPrimary)
+                        Text(L10n.text("settings.sidebar.preferences"))
+                            .font(.system(size: 10))
+                            .foregroundStyle(InkletTheme.textTertiary)
+                    }
+                }
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 14)
-            .padding(.bottom, 12)
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 20)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(alignment: .bottom) { Divider().opacity(0.45) }
 
-            VStack(spacing: 0) {
+            VStack(spacing: 2) {
                 ForEach(SettingsSection.allCases) { section in
                     Button {
                         selectedSection = section
@@ -418,43 +481,44 @@ struct SettingsView: View {
                             Spacer()
                         }
                         .font(.system(size: 13, weight: selectedSection == section ? .semibold : .regular))
-                        .foregroundStyle(selectedSection == section ? .primary : .secondary)
-                        .padding(.horizontal, 14)
+                        .foregroundStyle(selectedSection == section ? InkletTheme.primary.opacity(0.95) : InkletTheme.textSecondary)
+                        .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(
-                            selectedSection == section ? InkletTheme.primary.opacity(0.18) : Color.clear
+                            selectedSection == section ? InkletTheme.primary.opacity(0.12) : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 12)
                         )
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.top, 6)
+            .padding(.horizontal, 8)
 
             Spacer()
             Text(L10n.format("settings.version", "1.0.0"))
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 13)
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(InkletTheme.textFaint)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(alignment: .top) { Divider().opacity(0.45) }
         }
-        .frame(width: 172)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.45))
-        .overlay(alignment: .trailing) { Divider().opacity(0.55) }
+        .frame(width: 188)
+        .background(InkletTheme.toolbarBackground)
+        .overlay(alignment: .trailing) { Rectangle().fill(InkletTheme.subtleBorder).frame(width: 1) }
     }
 
     private var detail: some View {
         VStack(spacing: 0) {
             detailHeader
-            Divider().opacity(0.55)
+            Divider().opacity(0.12)
 
             Group {
                 switch selectedSection {
                 case .general:
                     ScrollView {
                         generalPanel
-                            .padding(20)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 20)
                     }
                 case .providers:
                     providersPanel
@@ -463,13 +527,14 @@ struct SettingsView: View {
                 case .permissions:
                     ScrollView {
                         permissionsPanel
-                            .padding(20)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 20)
                     }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            Divider().opacity(0.5)
+            Divider().opacity(0.12)
             footer
         }
     }
@@ -477,22 +542,23 @@ struct SettingsView: View {
     private var detailHeader: some View {
         HStack {
             Text(selectedSection.title)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(InkletTheme.textPrimary)
             Spacer()
             Button {
                 NSApp.keyWindow?.close()
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
-                    .background(.quaternary.opacity(0.01), in: RoundedRectangle(cornerRadius: 7))
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .frame(width: 26, height: 26)
+                    .background(Color.white.opacity(0.001), in: RoundedRectangle(cornerRadius: 8))
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 24)
+        .padding(.top, 18)
+        .padding(.bottom, 15)
     }
 
     private var sectionDescription: String {
@@ -537,11 +603,12 @@ struct SettingsView: View {
 
             settingsRow(L10n.text("settings.row.temperature"), help: L10n.text("settings.help.temperature")) {
                 HStack(spacing: 12) {
-                    Slider(value: $model.config.temperature, in: 0...2, step: 0.1)
+                    Slider(value: $model.config.temperature, in: 0...1, step: 0.1)
                     Text(model.config.temperature, format: .number.precision(.fractionLength(1)))
                         .font(.body.monospacedDigit())
                         .frame(width: 42, alignment: .trailing)
                 }
+                .frame(maxWidth: 520)
             }
 
             settingsRow(L10n.text("settings.row.timeout"), help: L10n.text("settings.help.timeout")) {
@@ -625,7 +692,8 @@ struct SettingsView: View {
                         }
                     }
                 }
-                .padding(20)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
             }
     }
 
@@ -646,35 +714,41 @@ struct SettingsView: View {
                         promptModePendingDeletionID = modeID
                     }
                 )
-                .padding(.top, 8)
-                .background(Color(nsColor: .controlBackgroundColor).opacity(0.16))
-                Divider().opacity(0.55)
+                .padding(.top, 10)
+                .frame(maxWidth: .infinity)
+                .background(InkletTheme.toolbarBackground)
+                Divider().opacity(0.12)
                 Button {
                     model.addPromptMode()
                 } label: {
                     Label(L10n.text("settings.mode.add"), systemImage: "plus")
                         .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(InkletTheme.textSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(Color(nsColor: .controlBackgroundColor).opacity(0.35), in: RoundedRectangle(cornerRadius: 7))
+                        .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 12))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 7)
+                            RoundedRectangle(cornerRadius: 12)
                                 .stroke(style: StrokeStyle(lineWidth: 1, dash: [4]))
                                 .foregroundStyle(InkletTheme.subtleBorder)
                         }
                 }
                 .buttonStyle(.plain)
                 .padding(10)
+                .frame(width: 236)
             }
-            .frame(width: 288)
-            .overlay(alignment: .trailing) { Divider().opacity(0.55) }
+            .frame(minWidth: 236, idealWidth: 236, maxWidth: 236, maxHeight: .infinity, alignment: .top)
+            .fixedSize(horizontal: true, vertical: false)
+            .clipped()
+            .overlay(alignment: .trailing) { Rectangle().fill(InkletTheme.subtleBorder).frame(width: 1) }
 
             if let index = model.selectedPromptModeIndex {
                 ScrollView {
                     promptModeDetail(index: index)
-                        .frame(maxWidth: 560, alignment: .leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .layoutPriority(1)
             } else {
                 Text(L10n.text("settings.mode.pick"))
                     .foregroundStyle(.secondary)
@@ -688,24 +762,20 @@ struct SettingsView: View {
             VStack(spacing: 11) {
                 settingsRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
                     TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                settingsRow(L10n.text("settings.row.description"), help: L10n.text("settings.help.description")) {
-                    TextField(L10n.text("settings.row.description"), text: $model.config.promptModes[index].description)
-                        .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .modifier(InkletFieldModifier())
                 }
             }
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(L10n.text("settings.row.systemPrompt"))
                     .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(InkletTheme.textPrimary)
 
-                TextEditor(text: $model.config.promptModes[index].systemPrompt)
-                    .font(.system(size: 13))
-                    .scrollContentBackground(.hidden)
-                    .background(InkletTextEditorChromeNormalizer())
-                    .frame(height: 178)
+                SettingsPromptTextView(text: $model.config.promptModes[index].systemPrompt)
+                    .frame(height: 164)
                     .padding(10)
                     .modifier(InkletFieldModifier())
             }
@@ -713,7 +783,7 @@ struct SettingsView: View {
             settingsToggle(
                 title: L10n.text("settings.mode.visibleInMenu"),
                 subtitle: L10n.text("settings.mode.visibleInMenuHelp"),
-                isOn: $model.config.promptModes[index].isVisible
+                isOn: model.promptModeVisibilityBinding(modeID: model.config.promptModes[index].id)
             )
             .padding(.top, 2)
         }
@@ -734,9 +804,10 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(L10n.text("settings.permission.accessibility"))
                             .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(InkletTheme.textPrimary)
                         Text(L10n.text("settings.permission.description"))
                             .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(InkletTheme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
@@ -757,27 +828,28 @@ struct SettingsView: View {
                 .controlSize(.small)
             }
             .padding(16)
-            .background(InkletTheme.elevatedBackground, in: RoundedRectangle(cornerRadius: 9))
+            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 16))
             .overlay {
-                RoundedRectangle(cornerRadius: 9)
+                RoundedRectangle(cornerRadius: 16)
                     .stroke(InkletTheme.subtleBorder)
             }
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(L10n.text("settings.privacy.title"))
                     .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(InkletTheme.textPrimary)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(L10n.text("settings.privacy.keychain"))
                     Text(L10n.text("settings.privacy.provider"))
                     Text(L10n.text("settings.privacy.clipboard"))
                 }
                 .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(InkletTheme.textSecondary)
             }
             .padding(16)
-            .background(InkletTheme.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 9))
+            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 16))
             .overlay {
-                RoundedRectangle(cornerRadius: 9)
+                RoundedRectangle(cornerRadius: 16)
                     .stroke(InkletTheme.subtleBorder)
             }
         }
@@ -788,26 +860,18 @@ struct SettingsView: View {
             if !model.message.isEmpty {
                 Label(model.message, systemImage: isSavedMessage ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                     .font(.footnote)
-                    .foregroundStyle(isSavedMessage ? .green : .red)
+                    .foregroundStyle(isSavedMessage ? InkletTheme.success : .red)
                     .lineLimit(2)
             } else {
                 Text(L10n.text("settings.footer.pending"))
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(InkletTheme.textFaint)
             }
             Spacer()
-            Button {
-                model.save()
-            } label: {
-                Label(L10n.text("settings.save"), systemImage: "checkmark")
-            }
-            .keyboardShortcut("s", modifiers: .command)
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
-        .background(.regularMaterial)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
+        .background(InkletTheme.toolbarBackground)
     }
 
     private func settingsPanel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -815,6 +879,7 @@ struct SettingsView: View {
             content()
         }
         .padding(0)
+        .frame(maxWidth: 580, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -827,7 +892,7 @@ struct SettingsView: View {
             HStack {
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(InkletTheme.textPrimary)
                 Spacer()
             }
             content()
@@ -835,7 +900,7 @@ struct SettingsView: View {
             if !help.isEmpty {
                 Text(help)
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(InkletTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -846,9 +911,10 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(InkletTheme.textPrimary)
                 Text(subtitle)
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(InkletTheme.textSecondary)
             }
             Spacer()
             Toggle("", isOn: isOn)
@@ -883,7 +949,7 @@ private struct PromptModeTableView: NSViewRepresentable {
         column.resizingMask = .autoresizingMask
         tableView.addTableColumn(column)
         tableView.headerView = nil
-        tableView.rowHeight = 36
+        tableView.rowHeight = 38
         tableView.intercellSpacing = NSSize(width: 0, height: 2)
         tableView.backgroundColor = .clear
         tableView.selectionHighlightStyle = .none
@@ -892,12 +958,13 @@ private struct PromptModeTableView: NSViewRepresentable {
         tableView.dataSource = context.coordinator
         tableView.registerForDraggedTypes([Coordinator.dragPasteboardType])
 
-        let scrollView = NSScrollView()
+        let scrollView = PromptModeTableScrollView()
         scrollView.drawsBackground = false
-        scrollView.hasVerticalScroller = true
+        scrollView.hasVerticalScroller = false
         scrollView.hasHorizontalScroller = false
         scrollView.horizontalScrollElasticity = .none
         scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
         scrollView.documentView = tableView
         context.coordinator.tableView = tableView
         return scrollView
@@ -915,9 +982,7 @@ private struct PromptModeTableView: NSViewRepresentable {
             return
         }
 
-        if tableView.tableColumns.first?.width != scrollView.bounds.width {
-            tableView.tableColumns.first?.width = scrollView.bounds.width
-        }
+        PromptModeTableScrollView.syncTableWidth(tableView, to: scrollView.contentView.bounds.width)
 
         tableView.reloadData()
         context.coordinator.syncSelection()
@@ -1061,12 +1126,41 @@ private struct PromptModeTableView: NSViewRepresentable {
     }
 }
 
+private final class PromptModeTableScrollView: NSScrollView {
+    override func layout() {
+        super.layout()
+        guard let tableView = documentView as? NSTableView else {
+            return
+        }
+        Self.syncTableWidth(tableView, to: contentView.bounds.width)
+    }
+
+    static func syncTableWidth(_ tableView: NSTableView, to width: CGFloat) {
+        let width = max(width, 1)
+        guard tableView.tableColumns.first?.width != width else {
+            return
+        }
+
+        tableView.tableColumns.first?.width = width
+        var frame = tableView.frame
+        frame.size.width = width
+        tableView.frame = frame
+    }
+}
+
 private final class PromptModeTableCellView: NSTableCellView {
+    private static let rowWidth: CGFloat = 190
+    private let rowContainer = NSView()
     private let selectionBackground = NSView()
     private let dragHandle = NSImageView()
     private let titleField = NSTextField(labelWithString: "")
     private let visibilityButton = NSButton()
     private let deleteButton = NSButton()
+    private var trackingArea: NSTrackingArea?
+    private var isHovered = false
+    private var isCellSelected = false
+    private var isModeVisible = true
+    private var canDeleteMode = true
 
     init(identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
@@ -1086,16 +1180,13 @@ private final class PromptModeTableCellView: NSTableCellView {
         target: PromptModeTableView.Coordinator
     ) {
         let symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
+        isCellSelected = isSelected
+        isModeVisible = mode.isVisible
+        canDeleteMode = canDelete
         titleField.stringValue = mode.name.isEmpty ? L10n.text("settings.mode.untitled") : mode.localizedName
         titleField.font = .systemFont(ofSize: 13, weight: isSelected ? .semibold : .regular)
-        titleField.textColor = isSelected ? .labelColor : .secondaryLabelColor
-        selectionBackground.layer?.backgroundColor = isSelected
-            ? NSColor.controlAccentColor.withAlphaComponent(0.12).cgColor
-            : NSColor.clear.cgColor
-        dragHandle.contentTintColor = isSelected ? .secondaryLabelColor : .tertiaryLabelColor
         visibilityButton.image = NSImage(systemSymbolName: mode.isVisible ? "eye" : "eye.slash", accessibilityDescription: nil)?
             .withSymbolConfiguration(symbolConfiguration)
-        visibilityButton.contentTintColor = mode.isVisible ? .secondaryLabelColor : .tertiaryLabelColor
         visibilityButton.toolTip = mode.isVisible ? L10n.text("settings.mode.visible") : L10n.text("settings.mode.hidden")
         visibilityButton.identifier = NSUserInterfaceItemIdentifier(mode.id)
         visibilityButton.target = target
@@ -1105,30 +1196,58 @@ private final class PromptModeTableCellView: NSTableCellView {
         deleteButton.target = target
         deleteButton.action = #selector(PromptModeTableView.Coordinator.deleteMode(_:))
         deleteButton.isEnabled = canDelete
-        deleteButton.contentTintColor = canDelete ? .secondaryLabelColor : .tertiaryLabelColor
         deleteButton.toolTip = L10n.text("settings.mode.delete")
+        applyAppearance()
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea {
+            removeTrackingArea(trackingArea)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self
+        )
+        trackingArea = area
+        addTrackingArea(area)
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        isHovered = true
+        applyAppearance()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+        applyAppearance()
     }
 
     private func buildView() {
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
+        rowContainer.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(rowContainer)
+
         selectionBackground.wantsLayer = true
-        selectionBackground.layer?.cornerRadius = 7
+        selectionBackground.layer?.cornerRadius = 12
         selectionBackground.layer?.cornerCurve = .continuous
         selectionBackground.layer?.backgroundColor = NSColor.clear.cgColor
         selectionBackground.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(selectionBackground)
+        rowContainer.addSubview(selectionBackground)
 
         let symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
         dragHandle.image = NSImage(systemSymbolName: "line.3.horizontal", accessibilityDescription: nil)?
             .withSymbolConfiguration(symbolConfiguration)
-        dragHandle.contentTintColor = .tertiaryLabelColor
+        dragHandle.contentTintColor = NSColor(white: 1, alpha: 0.18)
         dragHandle.setContentHuggingPriority(.required, for: .horizontal)
         dragHandle.setContentCompressionResistancePriority(.required, for: .horizontal)
         dragHandle.toolTip = L10n.text("settings.mode.dragToSort")
         dragHandle.translatesAutoresizingMaskIntoConstraints = false
 
         titleField.lineBreakMode = .byTruncatingTail
+        titleField.textColor = NSColor(white: 0.74, alpha: 1)
         titleField.setContentHuggingPriority(.defaultLow, for: .horizontal)
         titleField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         titleField.translatesAutoresizingMaskIntoConstraints = false
@@ -1137,33 +1256,58 @@ private final class PromptModeTableCellView: NSTableCellView {
         configureIconButton(deleteButton)
         deleteButton.image = NSImage(systemSymbolName: "trash", accessibilityDescription: nil)?
             .withSymbolConfiguration(symbolConfiguration)
-        deleteButton.contentTintColor = .secondaryLabelColor
+        deleteButton.contentTintColor = NSColor(white: 1, alpha: 0.32)
 
-        addSubview(dragHandle)
-        addSubview(titleField)
-        addSubview(visibilityButton)
-        addSubview(deleteButton)
+        rowContainer.addSubview(dragHandle)
+        rowContainer.addSubview(titleField)
+        rowContainer.addSubview(visibilityButton)
+        rowContainer.addSubview(deleteButton)
 
         NSLayoutConstraint.activate([
+            rowContainer.widthAnchor.constraint(equalToConstant: Self.rowWidth),
+            rowContainer.centerXAnchor.constraint(equalTo: centerXAnchor, constant: -16),
+            rowContainer.topAnchor.constraint(equalTo: topAnchor, constant: 3),
+            rowContainer.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -3),
+            selectionBackground.leadingAnchor.constraint(equalTo: rowContainer.leadingAnchor),
+            selectionBackground.trailingAnchor.constraint(equalTo: rowContainer.trailingAnchor),
+            selectionBackground.topAnchor.constraint(equalTo: rowContainer.topAnchor),
+            selectionBackground.bottomAnchor.constraint(equalTo: rowContainer.bottomAnchor),
             dragHandle.widthAnchor.constraint(equalToConstant: 18),
             visibilityButton.widthAnchor.constraint(equalToConstant: 24),
             visibilityButton.heightAnchor.constraint(equalToConstant: 24),
             deleteButton.widthAnchor.constraint(equalToConstant: 24),
             deleteButton.heightAnchor.constraint(equalToConstant: 24),
-            selectionBackground.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            selectionBackground.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            selectionBackground.topAnchor.constraint(equalTo: topAnchor, constant: 3),
-            selectionBackground.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -3),
-            dragHandle.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            dragHandle.centerYAnchor.constraint(equalTo: centerYAnchor),
-            titleField.leadingAnchor.constraint(equalTo: dragHandle.trailingAnchor, constant: 12),
-            titleField.trailingAnchor.constraint(equalTo: visibilityButton.leadingAnchor, constant: -12),
-            titleField.centerYAnchor.constraint(equalTo: centerYAnchor),
-            visibilityButton.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -10),
-            visibilityButton.centerYAnchor.constraint(equalTo: centerYAnchor),
-            deleteButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            deleteButton.centerYAnchor.constraint(equalTo: centerYAnchor)
+            dragHandle.leadingAnchor.constraint(equalTo: rowContainer.leadingAnchor, constant: 14),
+            dragHandle.centerYAnchor.constraint(equalTo: rowContainer.centerYAnchor),
+            titleField.leadingAnchor.constraint(equalTo: dragHandle.trailingAnchor, constant: 10),
+            titleField.trailingAnchor.constraint(equalTo: visibilityButton.leadingAnchor, constant: -8),
+            titleField.centerYAnchor.constraint(equalTo: rowContainer.centerYAnchor),
+            visibilityButton.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -4),
+            visibilityButton.centerYAnchor.constraint(equalTo: rowContainer.centerYAnchor),
+            deleteButton.trailingAnchor.constraint(equalTo: rowContainer.trailingAnchor, constant: -10),
+            deleteButton.centerYAnchor.constraint(equalTo: rowContainer.centerYAnchor)
         ])
+    }
+
+    private func applyAppearance() {
+        let isDark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        selectionBackground.layer?.backgroundColor = isCellSelected
+            ? NSColor.controlAccentColor.withAlphaComponent(isDark ? 0.20 : 0.14).cgColor
+            : (isHovered ? NSColor.labelColor.withAlphaComponent(isDark ? 0.04 : 0.045).cgColor : NSColor.clear.cgColor)
+        titleField.textColor = isCellSelected
+            ? NSColor.controlAccentColor
+            : (isHovered ? .labelColor : .secondaryLabelColor)
+        dragHandle.contentTintColor = isHovered || isCellSelected
+            ? .secondaryLabelColor
+            : .tertiaryLabelColor
+        visibilityButton.contentTintColor = isModeVisible
+            ? .secondaryLabelColor
+            : .tertiaryLabelColor
+        visibilityButton.alphaValue = isHovered || isCellSelected ? 1 : 0.78
+        deleteButton.contentTintColor = canDeleteMode
+            ? .secondaryLabelColor
+            : .tertiaryLabelColor
+        deleteButton.alphaValue = isHovered || isCellSelected ? 1 : 0.64
     }
 
     private func configureIconButton(_ button: NSButton) {
@@ -1175,6 +1319,96 @@ private final class PromptModeTableCellView: NSTableCellView {
         button.focusRingType = .none
         button.setContentHuggingPriority(.required, for: .horizontal)
         button.setContentCompressionResistancePriority(.required, for: .horizontal)
+    }
+}
+
+private struct SettingsPromptTextView: NSViewRepresentable {
+    @Binding var text: String
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
+        scrollView.contentInsets = NSEdgeInsetsZero
+        scrollView.automaticallyAdjustsContentInsets = false
+        scrollView.horizontalScrollElasticity = .none
+
+        let textView = NSTextView()
+        textView.string = text
+        textView.delegate = context.coordinator
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.isRichText = false
+        textView.importsGraphics = false
+        textView.allowsUndo = true
+        textView.usesFindBar = false
+        textView.drawsBackground = false
+        textView.backgroundColor = .clear
+        textView.font = .systemFont(ofSize: 13)
+        textView.textColor = .labelColor
+        textView.insertionPointColor = .controlAccentColor
+        textView.textContainerInset = .zero
+        textView.textContainer?.lineFragmentPadding = 0
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(
+            width: scrollView.contentSize.width,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.isHorizontallyResizable = false
+        textView.isVerticallyResizable = true
+        textView.autoresizingMask = [.width]
+
+        scrollView.documentView = textView
+        context.coordinator.textView = textView
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let textView = scrollView.documentView as? NSTextView else {
+            return
+        }
+
+        context.coordinator.text = $text
+        context.coordinator.textView = textView
+        textView.font = .systemFont(ofSize: 13)
+        textView.textColor = .labelColor
+        textView.insertionPointColor = .controlAccentColor
+
+        if !textView.hasMarkedText(), textView.string != text {
+            textView.string = text
+        }
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate, @unchecked Sendable {
+        var text: Binding<String>
+        weak var textView: NSTextView?
+
+        init(text: Binding<String>) {
+            self.text = text
+            super.init()
+        }
+
+        @MainActor
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else {
+                return
+            }
+
+            text.wrappedValue = textView.string
+        }
     }
 }
 
@@ -1238,12 +1472,14 @@ private struct HotkeyRecorderField: NSViewRepresentable {
 
         override func mouseDown(with event: NSEvent) {
             isRecording = true
+            publishRecordingState()
             window?.makeFirstResponder(self)
             updateDisplay()
         }
 
         override func resignFirstResponder() -> Bool {
             isRecording = false
+            publishRecordingState()
             updateDisplay()
             return super.resignFirstResponder()
         }
@@ -1256,6 +1492,7 @@ private struct HotkeyRecorderField: NSViewRepresentable {
 
             if event.keyCode == UInt16(kVK_Escape) {
                 isRecording = false
+                publishRecordingState()
                 window?.makeFirstResponder(nil)
                 updateDisplay()
                 return
@@ -1269,6 +1506,7 @@ private struct HotkeyRecorderField: NSViewRepresentable {
             hotkey = recordedHotkey.displayString
             onChange?(hotkey)
             isRecording = false
+            publishRecordingState()
             window?.makeFirstResponder(nil)
             updateDisplay()
         }
@@ -1321,6 +1559,14 @@ private struct HotkeyRecorderField: NSViewRepresentable {
             if filteredFlags.contains(.control) { modifiers.insert(.control) }
             if filteredFlags.contains(.shift) { modifiers.insert(.shift) }
             return modifiers.displayString
+        }
+
+        private func publishRecordingState() {
+            NotificationCenter.default.post(
+                name: .hotkeyRecordingDidChange,
+                object: nil,
+                userInfo: ["isRecording": isRecording]
+            )
         }
     }
 }

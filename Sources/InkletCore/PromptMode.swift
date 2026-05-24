@@ -78,7 +78,7 @@ public struct PromptModeStore: Equatable, Sendable {
             PromptMode(
                 id: PromptMode.translateToEnglishID,
                 name: "To Simple and Correct English",
-                description: "Rewrite or translate into simple, correct English",
+                description: "",
                 systemPrompt: """
                 Rewrite the user's text into simple, correct, natural English.
                 If the input is not English, translate it into English first.
@@ -96,7 +96,7 @@ public struct PromptModeStore: Equatable, Sendable {
             PromptMode(
                 id: PromptMode.chineseSummaryID,
                 name: "To Chinese Summary",
-                description: "Summarize any text into concise Simplified Chinese",
+                description: "",
                 systemPrompt: """
                 Summarize the user's text in concise, natural Simplified Chinese.
                 Capture the key facts, decisions, dates, names, numbers, and action items.
@@ -140,7 +140,7 @@ public struct PromptModeStore: Equatable, Sendable {
         PromptMode(
             id: PromptMode.translateToEnglishID,
             name: "To Simple and Correct English",
-            description: "Rewrite or translate into simple, correct English",
+            description: "",
             systemPrompt: """
             Rewrite the user's text into simple, correct, natural English.
             If the input is not English, translate it into English first.

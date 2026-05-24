@@ -42,7 +42,7 @@ enum InkletTheme {
     static let controlRadius: CGFloat = 8
 
     static var primary: Color {
-        Color(red: 0.28, green: 0.58, blue: 0.94)
+        Color(nsColor: .controlAccentColor)
     }
 
     static var success: Color {
@@ -54,23 +54,94 @@ enum InkletTheme {
     }
 
     static var panelBackground: Color {
-        Color(nsColor: .windowBackgroundColor)
+        dynamicColor(
+            light: NSColor(red: 0.965, green: 0.967, blue: 0.982, alpha: 0.99),
+            dark: NSColor(red: 0.047, green: 0.047, blue: 0.078, alpha: 0.985)
+        )
     }
 
     static var elevatedBackground: Color {
-        Color(nsColor: .controlBackgroundColor).opacity(0.88)
+        dynamicColor(
+            light: NSColor(red: 1, green: 1, blue: 1, alpha: 0.78),
+            dark: NSColor(red: 0.078, green: 0.078, blue: 0.133, alpha: 1)
+        )
     }
 
     static var fieldBackground: Color {
-        Color(nsColor: .textBackgroundColor).opacity(0.9)
+        dynamicColor(
+            light: NSColor(red: 1, green: 1, blue: 1, alpha: 0.82),
+            dark: NSColor(red: 0.078, green: 0.078, blue: 0.133, alpha: 1)
+        )
     }
 
     static var subtleBorder: Color {
-        Color.secondary.opacity(0.18)
+        dynamicColor(
+            light: NSColor(red: 0, green: 0, blue: 0, alpha: 0.08),
+            dark: NSColor(red: 1, green: 1, blue: 1, alpha: 0.07)
+        )
     }
 
     static var strongBorder: Color {
-        Color.secondary.opacity(0.32)
+        dynamicColor(
+            light: NSColor(red: 0, green: 0, blue: 0, alpha: 0.12),
+            dark: NSColor(red: 1, green: 1, blue: 1, alpha: 0.10)
+        )
+    }
+
+    static var textPrimary: Color {
+        dynamicColor(
+            light: NSColor(red: 0.105, green: 0.113, blue: 0.145, alpha: 1),
+            dark: NSColor(red: 0.933, green: 0.933, blue: 0.949, alpha: 1)
+        )
+    }
+
+    static var textSecondary: Color {
+        dynamicColor(
+            light: NSColor(red: 0.365, green: 0.373, blue: 0.463, alpha: 1),
+            dark: NSColor(red: 0.471, green: 0.471, blue: 0.627, alpha: 1)
+        )
+    }
+
+    static var textTertiary: Color {
+        dynamicColor(
+            light: NSColor(red: 0.530, green: 0.537, blue: 0.620, alpha: 1),
+            dark: NSColor(red: 0.353, green: 0.353, blue: 0.447, alpha: 1)
+        )
+    }
+
+    static var textFaint: Color {
+        dynamicColor(
+            light: NSColor(red: 0.660, green: 0.670, blue: 0.730, alpha: 1),
+            dark: NSColor(red: 0.196, green: 0.196, blue: 0.290, alpha: 1)
+        )
+    }
+
+    static var glassHighlight: Color {
+        dynamicColor(
+            light: NSColor(red: 1, green: 1, blue: 1, alpha: 0.78),
+            dark: NSColor(red: 1, green: 1, blue: 1, alpha: 0.06)
+        )
+    }
+
+    static var toolbarBackground: Color {
+        dynamicColor(
+            light: NSColor(red: 0, green: 0, blue: 0, alpha: 0.025),
+            dark: NSColor(red: 1, green: 1, blue: 1, alpha: 0.015)
+        )
+    }
+
+    static var controlFill: Color {
+        dynamicColor(
+            light: NSColor(red: 1, green: 1, blue: 1, alpha: 0.72),
+            dark: NSColor(red: 1, green: 1, blue: 1, alpha: 0.045)
+        )
+    }
+
+    private static func dynamicColor(light: NSColor, dark: NSColor) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let match = appearance.bestMatch(from: [.aqua, .darkAqua])
+            return match == .darkAqua ? dark : light
+        })
     }
 }
 
@@ -79,15 +150,15 @@ struct Keycap: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: 10, weight: .medium, design: .monospaced))
-            .foregroundStyle(.secondary)
-            .frame(minWidth: 20)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(.quaternary.opacity(0.65), in: RoundedRectangle(cornerRadius: 5))
+            .font(.system(size: 9, weight: .medium, design: .monospaced))
+            .foregroundStyle(InkletTheme.textSecondary)
+            .frame(minWidth: 15, minHeight: 15)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1)
+            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 4))
             .overlay {
-                RoundedRectangle(cornerRadius: 5)
-                    .stroke(InkletTheme.subtleBorder)
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(InkletTheme.strongBorder)
             }
     }
 }
@@ -100,7 +171,7 @@ struct InkletFieldModifier: ViewModifier {
             .background(InkletTheme.fieldBackground, in: RoundedRectangle(cornerRadius: 7))
             .overlay {
                 RoundedRectangle(cornerRadius: 7)
-                    .stroke(isFocused ? InkletTheme.primary.opacity(0.75) : InkletTheme.subtleBorder)
+                    .stroke(isFocused ? InkletTheme.primary.opacity(0.55) : InkletTheme.subtleBorder)
             }
     }
 }
