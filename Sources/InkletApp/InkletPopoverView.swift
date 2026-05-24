@@ -622,7 +622,7 @@ struct InkletPopoverView: View {
                         .font(.system(size: 12, weight: .semibold))
                         .lineLimit(1)
                         .truncationMode(.tail)
-                        .frame(maxWidth: 170, alignment: .leading)
+                        .layoutPriority(1)
                     Image(systemName: "chevron.down")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
@@ -630,6 +630,7 @@ struct InkletPopoverView: View {
                 .foregroundStyle(.primary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
+                .frame(maxWidth: 220, alignment: .leading)
                 .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 7))
             }
             .buttonStyle(.plain)
