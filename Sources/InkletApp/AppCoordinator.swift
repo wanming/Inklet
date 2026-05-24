@@ -19,8 +19,10 @@ final class AppCoordinator: NSObject {
     private let statusItem: NSStatusItem
     private let windowController: InkletPopoverWindowController
     private let settingsController: SettingsWindowController
+    private let setupController: SetupWindowController
     private let hotkeyManager: GlobalHotkeyManager
     private let configStore: UserDefaultsConfigStore
+    private let firstLaunchStore: UserDefaultsFirstLaunchStore
     private let accessibilityPermissionService: AccessibilityPermissionService
     private var configObserver: NSObjectProtocol?
     private var hotkeyRecordingObserver: NSObjectProtocol?
@@ -35,12 +37,17 @@ final class AppCoordinator: NSObject {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.windowController = InkletPopoverWindowController()
         self.settingsController = SettingsWindowController()
+        self.setupController = SetupWindowController()
         self.hotkeyManager = GlobalHotkeyManager()
         self.configStore = UserDefaultsConfigStore()
+        self.firstLaunchStore = UserDefaultsFirstLaunchStore()
         self.accessibilityPermissionService = AccessibilityPermissionService()
         super.init()
 
         self.windowController.onOpenSettings = { [weak self] in
+            self?.openSettings()
+        }
+        self.setupController.onOpenSettings = { [weak self] in
             self?.openSettings()
         }
     }
@@ -98,6 +105,7 @@ final class AppCoordinator: NSObject {
 
         registerConfiguredHotkey()
         requestAccessibilityPermissionIfNeeded()
+        showSetupWindowIfNeeded()
         installSettingsShortcutMonitor()
     }
 
@@ -242,6 +250,15 @@ final class AppCoordinator: NSObject {
 
         didRequestAccessibilityPermissionThisLaunch = true
         accessibilityPermissionService.requestIfNeeded()
+    }
+
+    private func showSetupWindowIfNeeded() {
+        guard firstLaunchStore.needsSetupWindow else {
+            return
+        }
+
+        firstLaunchStore.markSetupWindowSeen()
+        setupController.show()
     }
 
     private func configureStatusItemIcon() {
