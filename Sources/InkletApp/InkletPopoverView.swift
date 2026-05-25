@@ -37,6 +37,8 @@ final class InkletPopoverViewModel: ObservableObject {
     private var previousApplication: NSRunningApplication?
     private var transformationTask: Task<Void, Never>?
     private var sessionID = 0
+    private var draftSourceText = ""
+    private var hasTransformedInSession = false
 
     init(
         stateMachine: PopoverStateMachine = PopoverStateMachine(),
@@ -69,15 +71,19 @@ final class InkletPopoverViewModel: ObservableObject {
         modes = config.visiblePromptModes
         selectedModeID = config.defaultVisibleModeID
         appearance = config.appearance
-        sourceText = ""
+        sourceText = draftSourceText
         resultText = ""
         errorMessage = nil
         isTransforming = false
         isInserting = false
+        hasTransformedInSession = false
         preferredPopoverHeight = 168
         openRevision += 1
 
         handle(actions: stateMachine.send(.open))
+        if !sourceText.isEmpty {
+            _ = stateMachine.send(.sourceChanged(sourceText))
+        }
     }
 
     func updateSourceText(_ text: String) {
@@ -188,12 +194,14 @@ final class InkletPopoverViewModel: ObservableObject {
         transformationTask = nil
 
         if !resultText.isEmpty {
+            draftSourceText = ""
             resultText = ""
             errorMessage = nil
             handle(actions: stateMachine.send(.escape))
             return
         }
 
+        draftSourceText = hasTransformedInSession ? "" : sourceText
         var actions = stateMachine.send(.escape)
         if actions.isEmpty {
             actions = stateMachine.send(.close)
@@ -218,6 +226,8 @@ final class InkletPopoverViewModel: ObservableObject {
             case .startTransformation(let source):
                 startTransformation(source: source)
             case .showResult(let result):
+                hasTransformedInSession = true
+                draftSourceText = ""
                 resultText = result
             case .showError(let message):
                 errorMessage = localizedStateMachineMessage(message)
@@ -308,6 +318,9 @@ final class InkletPopoverViewModel: ObservableObject {
                     return
                 }
                 isInserting = false
+                draftSourceText = ""
+                sourceText = ""
+                resultText = ""
                 handle(actions: stateMachine.send(.insertionFinished))
             } catch {
                 guard sessionID == insertionSessionID else {
