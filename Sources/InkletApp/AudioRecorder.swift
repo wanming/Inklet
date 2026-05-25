@@ -25,6 +25,7 @@ final class AudioRecorder {
             throw AudioRecorderError.microphonePermissionDenied
         }
 
+        await cancel()
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("inklet-voice-\(UUID().uuidString)")
             .appendingPathExtension("m4a")
@@ -36,12 +37,14 @@ final class AudioRecorder {
         ]
         let recorder = try AVAudioRecorder(url: url, settings: settings)
         recorder.isMeteringEnabled = false
-        guard recorder.record() else {
-            throw AudioRecorderError.recordingUnavailable
-        }
-
         self.recorder = recorder
         recordingURL = url
+        recorder.prepareToRecord()
+        guard recorder.record() else {
+            self.recorder = nil
+            recordingURL = nil
+            throw AudioRecorderError.recordingUnavailable
+        }
     }
 
     func stop() async throws -> URL {
@@ -50,7 +53,6 @@ final class AudioRecorder {
         }
 
         recorder.stop()
-        self.recorder = nil
         self.recordingURL = nil
         return recordingURL
     }
