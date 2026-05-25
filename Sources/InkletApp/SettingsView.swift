@@ -9,6 +9,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var config: AppConfig
     @Published var message: String
     @Published var providerAPIKey: String
+    @Published var voiceAPIKey: String
     @Published var selectedPromptModeID: String
     @Published var interfaceLanguage: InterfaceLanguage
     @Published var cachedProviderModels: [String: [String]]
@@ -37,6 +38,7 @@ final class SettingsViewModel: ObservableObject {
         self.message = ""
         self.interfaceLanguage = InkletLanguageStore.selectedLanguage
         self.providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: loadedConfig.providerID) ?? ""
+        self.voiceAPIKey = apiKeyStore.loadAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID) ?? ""
         self.selectedPromptModeID = loadedConfig.promptModes.sorted { $0.sortOrder < $1.sortOrder }.first?.id
             ?? PromptMode.translateToEnglishID
         self.cachedProviderModels = Dictionary(
@@ -113,6 +115,17 @@ final class SettingsViewModel: ObservableObject {
 
     var isAccessibilityTrusted: Bool {
         AccessibilityPermissionService().isTrusted
+    }
+
+    var speechModelOptions: [String] {
+        [
+            VoiceInputConfig.defaultSpeechModel,
+            "gpt-4o-transcribe"
+        ]
+    }
+
+    var voiceCleanupModes: [PromptMode] {
+        config.visiblePromptModes
     }
 
     func modelMenuTitle(for modelID: String) -> String {
@@ -304,6 +317,13 @@ final class SettingsViewModel: ObservableObject {
                     return
                 }
             }
+            guard let speechEndpoint = URL(string: config.voiceInput.speechEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)),
+                  speechEndpoint.scheme?.hasPrefix("http") == true,
+                  speechEndpoint.host != nil
+            else {
+                message = L10n.text("voice.error.invalidSpeechEndpoint")
+                return
+            }
 
             _ = try Hotkey.parse(config.hotkey)
             InkletLanguageStore.selectedLanguage = interfaceLanguage
@@ -315,6 +335,11 @@ final class SettingsViewModel: ObservableObject {
             if !trimmedKey.isEmpty {
                 apiKeyStore.saveAPIKey(trimmedKey, forProviderID: config.providerID)
             }
+            apiKeyStore.deleteAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID)
+            let trimmedVoiceKey = voiceAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedVoiceKey.isEmpty {
+                apiKeyStore.saveAPIKey(trimmedVoiceKey, forProviderID: VoiceInputConfig.openAISpeechProviderID)
+            }
             message = L10n.text("settings.saved")
             NotificationCenter.default.post(name: .appConfigDidSave, object: nil)
         } catch let error as HotkeyError {
@@ -325,10 +350,10 @@ final class SettingsViewModel: ObservableObject {
     }
 
     private func installAutoSave() {
-        Publishers.CombineLatest3($config, $providerAPIKey, $interfaceLanguage)
+        Publishers.CombineLatest4($config, $providerAPIKey, $voiceAPIKey, $interfaceLanguage)
             .dropFirst()
             .debounce(for: .milliseconds(450), scheduler: RunLoop.main)
-            .sink { [weak self] _, _, _ in
+            .sink { [weak self] _, _, _, _ in
                 guard let self, !self.isLoadingProviderKey else {
                     return
                 }
@@ -357,13 +382,15 @@ extension Notification.Name {
 private extension PromptMode {
     static let builtInIDs: Set<String> = [
         PromptMode.translateToEnglishID,
-        PromptMode.chineseSummaryID
+        PromptMode.chineseSummaryID,
+        PromptMode.voiceCleanupID
     ]
 }
 
 private enum SettingsSection: String, CaseIterable, Identifiable {
     case general = "General"
     case providers = "Providers"
+    case voice = "Voice"
     case promptModes = "Prompt Modes"
     case permissions = "Permissions"
 
@@ -373,6 +400,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: L10n.text("settings.section.general")
         case .providers: L10n.text("settings.section.providers")
+        case .voice: L10n.text("settings.section.voice")
         case .promptModes: L10n.text("settings.section.promptModes")
         case .permissions: L10n.text("settings.section.permissions")
         }
@@ -382,6 +410,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: "gearshape"
         case .providers: "sparkles"
+        case .voice: "mic"
         case .promptModes: "slider.horizontal.3"
         case .permissions: "lock.shield"
         }
@@ -522,6 +551,12 @@ struct SettingsView: View {
                     }
                 case .providers:
                     providersPanel
+                case .voice:
+                    ScrollView {
+                        voicePanel
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 20)
+                    }
                 case .promptModes:
                     promptModesPanel
                 case .permissions:
@@ -567,6 +602,8 @@ struct SettingsView: View {
             L10n.text("settings.description.general")
         case .providers:
             L10n.text("settings.description.providers")
+        case .voice:
+            L10n.text("settings.description.voice")
         case .promptModes:
             L10n.text("settings.description.promptModes")
         case .permissions:
@@ -695,6 +732,59 @@ struct SettingsView: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 20)
             }
+    }
+
+    private var voicePanel: some View {
+        settingsPanel {
+            settingsRow(L10n.text("settings.row.voiceShortcut"), help: L10n.text("settings.help.voiceShortcut")) {
+                Picker("", selection: $model.config.voiceInput.shortcut) {
+                    ForEach(VoiceInputConfig.Shortcut.allCases) { shortcut in
+                        Text(shortcut.localizedName).tag(shortcut)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(L10n.text("settings.row.speechAPIKey"), help: L10n.text("settings.help.speechAPIKey")) {
+                SecureField("sk-...", text: $model.voiceAPIKey)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            settingsRow(L10n.text("settings.row.speechEndpoint"), help: L10n.text("settings.help.speechEndpoint")) {
+                TextField(VoiceInputConfig.defaultSpeechEndpoint, text: $model.config.voiceInput.speechEndpoint)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            settingsRow(
+                L10n.text("settings.row.speechModel"),
+                help: L10n.format("settings.help.speechModel", VoiceInputConfig.defaultSpeechModel)
+            ) {
+                Picker("", selection: $model.config.voiceInput.speechModel) {
+                    ForEach(model.speechModelOptions, id: \.self) { modelID in
+                        Text(modelID).tag(modelID)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(L10n.text("settings.row.voiceAutoProcess"), help: L10n.text("settings.help.voiceAutoProcess")) {
+                Toggle("", isOn: $model.config.voiceInput.autoProcessTranscription)
+                    .labelsHidden()
+            }
+
+            settingsRow(L10n.text("settings.row.voiceCleanupMode"), help: L10n.text("settings.help.voiceCleanupMode")) {
+                Picker("", selection: $model.config.voiceInput.voiceCleanupPromptModeID) {
+                    ForEach(model.voiceCleanupModes) { mode in
+                        Text(mode.localizedName).tag(mode.id)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+                .disabled(!model.config.voiceInput.autoProcessTranscription)
+            }
+        }
     }
 
     private var promptModesPanel: some View {
@@ -841,6 +931,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(L10n.text("settings.privacy.keychain"))
                     Text(L10n.text("settings.privacy.provider"))
+                    Text(L10n.text("settings.privacy.voice"))
                     Text(L10n.text("settings.privacy.clipboard"))
                 }
                 .font(.system(size: 12))

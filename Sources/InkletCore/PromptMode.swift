@@ -9,6 +9,7 @@ public struct PromptMode: Codable, Equatable, Identifiable, Sendable {
     public static let chineseSummaryID = "chinese-summary"
     public static let chineseToEnglishID = "chinese-to-english"
     public static let polishEnglishID = "polish-english"
+    public static let voiceCleanupID = "voice-cleanup"
 
     public enum AutoRule: String, Codable, Sendable {
         case none
@@ -110,6 +111,26 @@ public struct PromptModeStore: Equatable, Sendable {
                 participatesInAuto: false,
                 autoRule: .none,
                 sortOrder: 1,
+                isVisible: true
+            ),
+            PromptMode(
+                id: PromptMode.voiceCleanupID,
+                name: "Voice Cleanup",
+                description: "",
+                systemPrompt: """
+                Clean up dictated text without changing its meaning.
+                Preserve the input language.
+                Do not translate.
+                Do not summarize.
+                Do not expand beyond what was said.
+                Fix punctuation, capitalization, obvious filler words, repeated starts, and minor grammar issues.
+                Keep short commands, names, code terms, and domain terms intact when they are already clear.
+                Return only the cleaned text.
+                """,
+                shortcut: nil,
+                participatesInAuto: false,
+                autoRule: .none,
+                sortOrder: 2,
                 isVisible: true
             )
         ])

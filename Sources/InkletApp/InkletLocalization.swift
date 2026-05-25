@@ -153,10 +153,12 @@ enum L10n {
         "settings.version": "Version %@",
         "settings.section.general": "General",
         "settings.section.providers": "Providers",
+        "settings.section.voice": "Voice",
         "settings.section.promptModes": "Prompt Modes",
         "settings.section.permissions": "Permissions",
         "settings.description.general": "Basic behavior, shortcut, interface language, and generation parameters.",
         "settings.description.providers": "Choose an LLM provider, model, and API key.",
+        "settings.description.voice": "Configure short dictation, transcription, and cleanup.",
         "settings.description.promptModes": "Manage conversion modes and system prompts shown in the popover.",
         "settings.description.permissions": "Check the macOS permission needed to insert text.",
         "settings.row.language": "Interface Language",
@@ -184,6 +186,23 @@ enum L10n {
         "settings.help.endpoint": "Full OpenAI-compatible /chat/completions URL.",
         "settings.row.model": "Model",
         "settings.help.model.default": "Default: %@",
+        "settings.row.voiceShortcut": "Voice Shortcut",
+        "settings.help.voiceShortcut": "Tap this modifier key alone to start or stop voice dictation.",
+        "settings.voice.shortcut.rightOption": "Right Option",
+        "settings.voice.shortcut.rightCommand": "Right Command",
+        "settings.voice.shortcut.leftOption": "Left Option",
+        "settings.voice.shortcut.leftCommand": "Left Command",
+        "settings.voice.shortcut.disabled": "Disabled",
+        "settings.row.speechAPIKey": "Speech API Key",
+        "settings.help.speechAPIKey": "Stored locally. Used only for voice transcription.",
+        "settings.row.speechEndpoint": "Speech Endpoint",
+        "settings.help.speechEndpoint": "OpenAI-compatible /audio/transcriptions URL.",
+        "settings.row.speechModel": "Speech Model",
+        "settings.help.speechModel": "Default: %@",
+        "settings.row.voiceAutoProcess": "Auto Process",
+        "settings.help.voiceAutoProcess": "Clean up transcription with the selected prompt mode before inserting.",
+        "settings.row.voiceCleanupMode": "Cleanup Mode",
+        "settings.help.voiceCleanupMode": "Prompt mode used after transcription.",
         "settings.model.custom": "Custom...",
         "settings.model.refreshing": "Refreshing model list...",
         "settings.model.customized": "Custom model *",
@@ -225,6 +244,7 @@ enum L10n {
         "settings.privacy.title": "Privacy & Security",
         "settings.privacy.keychain": "• API keys are stored locally on this Mac",
         "settings.privacy.provider": "• Text is sent directly to the selected provider",
+        "settings.privacy.voice": "• Voice audio is sent to the configured speech provider",
         "settings.privacy.clipboard": "• Clipboard contents are restored after insertion",
         "settings.footer.pending": "Changes are saved automatically and apply the next time the popover opens.",
         "settings.save": "Save",
@@ -256,6 +276,14 @@ enum L10n {
         "popover.error.emptyOriginal": "Enter text to insert.",
         "popover.error.missingTarget": "Could not find the target app to insert text.",
         "popover.error.missingAPIKey": "Configure the %@ API Key in Settings first.",
+        "voice.status.listening": "Listening...",
+        "voice.status.transcribing": "Transcribing...",
+        "voice.status.polishing": "Polishing...",
+        "voice.status.inserting": "Inserting...",
+        "voice.error.microphonePermission": "Microphone permission is required for voice dictation.",
+        "voice.error.recordingUnavailable": "Could not start audio recording.",
+        "voice.error.invalidSpeechEndpoint": "Speech endpoint must be a valid HTTP URL.",
+        "voice.error.missingSpeechAPIKey": "Configure the Speech API Key in Settings first.",
         "insertion.error.accessibility": "Enable Accessibility permission before inserting text.",
         "insertion.error.activation": "Could not return to the original app. Please try again.",
         "insertion.error.pasteEvent": "Could not send the paste shortcut.",
@@ -1035,6 +1063,23 @@ extension PromptMode {
         }
     }
 
+}
+
+extension VoiceInputConfig.Shortcut {
+    var localizedName: String {
+        switch self {
+        case .rightOption:
+            L10n.text("settings.voice.shortcut.rightOption")
+        case .rightCommand:
+            L10n.text("settings.voice.shortcut.rightCommand")
+        case .leftOption:
+            L10n.text("settings.voice.shortcut.leftOption")
+        case .leftCommand:
+            L10n.text("settings.voice.shortcut.leftCommand")
+        case .disabled:
+            L10n.text("settings.voice.shortcut.disabled")
+        }
+    }
 }
 
 extension HotkeyError {
