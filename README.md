@@ -4,6 +4,10 @@
 
 Press a global shortcut, type or paste text, choose a writing mode, let your preferred LLM transform it, then insert the result back into the original text field.
 
+## Demo
+
+Watch the demo video: [Inklet on YouTube](https://www.youtube.com/watch?v=F5wmFruo0a4).
+
 ## What It Does
 
 - Opens from a global macOS hotkey. The default is `Option+Space`.
