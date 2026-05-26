@@ -32,16 +32,17 @@ final class VoiceStatusWindowController: NSWindowController {
 
     init() {
         let panel = VoiceStatusPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 280, height: 54),
-            styleMask: [.borderless],
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 64),
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-        panel.level = .floating
-        panel.collectionBehavior = [.fullScreenAuxiliary, .moveToActiveSpace]
+        panel.level = .statusBar
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle, .transient]
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
+        panel.hidesOnDeactivate = false
         super.init(window: panel)
         panel.contentView = makeContentView()
     }
@@ -89,25 +90,40 @@ final class VoiceStatusWindowController: NSWindowController {
             return
         }
 
-        window.center()
-        window.makeKeyAndOrderFront(nil)
+        position(window)
+        window.orderFrontRegardless()
+    }
+
+    private func position(_ window: NSWindow) {
+        let screen = NSScreen.main ?? NSScreen.screens.first
+        guard let visibleFrame = screen?.visibleFrame else {
+            window.center()
+            return
+        }
+
+        let frame = window.frame
+        let origin = NSPoint(
+            x: visibleFrame.midX - frame.width / 2,
+            y: visibleFrame.maxY - frame.height - 72
+        )
+        window.setFrameOrigin(origin)
     }
 
     private func makeContentView() -> NSView {
-        let container = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 280, height: 54))
+        let container = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 360, height: 64))
         container.material = .hudWindow
         container.blendingMode = .behindWindow
         container.state = .active
         container.wantsLayer = true
-        container.layer?.cornerRadius = 18
+        container.layer?.cornerRadius = 20
         container.layer?.cornerCurve = .continuous
 
         let dot = NSTextField(labelWithString: "●")
         dot.textColor = .systemRed
-        dot.font = .systemFont(ofSize: 14, weight: .semibold)
+        dot.font = .systemFont(ofSize: 16, weight: .semibold)
         dot.translatesAutoresizingMaskIntoConstraints = false
 
-        textField.font = .systemFont(ofSize: 13, weight: .medium)
+        textField.font = .systemFont(ofSize: 14, weight: .semibold)
         textField.lineBreakMode = .byTruncatingTail
         textField.translatesAutoresizingMaskIntoConstraints = false
 
