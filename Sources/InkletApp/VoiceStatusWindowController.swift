@@ -20,6 +20,10 @@ private final class VoiceStatusPanel: NSPanel {
 
 @MainActor
 final class VoiceStatusWindowController: NSWindowController {
+    private static let panelSize = NSSize(width: 244, height: 44)
+    private static let panelMargin: CGFloat = 24
+    private static let panelAlpha: CGFloat = 0.93
+
     private let textField = NSTextField(labelWithString: "")
     private let closeButton = NSButton()
     private var lastStatusWasFallback = false
@@ -32,7 +36,7 @@ final class VoiceStatusWindowController: NSWindowController {
 
     init() {
         let panel = VoiceStatusPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 360, height: 64),
+            contentRect: NSRect(origin: .zero, size: Self.panelSize),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -43,6 +47,7 @@ final class VoiceStatusWindowController: NSWindowController {
         panel.isOpaque = false
         panel.hasShadow = true
         panel.hidesOnDeactivate = false
+        panel.alphaValue = Self.panelAlpha
         super.init(window: panel)
         panel.contentView = makeContentView()
     }
@@ -101,29 +106,29 @@ final class VoiceStatusWindowController: NSWindowController {
             return
         }
 
-        let frame = window.frame
         let origin = NSPoint(
-            x: visibleFrame.midX - frame.width / 2,
-            y: visibleFrame.maxY - frame.height - 72
+            x: visibleFrame.minX + Self.panelMargin,
+            y: visibleFrame.minY + Self.panelMargin
         )
         window.setFrameOrigin(origin)
     }
 
     private func makeContentView() -> NSView {
-        let container = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 360, height: 64))
+        let container = NSVisualEffectView(frame: NSRect(origin: .zero, size: Self.panelSize))
         container.material = .hudWindow
         container.blendingMode = .behindWindow
         container.state = .active
         container.wantsLayer = true
-        container.layer?.cornerRadius = 20
+        container.layer?.cornerRadius = 14
         container.layer?.cornerCurve = .continuous
+        container.layer?.masksToBounds = true
 
         let dot = NSTextField(labelWithString: "●")
         dot.textColor = .systemRed
-        dot.font = .systemFont(ofSize: 16, weight: .semibold)
+        dot.font = .systemFont(ofSize: 12, weight: .semibold)
         dot.translatesAutoresizingMaskIntoConstraints = false
 
-        textField.font = .systemFont(ofSize: 14, weight: .semibold)
+        textField.font = .systemFont(ofSize: 12, weight: .semibold)
         textField.lineBreakMode = .byTruncatingTail
         textField.translatesAutoresizingMaskIntoConstraints = false
 
@@ -138,17 +143,17 @@ final class VoiceStatusWindowController: NSWindowController {
         container.addSubview(textField)
         container.addSubview(closeButton)
         NSLayoutConstraint.activate([
-            dot.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 18),
+            dot.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 14),
             dot.centerYAnchor.constraint(equalTo: container.centerYAnchor),
 
-            textField.leadingAnchor.constraint(equalTo: dot.trailingAnchor, constant: 10),
-            textField.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -8),
+            textField.leadingAnchor.constraint(equalTo: dot.trailingAnchor, constant: 8),
+            textField.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -6),
             textField.centerYAnchor.constraint(equalTo: container.centerYAnchor),
 
-            closeButton.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -14),
+            closeButton.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
             closeButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            closeButton.widthAnchor.constraint(equalToConstant: 20),
-            closeButton.heightAnchor.constraint(equalToConstant: 20)
+            closeButton.widthAnchor.constraint(equalToConstant: 18),
+            closeButton.heightAnchor.constraint(equalToConstant: 18)
         ])
         return container
     }
