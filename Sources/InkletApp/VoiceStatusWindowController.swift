@@ -20,13 +20,15 @@ private final class VoiceStatusPanel: NSPanel {
 
 @MainActor
 final class VoiceStatusWindowController: NSWindowController {
-    private static let panelSize = NSSize(width: 244, height: 44)
-    private static let panelMargin: CGFloat = 24
-    private static let panelAlpha: CGFloat = 0.93
+    private static let panelSize = NSSize(width: 220, height: 40)
+    private static let panelBottomOffset: CGFloat = 36
+    private static let panelAlpha: CGFloat = 0.88
+    private static let errorDismissDelay: TimeInterval = 2.5
 
     private let textField = NSTextField(labelWithString: "")
     private let closeButton = NSButton()
     private var lastStatusWasFallback = false
+    private var dismissWorkItem: DispatchWorkItem?
 
     var onCancel: (() -> Void)? {
         didSet {
@@ -58,12 +60,11 @@ final class VoiceStatusWindowController: NSWindowController {
     }
 
     func apply(_ status: VoiceInputStatus) {
+        cancelScheduledDismiss()
         switch status {
         case .idle:
             if lastStatusWasFallback {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                    self?.window?.orderOut(nil)
-                }
+                scheduleDismiss(after: 1.5)
             } else {
                 window?.orderOut(nil)
             }
@@ -82,14 +83,14 @@ final class VoiceStatusWindowController: NSWindowController {
             show(message: L10n.text("voice.status.inserting"))
         case .fallbackInserted(let message):
             lastStatusWasFallback = true
-            show(message: message)
+            show(message: message, autoDismissAfter: Self.errorDismissDelay)
         case .error(let message):
             lastStatusWasFallback = false
-            show(message: message)
+            show(message: message, autoDismissAfter: Self.errorDismissDelay)
         }
     }
 
-    private func show(message: String) {
+    private func show(message: String, autoDismissAfter delay: TimeInterval? = nil) {
         textField.stringValue = message
         guard let window else {
             return
@@ -97,6 +98,9 @@ final class VoiceStatusWindowController: NSWindowController {
 
         position(window)
         window.orderFrontRegardless()
+        if let delay {
+            scheduleDismiss(after: delay)
+        }
     }
 
     private func position(_ window: NSWindow) {
@@ -107,10 +111,24 @@ final class VoiceStatusWindowController: NSWindowController {
         }
 
         let origin = NSPoint(
-            x: visibleFrame.minX + Self.panelMargin,
-            y: visibleFrame.minY + Self.panelMargin
+            x: visibleFrame.midX - Self.panelSize.width / 2,
+            y: visibleFrame.minY + Self.panelBottomOffset
         )
         window.setFrameOrigin(origin)
+    }
+
+    private func scheduleDismiss(after delay: TimeInterval) {
+        cancelScheduledDismiss()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.window?.orderOut(nil)
+        }
+        dismissWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private func cancelScheduledDismiss() {
+        dismissWorkItem?.cancel()
+        dismissWorkItem = nil
     }
 
     private func makeContentView() -> NSView {
@@ -119,13 +137,13 @@ final class VoiceStatusWindowController: NSWindowController {
         container.blendingMode = .behindWindow
         container.state = .active
         container.wantsLayer = true
-        container.layer?.cornerRadius = 14
+        container.layer?.cornerRadius = 13
         container.layer?.cornerCurve = .continuous
         container.layer?.masksToBounds = true
 
         let dot = NSTextField(labelWithString: "●")
         dot.textColor = .systemRed
-        dot.font = .systemFont(ofSize: 12, weight: .semibold)
+        dot.font = .systemFont(ofSize: 11, weight: .semibold)
         dot.translatesAutoresizingMaskIntoConstraints = false
 
         textField.font = .systemFont(ofSize: 12, weight: .semibold)
@@ -143,14 +161,14 @@ final class VoiceStatusWindowController: NSWindowController {
         container.addSubview(textField)
         container.addSubview(closeButton)
         NSLayoutConstraint.activate([
-            dot.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 14),
+            dot.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
             dot.centerYAnchor.constraint(equalTo: container.centerYAnchor),
 
-            textField.leadingAnchor.constraint(equalTo: dot.trailingAnchor, constant: 8),
+            textField.leadingAnchor.constraint(equalTo: dot.trailingAnchor, constant: 7),
             textField.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -6),
             textField.centerYAnchor.constraint(equalTo: container.centerYAnchor),
 
-            closeButton.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
+            closeButton.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
             closeButton.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             closeButton.widthAnchor.constraint(equalToConstant: 18),
             closeButton.heightAnchor.constraint(equalToConstant: 18)
