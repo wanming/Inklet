@@ -195,6 +195,12 @@ enum L10n {
         "settings.voice.shortcut.disabled": "Disabled",
         "settings.row.speechAPIKey": "Speech API Key",
         "settings.help.speechAPIKey": "Stored locally. Used only for voice transcription.",
+        "settings.row.speechProfile": "Speech Service",
+        "settings.help.speechProfile": "Choose a recommended transcription setup or use a custom endpoint.",
+        "settings.speech.profile.openAIBalanced": "OpenAI - Fast and balanced",
+        "settings.speech.profile.openAIAccuracy": "OpenAI - Best accuracy",
+        "settings.speech.profile.openAIWhisper": "OpenAI - Legacy Whisper",
+        "settings.speech.profile.custom": "Custom endpoint",
         "settings.row.speechEndpoint": "Speech Endpoint",
         "settings.help.speechEndpoint": "OpenAI-compatible /audio/transcriptions URL.",
         "settings.row.speechModel": "Speech Model",
@@ -1084,6 +1090,21 @@ extension VoiceInputConfig.Shortcut {
             L10n.text("settings.voice.shortcut.leftCommand")
         case .disabled:
             L10n.text("settings.voice.shortcut.disabled")
+        }
+    }
+}
+
+extension VoiceInputConfig.SpeechProfile {
+    var localizedName: String {
+        switch self {
+        case .openAIBalanced:
+            L10n.text("settings.speech.profile.openAIBalanced")
+        case .openAIAccuracy:
+            L10n.text("settings.speech.profile.openAIAccuracy")
+        case .openAIWhisper:
+            L10n.text("settings.speech.profile.openAIWhisper")
+        case .custom:
+            L10n.text("settings.speech.profile.custom")
         }
     }
 }
