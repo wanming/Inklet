@@ -1,5 +1,5 @@
+import CoreGraphics
 import Foundation
-import IOKit.hid
 
 @MainActor
 public struct InputMonitoringPermissionService {
@@ -27,10 +27,10 @@ public struct InputMonitoringPermissionService {
     }
 
     public static func checkSystemAccess() -> Bool {
-        IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) == kIOHIDAccessTypeGranted
+        CGPreflightListenEventAccess()
     }
 
     public static func requestSystemPrompt() -> Bool {
-        IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+        CGRequestListenEventAccess()
     }
 }
