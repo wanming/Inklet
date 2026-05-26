@@ -281,6 +281,7 @@ enum L10n {
         "voice.status.polishing": "Polishing...",
         "voice.status.inserting": "Inserting...",
         "voice.error.microphonePermission": "Microphone permission is required for voice dictation.",
+        "voice.error.noAudioInputDevice": "No microphone or audio input device is available.",
         "voice.error.recordingUnavailable": "Could not start audio recording.",
         "voice.error.invalidSpeechEndpoint": "Speech endpoint must be a valid HTTP URL.",
         "voice.error.missingSpeechAPIKey": "Configure the Speech API Key in Settings first.",

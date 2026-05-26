@@ -5,12 +5,15 @@ import Foundation
 final class AudioRecorder {
     enum AudioRecorderError: Error, LocalizedError {
         case microphonePermissionDenied
+        case noAudioInputDevice
         case recordingUnavailable
 
         var errorDescription: String? {
             switch self {
             case .microphonePermissionDenied:
                 L10n.text("voice.error.microphonePermission")
+            case .noAudioInputDevice:
+                L10n.text("voice.error.noAudioInputDevice")
             case .recordingUnavailable:
                 L10n.text("voice.error.recordingUnavailable")
             }
@@ -23,6 +26,9 @@ final class AudioRecorder {
     func start() async throws {
         guard await requestMicrophoneAccess() else {
             throw AudioRecorderError.microphonePermissionDenied
+        }
+        guard AVCaptureDevice.default(for: .audio) != nil else {
+            throw AudioRecorderError.noAudioInputDevice
         }
 
         await cancel()
