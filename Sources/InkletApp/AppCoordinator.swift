@@ -37,7 +37,6 @@ final class AppCoordinator: NSObject {
     private var settingsShortcutMonitor: Any?
     private var lastTargetApplication: NSRunningApplication?
     private var didRequestAccessibilityPermissionThisLaunch = false
-    private var didRequestInputMonitoringPermissionThisLaunch = false
     private var isRecordingHotkey = false
     private lazy var voiceCoordinator = makeVoiceInputCoordinator()
 
@@ -124,7 +123,6 @@ final class AppCoordinator: NSObject {
         }
 
         registerConfiguredHotkey()
-        requestInputMonitoringPermissionIfNeeded()
         configureVoiceInput()
         requestAccessibilityPermissionIfNeeded()
         showSetupWindowIfNeeded()
@@ -373,15 +371,6 @@ final class AppCoordinator: NSObject {
 
         didRequestAccessibilityPermissionThisLaunch = true
         accessibilityPermissionService.requestIfNeeded()
-    }
-
-    private func requestInputMonitoringPermissionIfNeeded() {
-        guard !didRequestInputMonitoringPermissionThisLaunch else {
-            return
-        }
-
-        didRequestInputMonitoringPermissionThisLaunch = true
-        inputMonitoringPermissionService.requestIfNeeded()
     }
 
     private func showSetupWindowIfNeeded() {

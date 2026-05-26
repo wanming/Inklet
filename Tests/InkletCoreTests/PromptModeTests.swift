@@ -22,13 +22,16 @@ final class PromptModeTests: XCTestCase {
         XCTAssertFalse(store.visibleModes.contains { $0.id == PromptMode.autoID })
     }
 
-    func testVoiceCleanupPreservesLanguageAndMeaning() throws {
+    func testVoiceCleanupRemovesSpeechNoiseWithoutChangingIntent() throws {
         let mode = try XCTUnwrap(PromptModeStore.defaultStore().mode(id: PromptMode.voiceCleanupID))
 
-        XCTAssertTrue(mode.systemPrompt.contains("Preserve the input language"))
+        XCTAssertTrue(mode.systemPrompt.contains("raw speech transcription"))
+        XCTAssertTrue(mode.systemPrompt.contains("filler words"))
+        XCTAssertTrue(mode.systemPrompt.contains("false starts"))
+        XCTAssertTrue(mode.systemPrompt.contains("final intended version"))
         XCTAssertTrue(mode.systemPrompt.contains("Do not translate"))
-        XCTAssertTrue(mode.systemPrompt.contains("Do not summarize"))
-        XCTAssertTrue(mode.systemPrompt.contains("Return only the cleaned text"))
+        XCTAssertTrue(mode.systemPrompt.contains("do not add facts"))
+        XCTAssertTrue(mode.systemPrompt.contains("Return only the final cleaned text"))
     }
 
     func testResolveReturnsSelectedModeWhenAvailable() {

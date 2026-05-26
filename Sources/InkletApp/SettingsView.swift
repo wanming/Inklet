@@ -448,7 +448,6 @@ final class SettingsViewModel: ObservableObject {
     }
 
     func openInputMonitoringSettings() {
-        InputMonitoringPermissionService().requestIfNeeded()
         guard let url = URL(
             string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
         ) else {

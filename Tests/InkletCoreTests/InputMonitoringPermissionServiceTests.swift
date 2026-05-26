@@ -3,31 +3,19 @@ import XCTest
 
 @MainActor
 final class InputMonitoringPermissionServiceTests: XCTestCase {
-    func testRequestIfNeededDoesNotPromptWhenAlreadyTrusted() {
-        var didPrompt = false
+    func testIsTrustedUsesInjectedTrustChecker() {
         let service = InputMonitoringPermissionService(
-            trustChecker: { true },
-            promptRequester: {
-                didPrompt = true
-                return false
-            }
+            trustChecker: { true }
         )
 
-        XCTAssertTrue(service.requestIfNeeded())
-        XCTAssertFalse(didPrompt)
+        XCTAssertTrue(service.isTrusted)
     }
 
-    func testRequestIfNeededPromptsWhenUntrusted() {
-        var didPrompt = false
+    func testIsTrustedCanReportUntrusted() {
         let service = InputMonitoringPermissionService(
-            trustChecker: { false },
-            promptRequester: {
-                didPrompt = true
-                return true
-            }
+            trustChecker: { false }
         )
 
-        XCTAssertTrue(service.requestIfNeeded())
-        XCTAssertTrue(didPrompt)
+        XCTAssertFalse(service.isTrusted)
     }
 }
