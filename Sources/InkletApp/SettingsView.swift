@@ -117,6 +117,10 @@ final class SettingsViewModel: ObservableObject {
         AccessibilityPermissionService().isTrusted
     }
 
+    var isInputMonitoringTrusted: Bool {
+        InputMonitoringPermissionService().isTrusted
+    }
+
     var speechModelOptions: [String] {
         [
             VoiceInputConfig.defaultSpeechModel,
@@ -365,6 +369,18 @@ final class SettingsViewModel: ObservableObject {
     func openAccessibilitySettings() {
         guard let url = URL(
             string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+        ) else {
+            message = L10n.text("settings.error.openAccessibility")
+            return
+        }
+
+        NSWorkspace.shared.open(url)
+    }
+
+    func openInputMonitoringSettings() {
+        InputMonitoringPermissionService().requestIfNeeded()
+        guard let url = URL(
+            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
         ) else {
             message = L10n.text("settings.error.openAccessibility")
             return
@@ -911,6 +927,47 @@ struct SettingsView: View {
 
                 Button {
                     model.openAccessibilitySettings()
+                } label: {
+                    Label(L10n.text("settings.permission.open"), systemImage: "arrow.up.forward.app")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+            .padding(16)
+            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 16))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(InkletTheme.subtleBorder)
+            }
+
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: model.isInputMonitoringTrusted ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(model.isInputMonitoringTrusted ? InkletTheme.success : InkletTheme.warning)
+                        .frame(width: 40, height: 40)
+                        .background((model.isInputMonitoringTrusted ? InkletTheme.success : InkletTheme.warning).opacity(0.18), in: RoundedRectangle(cornerRadius: 9))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(L10n.text("settings.permission.inputMonitoring"))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(InkletTheme.textPrimary)
+                        Text(L10n.text("settings.permission.inputMonitoringDescription"))
+                            .font(.system(size: 12))
+                            .foregroundStyle(InkletTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                    Text(model.isInputMonitoringTrusted ? L10n.text("settings.permission.inputMonitoringAuthorized") : L10n.text("settings.permission.inputMonitoringRequired"))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(model.isInputMonitoringTrusted ? InkletTheme.success : InkletTheme.warning)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background((model.isInputMonitoringTrusted ? InkletTheme.success : InkletTheme.warning).opacity(0.16), in: RoundedRectangle(cornerRadius: 6))
+                }
+
+                Button {
+                    model.openInputMonitoringSettings()
                 } label: {
                     Label(L10n.text("settings.permission.open"), systemImage: "arrow.up.forward.app")
                 }

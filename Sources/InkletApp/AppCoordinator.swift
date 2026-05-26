@@ -24,6 +24,7 @@ final class AppCoordinator: NSObject {
     private let configStore: UserDefaultsConfigStore
     private let firstLaunchStore: UserDefaultsFirstLaunchStore
     private let accessibilityPermissionService: AccessibilityPermissionService
+    private let inputMonitoringPermissionService: InputMonitoringPermissionService
     private let voiceStatusController: VoiceStatusWindowController
     private let voiceShortcutMonitor: VoiceShortcutMonitor
     private let audioRecorder: AudioRecorder
@@ -36,6 +37,7 @@ final class AppCoordinator: NSObject {
     private var settingsShortcutMonitor: Any?
     private var lastTargetApplication: NSRunningApplication?
     private var didRequestAccessibilityPermissionThisLaunch = false
+    private var didRequestInputMonitoringPermissionThisLaunch = false
     private var isRecordingHotkey = false
     private lazy var voiceCoordinator = makeVoiceInputCoordinator()
 
@@ -48,6 +50,7 @@ final class AppCoordinator: NSObject {
         self.configStore = UserDefaultsConfigStore()
         self.firstLaunchStore = UserDefaultsFirstLaunchStore()
         self.accessibilityPermissionService = AccessibilityPermissionService()
+        self.inputMonitoringPermissionService = InputMonitoringPermissionService()
         self.voiceStatusController = VoiceStatusWindowController()
         self.voiceShortcutMonitor = VoiceShortcutMonitor()
         self.audioRecorder = AudioRecorder()
@@ -121,6 +124,7 @@ final class AppCoordinator: NSObject {
         }
 
         registerConfiguredHotkey()
+        requestInputMonitoringPermissionIfNeeded()
         configureVoiceInput()
         requestAccessibilityPermissionIfNeeded()
         showSetupWindowIfNeeded()
@@ -252,6 +256,11 @@ final class AppCoordinator: NSObject {
     private func configureVoiceInput() {
         do {
             let config = try configStore.load()
+            guard config.voiceInput.shortcut == .disabled || inputMonitoringPermissionService.isTrusted else {
+                voiceShortcutMonitor.stop()
+                voiceStatusController.apply(.error(L10n.text("voice.error.inputMonitoringPermission")))
+                return
+            }
             voiceShortcutMonitor.update(shortcut: config.voiceInput.shortcut) { [weak self] in
                 Task { @MainActor in
                     await self?.voiceCoordinator.toggle()
@@ -364,6 +373,15 @@ final class AppCoordinator: NSObject {
 
         didRequestAccessibilityPermissionThisLaunch = true
         accessibilityPermissionService.requestIfNeeded()
+    }
+
+    private func requestInputMonitoringPermissionIfNeeded() {
+        guard !didRequestInputMonitoringPermissionThisLaunch else {
+            return
+        }
+
+        didRequestInputMonitoringPermissionThisLaunch = true
+        inputMonitoringPermissionService.requestIfNeeded()
     }
 
     private func showSetupWindowIfNeeded() {
