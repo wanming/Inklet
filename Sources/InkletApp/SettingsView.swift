@@ -16,7 +16,6 @@ final class SettingsViewModel: ObservableObject {
     @Published var isRefreshingModelCatalog: Bool
     @Published var isEditingCustomModel: Bool
     @Published var isEditingCustomSpeechEndpoint: Bool
-    @Published var isEditingCustomSpeechModel: Bool
 
     private let configStore: UserDefaultsConfigStore
     private let apiKeyStore: LocalAPIKeyStore
@@ -57,7 +56,6 @@ final class SettingsViewModel: ObservableObject {
             endpoint: loadedConfig.voiceInput.speechEndpoint,
             model: loadedConfig.voiceInput.speechModel
         ) == .custom
-        self.isEditingCustomSpeechModel = false
 
         installAutoSave()
     }
@@ -128,19 +126,6 @@ final class SettingsViewModel: ObservableObject {
         InputMonitoringPermissionService().isTrusted
     }
 
-    var speechModelOptions: [String] {
-        var options = [
-            VoiceInputConfig.defaultSpeechModel,
-            "gpt-4o-transcribe",
-            "whisper-1"
-        ]
-        let selectedModel = config.voiceInput.speechModel.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !selectedModel.isEmpty, !options.contains(selectedModel) {
-            options.append(selectedModel)
-        }
-        return options
-    }
-
     var selectedSpeechProfile: VoiceInputConfig.SpeechProfile {
         if isEditingCustomSpeechEndpoint {
             return .custom
@@ -152,22 +137,8 @@ final class SettingsViewModel: ObservableObject {
         )
     }
 
-    var selectedSpeechModelMenuValue: String {
-        if isEditingCustomSpeechModel {
-            return Self.customModelMenuID
-        }
-
-        return speechModelOptions.contains(config.voiceInput.speechModel)
-            ? config.voiceInput.speechModel
-            : Self.customModelMenuID
-    }
-
-    var shouldShowCustomSpeechEndpointField: Bool {
+    var shouldShowCustomSpeechFields: Bool {
         isEditingCustomSpeechEndpoint || selectedSpeechProfile == .custom
-    }
-
-    var shouldShowCustomSpeechModelField: Bool {
-        selectedSpeechProfile == .custom && selectedSpeechModelMenuValue == Self.customModelMenuID
     }
 
     var voiceCleanupModes: [PromptMode] {
@@ -212,21 +183,8 @@ final class SettingsViewModel: ObservableObject {
         }
 
         isEditingCustomSpeechEndpoint = false
-        isEditingCustomSpeechModel = false
         config.voiceInput.speechEndpoint = endpoint
         config.voiceInput.speechModel = model
-        save()
-    }
-
-    func selectSpeechModelMenuValue(_ value: String) {
-        if value == Self.customModelMenuID {
-            isEditingCustomSpeechEndpoint = true
-            isEditingCustomSpeechModel = true
-            return
-        }
-
-        isEditingCustomSpeechModel = false
-        config.voiceInput.speechModel = value
         save()
     }
 
@@ -824,10 +782,6 @@ struct SettingsView: View {
             get: { model.selectedSpeechProfile },
             set: { model.selectSpeechProfile($0) }
         )
-        let selectedSpeechModelBinding = Binding(
-            get: { model.selectedSpeechModelMenuValue },
-            set: { model.selectSpeechModelMenuValue($0) }
-        )
 
         return settingsPanel {
             settingsRow(L10n.text("settings.row.voiceShortcut"), help: L10n.text("settings.help.voiceShortcut")) {
@@ -855,32 +809,18 @@ struct SettingsView: View {
                 .frame(maxWidth: 320, alignment: .leading)
             }
 
-            if model.shouldShowCustomSpeechEndpointField {
+            if model.shouldShowCustomSpeechFields {
                 settingsRow(L10n.text("settings.row.speechEndpoint"), help: L10n.text("settings.help.speechEndpoint")) {
                     TextField(VoiceInputConfig.defaultSpeechEndpoint, text: $model.config.voiceInput.speechEndpoint)
                         .textFieldStyle(.roundedBorder)
                 }
-            }
 
-            settingsRow(
-                L10n.text("settings.row.speechModel"),
-                help: L10n.format("settings.help.speechModel", VoiceInputConfig.defaultSpeechModel)
-            ) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Picker("", selection: selectedSpeechModelBinding) {
-                        ForEach(model.speechModelOptions, id: \.self) { modelID in
-                            Text(modelID).tag(modelID)
-                        }
-                        Divider()
-                        Text(L10n.text("settings.model.custom")).tag(SettingsViewModel.customModelMenuID)
-                    }
-                    .labelsHidden()
-                    .frame(maxWidth: 320, alignment: .leading)
-
-                    if model.shouldShowCustomSpeechModelField {
-                        TextField(VoiceInputConfig.defaultSpeechModel, text: $model.config.voiceInput.speechModel)
-                            .textFieldStyle(.roundedBorder)
-                    }
+                settingsRow(
+                    L10n.text("settings.row.speechModel"),
+                    help: L10n.format("settings.help.speechModel", VoiceInputConfig.defaultSpeechModel)
+                ) {
+                    TextField(VoiceInputConfig.defaultSpeechModel, text: $model.config.voiceInput.speechModel)
+                        .textFieldStyle(.roundedBorder)
                 }
             }
 
