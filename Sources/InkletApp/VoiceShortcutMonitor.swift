@@ -3,10 +3,8 @@ import InkletCore
 
 @MainActor
 final class VoiceShortcutMonitor {
-    private var globalFlagsMonitor: Any?
-    private var globalKeyMonitor: Any?
-    private var localFlagsMonitor: Any?
-    private var localKeyMonitor: Any?
+    private var eventTap: CFMachPort?
+    private var eventTapSource: CFRunLoopSource?
     private var shortcut: VoiceInputConfig.Shortcut = .disabled
     private var onTrigger: (() -> Void)?
     private var candidateKeyCode: UInt16?
@@ -20,38 +18,75 @@ final class VoiceShortcutMonitor {
             return
         }
 
-        globalFlagsMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
-            Task { @MainActor in self?.handleFlagsChanged(event) }
+        let eventMask = CGEventMask(1 << CGEventType.flagsChanged.rawValue)
+            | CGEventMask(1 << CGEventType.keyDown.rawValue)
+            | CGEventMask(1 << CGEventType.leftMouseDown.rawValue)
+            | CGEventMask(1 << CGEventType.rightMouseDown.rawValue)
+            | CGEventMask(1 << CGEventType.otherMouseDown.rawValue)
+        let userInfo = Unmanaged.passUnretained(self).toOpaque()
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .listenOnly,
+            eventsOfInterest: eventMask,
+            callback: VoiceShortcutMonitor.eventTapCallback,
+            userInfo: userInfo
+        ) else {
+            NSLog("Failed to install voice shortcut event tap.")
+            return
         }
-        globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
-            Task { @MainActor in self?.markCandidateInterrupted() }
+
+        eventTap = tap
+        eventTapSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        if let eventTapSource {
+            CFRunLoopAddSource(CFRunLoopGetMain(), eventTapSource, .commonModes)
         }
-        localFlagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
-            Task { @MainActor in self?.handleFlagsChanged(event) }
-            return event
-        }
-        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
-            Task { @MainActor in self?.markCandidateInterrupted() }
-            return event
-        }
+        CGEvent.tapEnable(tap: tap, enable: true)
     }
 
     func stop() {
-        for monitor in [globalFlagsMonitor, globalKeyMonitor, localFlagsMonitor, localKeyMonitor].compactMap({ $0 }) {
-            NSEvent.removeMonitor(monitor)
+        if let eventTapSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), eventTapSource, .commonModes)
         }
-        globalFlagsMonitor = nil
-        globalKeyMonitor = nil
-        localFlagsMonitor = nil
-        localKeyMonitor = nil
+        if let eventTap {
+            CGEvent.tapEnable(tap: eventTap, enable: false)
+            CFMachPortInvalidate(eventTap)
+        }
+        eventTapSource = nil
+        eventTap = nil
         candidateKeyCode = nil
         candidateSawOtherKey = false
         onTrigger = nil
     }
 
-    private func handleFlagsChanged(_ event: NSEvent) {
+    private nonisolated static let eventTapCallback: CGEventTapCallBack = { _, type, event, userInfo in
+        guard let userInfo else {
+            return Unmanaged.passUnretained(event)
+        }
+
+        let monitor = Unmanaged<VoiceShortcutMonitor>.fromOpaque(userInfo).takeUnretainedValue()
+        let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+        let flags = event.flags
+        Task { @MainActor in
+            switch type {
+            case .flagsChanged:
+                monitor.handleFlagsChanged(keyCode: keyCode, flags: flags)
+            case .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown:
+                monitor.markCandidateInterrupted()
+            case .tapDisabledByTimeout, .tapDisabledByUserInput:
+                if let eventTap = monitor.eventTap {
+                    CGEvent.tapEnable(tap: eventTap, enable: true)
+                }
+            default:
+                break
+            }
+        }
+        return Unmanaged.passUnretained(event)
+    }
+
+    private func handleFlagsChanged(keyCode: UInt16, flags: CGEventFlags) {
         guard let expectedKeyCode = shortcut.keyCode,
-              event.keyCode == expectedKeyCode
+              keyCode == expectedKeyCode
         else {
             if candidateKeyCode != nil {
                 candidateSawOtherKey = true
@@ -59,13 +94,13 @@ final class VoiceShortcutMonitor {
             return
         }
 
-        if isConfiguredModifierDown(in: event.modifierFlags) {
-            candidateKeyCode = event.keyCode
+        if isConfiguredModifierDown(in: flags) {
+            candidateKeyCode = keyCode
             candidateSawOtherKey = false
             return
         }
 
-        guard candidateKeyCode == event.keyCode, !candidateSawOtherKey else {
+        guard candidateKeyCode == keyCode, !candidateSawOtherKey else {
             candidateKeyCode = nil
             candidateSawOtherKey = false
             return
@@ -82,13 +117,12 @@ final class VoiceShortcutMonitor {
         }
     }
 
-    private func isConfiguredModifierDown(in flags: NSEvent.ModifierFlags) -> Bool {
-        let deviceIndependentFlags = flags.intersection(.deviceIndependentFlagsMask)
+    private func isConfiguredModifierDown(in flags: CGEventFlags) -> Bool {
         switch shortcut {
         case .rightOption, .leftOption:
-            return deviceIndependentFlags.contains(.option)
+            return flags.contains(.maskAlternate)
         case .rightCommand, .leftCommand:
-            return deviceIndependentFlags.contains(.command)
+            return flags.contains(.maskCommand)
         case .disabled:
             return false
         }
