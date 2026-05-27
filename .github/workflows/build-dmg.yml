@@ -116,6 +116,8 @@ jobs:
             <string>14.0</string>
             <key>LSUIElement</key>
             <true/>
+            <key>NSMicrophoneUsageDescription</key>
+            <string>Inklet records short voice dictation when you use the voice shortcut.</string>
             <key>NSHumanReadableCopyright</key>
             <string>Copyright (c) 2026 Inklet contributors.</string>
           </dict>
