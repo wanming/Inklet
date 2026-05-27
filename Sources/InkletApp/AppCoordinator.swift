@@ -36,7 +36,6 @@ final class AppCoordinator: NSObject {
     private var activeApplicationObserver: NSObjectProtocol?
     private var settingsShortcutMonitor: Any?
     private var lastTargetApplication: NSRunningApplication?
-    private var didRequestAccessibilityPermissionThisLaunch = false
     private var didShowInputMonitoringPermissionError = false
     private var isRecordingHotkey = false
     private lazy var voiceCoordinator = makeVoiceInputCoordinator()
@@ -125,7 +124,6 @@ final class AppCoordinator: NSObject {
 
         registerConfiguredHotkey()
         configureVoiceInput()
-        requestAccessibilityPermissionIfNeeded()
         showSetupWindowIfNeeded()
         installSettingsShortcutMonitor()
     }
@@ -369,15 +367,6 @@ final class AppCoordinator: NSObject {
         }
     }
 
-    private func requestAccessibilityPermissionIfNeeded() {
-        guard !didRequestAccessibilityPermissionThisLaunch else {
-            return
-        }
-
-        didRequestAccessibilityPermissionThisLaunch = true
-        accessibilityPermissionService.requestIfNeeded()
-    }
-
     private func showSetupWindowIfNeeded() {
         guard firstLaunchStore.needsSetupWindow else {
             return
@@ -442,7 +431,6 @@ final class AppCoordinator: NSObject {
     }
 
     @objc func openPopover() {
-        requestAccessibilityPermissionIfNeeded()
         windowController.show(fallbackApplication: lastTargetApplication)
     }
 

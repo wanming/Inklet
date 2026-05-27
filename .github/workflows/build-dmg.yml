@@ -125,6 +125,14 @@ jobs:
 
           plutil -lint "$app_path/Contents/Info.plist"
 
+      - name: Ad-hoc sign app bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          codesign --force --deep --sign - "dist/Inklet.app"
+          codesign --verify --deep --strict --verbose=2 "dist/Inklet.app"
+
       - name: Create DMG
         shell: bash
         run: |
