@@ -408,6 +408,7 @@ final class SettingsViewModel: ObservableObject {
             return
         }
 
+        NotificationCenter.default.post(name: .inkletDidOpenPermissionSettings, object: nil)
         NSWorkspace.shared.open(url)
     }
 
@@ -419,6 +420,7 @@ final class SettingsViewModel: ObservableObject {
             return
         }
 
+        NotificationCenter.default.post(name: .inkletDidOpenPermissionSettings, object: nil)
         NSWorkspace.shared.open(url)
     }
 }
@@ -426,6 +428,7 @@ final class SettingsViewModel: ObservableObject {
 extension Notification.Name {
     static let appConfigDidSave = Notification.Name("InkletAppConfigDidSave")
     static let hotkeyRecordingDidChange = Notification.Name("InkletHotkeyRecordingDidChange")
+    static let inkletDidOpenPermissionSettings = Notification.Name("InkletDidOpenPermissionSettings")
 }
 
 private extension PromptMode {
