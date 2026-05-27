@@ -141,16 +141,25 @@ public struct AppConfig: Codable, Equatable, Sendable {
         let retiredIDs = retiredBuiltInPromptModeIDs
         let shouldMigrateBuiltIns = modes.contains { retiredIDs.contains($0.id) }
             || modes.contains { $0.id == PromptMode.translateToEnglishID && $0.name != defaultModes[0].name }
+        let hasCurrentBuiltIns = modes.contains { defaultIDs.contains($0.id) }
 
-        guard shouldMigrateBuiltIns else {
+        guard shouldMigrateBuiltIns || hasCurrentBuiltIns else {
             return modes
         }
 
-        let customModes = modes.filter { mode in
-            !retiredIDs.contains(mode.id) && !defaultIDs.contains(mode.id)
+        let migratedModes: [PromptMode]
+        if shouldMigrateBuiltIns {
+            let customModes = modes.filter { mode in
+                !retiredIDs.contains(mode.id) && !defaultIDs.contains(mode.id)
+            }
+            migratedModes = defaultModes + customModes
+        } else {
+            let existingIDs = Set(modes.map(\.id))
+            let missingDefaultModes = hasCurrentBuiltIns ? defaultModes.filter { !existingIDs.contains($0.id) } : []
+            migratedModes = modes + missingDefaultModes
         }
 
-        return (defaultModes + customModes)
+        return migratedModes
             .enumerated()
             .map { index, mode in
                 var migratedMode = mode

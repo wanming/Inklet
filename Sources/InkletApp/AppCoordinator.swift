@@ -37,6 +37,7 @@ final class AppCoordinator: NSObject {
     private var settingsShortcutMonitor: Any?
     private var lastTargetApplication: NSRunningApplication?
     private var didRequestAccessibilityPermissionThisLaunch = false
+    private var didShowInputMonitoringPermissionError = false
     private var isRecordingHotkey = false
     private lazy var voiceCoordinator = makeVoiceInputCoordinator()
 
@@ -256,9 +257,13 @@ final class AppCoordinator: NSObject {
             let config = try configStore.load()
             guard config.voiceInput.shortcut == .disabled || inputMonitoringPermissionService.isTrusted else {
                 voiceShortcutMonitor.stop()
-                voiceStatusController.apply(.error(L10n.text("voice.error.inputMonitoringPermission")))
+                if !didShowInputMonitoringPermissionError {
+                    didShowInputMonitoringPermissionError = true
+                    voiceStatusController.apply(.error(L10n.text("voice.error.inputMonitoringPermission")))
+                }
                 return
             }
+            didShowInputMonitoringPermissionError = false
             voiceShortcutMonitor.update(shortcut: config.voiceInput.shortcut) { [weak self] in
                 Task { @MainActor in
                     await self?.voiceCoordinator.toggle()

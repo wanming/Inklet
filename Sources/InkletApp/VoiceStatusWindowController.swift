@@ -19,6 +19,11 @@ private final class VoiceStatusPanel: NSPanel {
 }
 
 @MainActor
+private final class DraggableVisualEffectView: NSVisualEffectView {
+    override var mouseDownCanMoveWindow: Bool { true }
+}
+
+@MainActor
 final class VoiceStatusWindowController: NSWindowController {
     private static let panelSize = NSSize(width: 220, height: 40)
     private static let panelBottomOffset: CGFloat = 36
@@ -28,6 +33,8 @@ final class VoiceStatusWindowController: NSWindowController {
     private let textField = NSTextField(labelWithString: "")
     private let closeButton = NSButton()
     private var lastStatusWasFallback = false
+    private var shouldCancelOnClose = false
+    private var didPositionWindow = false
     private var dismissWorkItem: DispatchWorkItem?
 
     var onCancel: (() -> Void)? {
@@ -50,6 +57,7 @@ final class VoiceStatusWindowController: NSWindowController {
         panel.hasShadow = true
         panel.hidesOnDeactivate = false
         panel.alphaValue = Self.panelAlpha
+        panel.isMovableByWindowBackground = true
         super.init(window: panel)
         panel.contentView = makeContentView()
     }
@@ -63,6 +71,7 @@ final class VoiceStatusWindowController: NSWindowController {
         cancelScheduledDismiss()
         switch status {
         case .idle:
+            shouldCancelOnClose = false
             if lastStatusWasFallback {
                 scheduleDismiss(after: 1.5)
             } else {
@@ -70,21 +79,27 @@ final class VoiceStatusWindowController: NSWindowController {
             }
             lastStatusWasFallback = false
         case .listening:
+            shouldCancelOnClose = true
             lastStatusWasFallback = false
             show(message: L10n.text("voice.status.listening"))
         case .transcribing:
+            shouldCancelOnClose = true
             lastStatusWasFallback = false
             show(message: L10n.text("voice.status.transcribing"))
         case .polishing:
+            shouldCancelOnClose = true
             lastStatusWasFallback = false
             show(message: L10n.text("voice.status.polishing"))
         case .inserting:
+            shouldCancelOnClose = true
             lastStatusWasFallback = false
             show(message: L10n.text("voice.status.inserting"))
         case .fallbackInserted(let message):
+            shouldCancelOnClose = false
             lastStatusWasFallback = true
             show(message: message, autoDismissAfter: Self.errorDismissDelay)
         case .error(let message):
+            shouldCancelOnClose = false
             lastStatusWasFallback = false
             show(message: message, autoDismissAfter: Self.errorDismissDelay)
         }
@@ -96,7 +111,10 @@ final class VoiceStatusWindowController: NSWindowController {
             return
         }
 
-        position(window)
+        if !didPositionWindow {
+            position(window)
+            didPositionWindow = true
+        }
         window.orderFrontRegardless()
         if let delay {
             scheduleDismiss(after: delay)
@@ -132,7 +150,7 @@ final class VoiceStatusWindowController: NSWindowController {
     }
 
     private func makeContentView() -> NSView {
-        let container = NSVisualEffectView(frame: NSRect(origin: .zero, size: Self.panelSize))
+        let container = DraggableVisualEffectView(frame: NSRect(origin: .zero, size: Self.panelSize))
         container.material = .hudWindow
         container.blendingMode = .behindWindow
         container.state = .active
@@ -177,6 +195,11 @@ final class VoiceStatusWindowController: NSWindowController {
     }
 
     @objc private func cancel() {
+        window?.orderOut(nil)
+        guard shouldCancelOnClose else {
+            return
+        }
+
         onCancel?()
     }
 }
