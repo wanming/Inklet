@@ -16,6 +16,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var isRefreshingModelCatalog: Bool
     @Published var isEditingCustomModel: Bool
     @Published var isEditingCustomSpeechEndpoint: Bool
+    @Published var permissionRefreshID: UUID
 
     private let configStore: UserDefaultsConfigStore
     private let apiKeyStore: LocalAPIKeyStore
@@ -56,6 +57,7 @@ final class SettingsViewModel: ObservableObject {
             endpoint: loadedConfig.voiceInput.speechEndpoint,
             model: loadedConfig.voiceInput.speechModel
         ) == .custom
+        self.permissionRefreshID = UUID()
 
         installAutoSave()
     }
@@ -124,6 +126,10 @@ final class SettingsViewModel: ObservableObject {
 
     var isInputMonitoringTrusted: Bool {
         InputMonitoringPermissionService().isTrusted
+    }
+
+    func refreshPermissions() {
+        permissionRefreshID = UUID()
     }
 
     var selectedSpeechProfile: VoiceInputConfig.SpeechProfile {
@@ -485,6 +491,12 @@ struct SettingsView: View {
         .preferredColorScheme(model.config.appearance.colorScheme)
         .task {
             await model.refreshModelCatalogIfNeeded()
+        }
+        .onAppear {
+            model.refreshPermissions()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            model.refreshPermissions()
         }
         .alert(
             L10n.text("settings.mode.deleteConfirmTitle"),
@@ -1040,6 +1052,7 @@ struct SettingsView: View {
                     .stroke(InkletTheme.subtleBorder)
             }
         }
+        .id(model.permissionRefreshID)
     }
 
     private var footer: some View {
