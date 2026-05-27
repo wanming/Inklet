@@ -111,6 +111,7 @@ final class VoiceStatusWindowController: NSWindowController {
             return
         }
 
+        resetSize(of: window)
         if !didPositionWindow {
             position(window)
             didPositionWindow = true
@@ -119,6 +120,13 @@ final class VoiceStatusWindowController: NSWindowController {
         if let delay {
             scheduleDismiss(after: delay)
         }
+    }
+
+    private func resetSize(of window: NSWindow) {
+        var frame = window.frame
+        frame.size = Self.panelSize
+        window.setFrame(frame, display: false)
+        window.contentView?.frame = NSRect(origin: .zero, size: Self.panelSize)
     }
 
     private func position(_ window: NSWindow) {
@@ -166,6 +174,7 @@ final class VoiceStatusWindowController: NSWindowController {
 
         textField.font = .systemFont(ofSize: 12, weight: .semibold)
         textField.lineBreakMode = .byTruncatingTail
+        textField.maximumNumberOfLines = 1
         textField.translatesAutoresizingMaskIntoConstraints = false
 
         closeButton.title = "×"

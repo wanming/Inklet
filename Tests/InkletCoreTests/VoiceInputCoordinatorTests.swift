@@ -90,20 +90,33 @@ final class VoiceInputCoordinatorTests: XCTestCase {
             .transcribing,
             .polishing,
             .inserting,
-            .fallbackInserted("AI cleanup failed. Inserted transcription instead."),
+            .fallbackInserted("Cleanup failed. Inserted transcription."),
             .idle
         ])
     }
 
-    func testTranscriptionFailureInsertsNothing() async {
+    func testTranscriptionProviderFailureShowsShortError() async {
         let harness = VoiceInputHarness()
-        harness.transcriptionError = SpeechTranscriptionError.provider("network failed")
+        harness.transcriptionError = SpeechTranscriptionError.provider(
+            "OpenAI speech request failed: Invalid API key with a very long provider detail."
+        )
 
         await harness.coordinator.start()
         await harness.coordinator.stop()
 
         XCTAssertEqual(harness.insertedTexts, [])
-        XCTAssertEqual(harness.statuses, [.listening, .transcribing, .error("network failed")])
+        XCTAssertEqual(harness.statuses, [.listening, .transcribing, .error("Transcription failed. Please try again.")])
+    }
+
+    func testEmptyTranscriptionErrorKeepsSpecificShortMessage() async {
+        let harness = VoiceInputHarness()
+        harness.transcriptionError = SpeechTranscriptionError.emptyResponse
+
+        await harness.coordinator.start()
+        await harness.coordinator.stop()
+
+        XCTAssertEqual(harness.insertedTexts, [])
+        XCTAssertEqual(harness.statuses, [.listening, .transcribing, .error("No speech was recognized.")])
     }
 
     func testEmptyTranscriptionInsertsNothing() async {

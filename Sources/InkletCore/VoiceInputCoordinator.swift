@@ -114,11 +114,21 @@ public final class VoiceInputCoordinator {
             statusHandler(.transcribing)
             let audioURL = try await stopRecordingHandler()
             let config = configProvider()
-            let transcription = try await transcribeHandler(SpeechTranscriptionRequest(
-                audioFileURL: audioURL,
-                model: config.speechModel,
-                timeoutSeconds: 20
-            ))
+            let transcription: SpeechTranscriptionResult
+            do {
+                transcription = try await transcribeHandler(SpeechTranscriptionRequest(
+                    audioFileURL: audioURL,
+                    model: config.speechModel,
+                    timeoutSeconds: 20
+                ))
+            } catch {
+                guard activeSessionID == sessionID else {
+                    return
+                }
+                state = .idle
+                statusHandler(.error(transcriptionFailureMessage(for: error)))
+                return
+            }
             guard activeSessionID == sessionID else {
                 return
             }
@@ -142,7 +152,7 @@ public final class VoiceInputCoordinator {
                         return
                     }
                     state = .idle
-                    statusHandler(.fallbackInserted("AI cleanup failed. Inserted transcription instead."))
+                    statusHandler(.fallbackInserted(cleanupFailureMessage(for: error)))
                     statusHandler(.idle)
                     return
                 }
@@ -188,6 +198,21 @@ public final class VoiceInputCoordinator {
         state = .inserting
         statusHandler(.inserting)
         try await insertHandler(text, targetApplication)
+    }
+
+    private func transcriptionFailureMessage(for error: Error) -> String {
+        switch error {
+        case SpeechTranscriptionError.emptyAudio:
+            return SpeechTranscriptionError.emptyAudio.errorDescription ?? "No audio was recorded."
+        case SpeechTranscriptionError.emptyResponse:
+            return SpeechTranscriptionError.emptyResponse.errorDescription ?? "No speech was recognized."
+        default:
+            return "Transcription failed. Please try again."
+        }
+    }
+
+    private func cleanupFailureMessage(for error: Error) -> String {
+        "Cleanup failed. Inserted transcription."
     }
 
     private func userFacingMessage(for error: Error) -> String {
