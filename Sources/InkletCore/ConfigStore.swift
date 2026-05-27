@@ -18,6 +18,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
     public var appearance: AppAppearance
     public var promptModes: [PromptMode]
     public var customOpenAICompatibleEndpoint: String
+    public var voiceInput: VoiceInputConfig
 
     public init(
         version: Int = 1,
@@ -28,7 +29,8 @@ public struct AppConfig: Codable, Equatable, Sendable {
         hotkey: String,
         appearance: AppAppearance = .system,
         promptModes: [PromptMode],
-        customOpenAICompatibleEndpoint: String = LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString
+        customOpenAICompatibleEndpoint: String = LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString,
+        voiceInput: VoiceInputConfig = VoiceInputConfig.defaultConfig()
     ) {
         self.version = version
         self.providerID = providerID
@@ -39,6 +41,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         self.appearance = appearance
         self.promptModes = promptModes
         self.customOpenAICompatibleEndpoint = customOpenAICompatibleEndpoint
+        self.voiceInput = voiceInput
     }
 
     public static func defaultConfig() -> AppConfig {
@@ -93,6 +96,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         case appearance
         case promptModes
         case customOpenAICompatibleEndpoint
+        case voiceInput
     }
 
     public init(from decoder: Decoder) throws {
@@ -113,6 +117,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
             String.self,
             forKey: .customOpenAICompatibleEndpoint
         ) ?? defaults.customOpenAICompatibleEndpoint
+        voiceInput = try container.decodeIfPresent(VoiceInputConfig.self, forKey: .voiceInput) ?? defaults.voiceInput
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -127,6 +132,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         try container.encode(appearance, forKey: .appearance)
         try container.encode(promptModes, forKey: .promptModes)
         try container.encode(customOpenAICompatibleEndpoint, forKey: .customOpenAICompatibleEndpoint)
+        try container.encode(voiceInput, forKey: .voiceInput)
     }
 
     private static func migratedPromptModes(_ modes: [PromptMode]) -> [PromptMode] {
@@ -135,16 +141,25 @@ public struct AppConfig: Codable, Equatable, Sendable {
         let retiredIDs = retiredBuiltInPromptModeIDs
         let shouldMigrateBuiltIns = modes.contains { retiredIDs.contains($0.id) }
             || modes.contains { $0.id == PromptMode.translateToEnglishID && $0.name != defaultModes[0].name }
+        let hasCurrentBuiltIns = modes.contains { defaultIDs.contains($0.id) }
 
-        guard shouldMigrateBuiltIns else {
+        guard shouldMigrateBuiltIns || hasCurrentBuiltIns else {
             return modes
         }
 
-        let customModes = modes.filter { mode in
-            !retiredIDs.contains(mode.id) && !defaultIDs.contains(mode.id)
+        let migratedModes: [PromptMode]
+        if shouldMigrateBuiltIns {
+            let customModes = modes.filter { mode in
+                !retiredIDs.contains(mode.id) && !defaultIDs.contains(mode.id)
+            }
+            migratedModes = defaultModes + customModes
+        } else {
+            let existingIDs = Set(modes.map(\.id))
+            let missingDefaultModes = hasCurrentBuiltIns ? defaultModes.filter { !existingIDs.contains($0.id) } : []
+            migratedModes = modes + missingDefaultModes
         }
 
-        return (defaultModes + customModes)
+        return migratedModes
             .enumerated()
             .map { index, mode in
                 var migratedMode = mode

@@ -35,6 +35,10 @@ private final class RoundedSettingsHostingView<Content: View>: NSHostingView<Con
 @MainActor
 final class SettingsWindowController: NSWindowController {
     private let configStore: UserDefaultsConfigStore
+    private var appActivationObserver: NSObjectProtocol?
+    private var permissionSettingsObserver: NSObjectProtocol?
+    private var shouldRestoreAfterPermissionSettings = false
+    private var lastShownSection: SettingsSection = .general
 
     init() {
         self.configStore = UserDefaultsConfigStore()
@@ -54,6 +58,27 @@ final class SettingsWindowController: NSWindowController {
 
         super.init(window: window)
         shouldCascadeWindows = false
+
+        permissionSettingsObserver = NotificationCenter.default.addObserver(
+            forName: .inkletDidOpenPermissionSettings,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.shouldRestoreAfterPermissionSettings = true
+                self?.lastShownSection = .permissions
+            }
+        }
+
+        appActivationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.restoreAfterPermissionSettingsIfNeeded()
+            }
+        }
     }
 
     @available(*, unavailable)
@@ -61,12 +86,23 @@ final class SettingsWindowController: NSWindowController {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func show() {
+    func show(section: SettingsSection = .general) {
+        lastShownSection = section
         window?.title = L10n.text("settings.window.title")
         let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
         window?.appearance = config.appearance.nsAppearance
+        window?.contentView = RoundedSettingsHostingView(rootView: SettingsView(initialSection: section))
         window?.center()
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    private func restoreAfterPermissionSettingsIfNeeded() {
+        guard shouldRestoreAfterPermissionSettings else {
+            return
+        }
+
+        shouldRestoreAfterPermissionSettings = false
+        show(section: lastShownSection)
     }
 }

@@ -85,7 +85,6 @@ jobs:
           chmod +x "$app_path/Contents/MacOS/$app_name"
 
           if [[ -d "$bin_path/Inklet_InkletCore.bundle" ]]; then
-            cp -R "$bin_path/Inklet_InkletCore.bundle" "$app_path/Inklet_InkletCore.bundle"
             cp -R "$bin_path/Inklet_InkletCore.bundle" "$app_path/Contents/Resources/Inklet_InkletCore.bundle"
           fi
           cp "Assets/AppIcon.icns" "$app_path/Contents/Resources/AppIcon.icns"
@@ -117,6 +116,8 @@ jobs:
             <string>14.0</string>
             <key>LSUIElement</key>
             <true/>
+            <key>NSMicrophoneUsageDescription</key>
+            <string>Inklet records short voice dictation when you use the voice shortcut.</string>
             <key>NSHumanReadableCopyright</key>
             <string>Copyright (c) 2026 Inklet contributors.</string>
           </dict>
@@ -124,6 +125,14 @@ jobs:
           PLIST
 
           plutil -lint "$app_path/Contents/Info.plist"
+
+      - name: Ad-hoc sign app bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          codesign --force --deep --sign - "dist/Inklet.app"
+          codesign --verify --deep --strict --verbose=2 "dist/Inklet.app"
 
       - name: Create DMG
         shell: bash

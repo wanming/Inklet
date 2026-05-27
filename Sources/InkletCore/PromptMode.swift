@@ -9,6 +9,7 @@ public struct PromptMode: Codable, Equatable, Identifiable, Sendable {
     public static let chineseSummaryID = "chinese-summary"
     public static let chineseToEnglishID = "chinese-to-english"
     public static let polishEnglishID = "polish-english"
+    public static let voiceCleanupID = "voice-cleanup"
 
     public enum AutoRule: String, Codable, Sendable {
         case none
@@ -110,6 +111,28 @@ public struct PromptModeStore: Equatable, Sendable {
                 participatesInAuto: false,
                 autoRule: .none,
                 sortOrder: 1,
+                isVisible: true
+            ),
+            PromptMode(
+                id: PromptMode.voiceCleanupID,
+                name: "Voice Cleanup",
+                description: "",
+                systemPrompt: """
+                Rewrite raw speech transcription into text that is ready to insert.
+                Preserve the user's intended meaning, language, names, numbers, code terms, and domain terms.
+                Do not translate.
+                Remove filler words, hesitation sounds, throat-clearing phrases, rambling setup, repeated words, repeated sentences, false starts, and abandoned fragments.
+                When the user corrects themselves or gives multiple versions, keep the final intended version.
+                Make the result concise, natural, and coherent, but do not add facts, examples, or intent that was not spoken.
+                Keep useful details even if the original speech was messy.
+                Fix punctuation, capitalization, and minor grammar issues.
+                If there is no meaningful content, return an empty string.
+                Return only the final cleaned text.
+                """,
+                shortcut: nil,
+                participatesInAuto: false,
+                autoRule: .none,
+                sortOrder: 2,
                 isVisible: true
             )
         ])

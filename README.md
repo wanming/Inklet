@@ -11,12 +11,14 @@ Watch the demo video: [Inklet on YouTube](https://www.youtube.com/watch?v=F5wmFr
 ## What It Does
 
 - Opens from a global macOS hotkey. The default is `Option+Space`.
+- Starts short voice dictation from a single modifier-key tap. The default voice shortcut is Right Option.
 - Transforms text with built-in prompt modes:
   - To Simple and Correct English
   - To Chinese Summary
+  - Voice Cleanup
 - Inserts generated text back into the previously focused app.
 - Restores your clipboard after insertion.
-- Lets you edit prompt modes, model, timeout, temperature, and hotkey.
+- Lets you edit prompt modes, model, timeout, temperature, hotkey, voice shortcut, speech endpoint, and speech model.
 - Supports multiple LLM providers, including OpenAI, Anthropic, Google Gemini, DeepSeek, Qwen, Moonshot Kimi, Zhipu GLM, MiniMax, SiliconFlow, Volcengine Ark, Tencent Hunyuan, Baichuan, 01.AI Yi, xAI, Groq, Mistral, OpenRouter, Perplexity, Together AI, Cerebras, and custom OpenAI-compatible endpoints.
 - Provides English and Chinese app UI localization.
 
@@ -36,7 +38,9 @@ Inklet is an early MVP. The repository currently includes:
 - Swift 6 toolchain.
 - Full Xcode is recommended for XCTest support.
 - Accessibility permission for Inklet, required for returning focus to the previous app and pasting the generated result.
+- Microphone permission for voice dictation.
 - An API key for at least one configured LLM provider.
+- A speech transcription API key for voice dictation.
 
 ## Install
 
@@ -84,12 +88,16 @@ If tests fail because `XCTest` is unavailable, install the full Xcode app instea
 2. Open Inklet from the menu bar and go to Settings.
 3. Choose a provider and enter its API key.
 4. Confirm the model, timeout, temperature, and prompt mode order.
-5. Grant Accessibility permission in macOS System Settings when prompted.
-6. Focus any text field in another app, press `Option+Space`, enter text, press `Enter` to transform, then press `Enter` again to insert.
+5. Configure Voice settings if you want dictation, including the speech API key and speech model.
+6. Grant Accessibility permission in macOS System Settings when prompted.
+7. Grant Microphone permission when using voice dictation for the first time.
+8. Focus any text field in another app, press `Option+Space`, enter text, press `Enter` to transform, then press `Enter` again to insert.
+9. For voice dictation, focus any text field in another app, tap Right Option, speak a short phrase, then tap Right Option again to transcribe, clean up, and insert.
 
 ## Keyboard Flow
 
 - `Option+Space`: open the writing popover.
+- `Right Option`: start or stop voice dictation by default. This can be changed or disabled in Settings.
 - `Enter`: transform the source text, or insert the generated result when a result is already shown.
 - `Command+Enter`: insert the original text without calling the model.
 - `Command+Up` / `Command+Down`: cycle through visible prompt modes.
@@ -118,10 +126,13 @@ docs/                           manual QA and planning documents
 ## Privacy
 
 - Inklet uses your configured provider API key to call the selected LLM provider.
+- Voice dictation sends temporary audio to the configured speech transcription provider.
 - API keys are stored locally on your Mac.
+- Speech API keys are stored locally on your Mac.
 - Inklet uses Accessibility permission to return focus to the previous app and paste text.
+- Inklet uses Microphone permission only while recording voice dictation.
 - Inklet temporarily uses the clipboard for insertion and then restores the previous clipboard contents.
-- Do not send private text to a provider unless you trust that provider's data handling policies.
+- Do not send private text or audio to a provider unless you trust that provider's data handling policies.
 
 ## Contributing
 

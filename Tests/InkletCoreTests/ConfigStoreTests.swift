@@ -183,6 +183,47 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertTrue(config.promptModes.allSatisfy { !$0.participatesInAuto && $0.autoRule == .none })
     }
 
+    func testConfigDecodeAddsMissingBuiltInPromptModes() throws {
+        let data = """
+        {
+            "promptModes": [
+                {
+                    "id": "\(PromptMode.translateToEnglishID)",
+                    "name": "To Simple and Correct English",
+                    "description": "",
+                    "systemPrompt": "Translate prompt.",
+                    "shortcut": "⌘1",
+                    "participatesInAuto": false,
+                    "autoRule": "none",
+                    "sortOrder": 0,
+                    "isVisible": true
+                },
+                {
+                    "id": "\(PromptMode.chineseSummaryID)",
+                    "name": "To Chinese Summary",
+                    "description": "",
+                    "systemPrompt": "Summary prompt.",
+                    "shortcut": "⌘2",
+                    "participatesInAuto": false,
+                    "autoRule": "none",
+                    "sortOrder": 1,
+                    "isVisible": true
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+
+        XCTAssertEqual(config.promptModes.map(\.id), [
+            PromptMode.translateToEnglishID,
+            PromptMode.chineseSummaryID,
+            PromptMode.voiceCleanupID
+        ])
+        XCTAssertEqual(config.promptModes[0].systemPrompt, "Translate prompt.")
+        XCTAssertEqual(config.promptModes[2].id, PromptMode.voiceCleanupID)
+    }
+
     func testResolvedProviderPresetUsesCustomOpenAICompatibleEndpoint() {
         var config = AppConfig.defaultConfig()
         config.providerID = LLMProviderPreset.customOpenAICompatible.id

@@ -19,36 +19,47 @@ final class AppCoordinator: NSObject {
     private let statusItem: NSStatusItem
     private let windowController: InkletPopoverWindowController
     private let settingsController: SettingsWindowController
-    private let setupController: SetupWindowController
     private let hotkeyManager: GlobalHotkeyManager
     private let configStore: UserDefaultsConfigStore
-    private let firstLaunchStore: UserDefaultsFirstLaunchStore
     private let accessibilityPermissionService: AccessibilityPermissionService
+    private let inputMonitoringPermissionService: InputMonitoringPermissionService
+    private let voiceStatusController: VoiceStatusWindowController
+    private let voiceShortcutMonitor: VoiceShortcutMonitor
+    private let audioRecorder: AudioRecorder
+    private let insertionService: InsertionService
+    private let apiKeyStore: LocalAPIKeyStore
     private var configObserver: NSObjectProtocol?
     private var hotkeyRecordingObserver: NSObjectProtocol?
     private var languageObserver: NSObjectProtocol?
     private var activeApplicationObserver: NSObjectProtocol?
     private var settingsShortcutMonitor: Any?
     private var lastTargetApplication: NSRunningApplication?
-    private var didRequestAccessibilityPermissionThisLaunch = false
+    private var didShowInputMonitoringPermissionError = false
     private var isRecordingHotkey = false
+    private lazy var voiceCoordinator = makeVoiceInputCoordinator()
 
     override init() {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.windowController = InkletPopoverWindowController()
         self.settingsController = SettingsWindowController()
-        self.setupController = SetupWindowController()
         self.hotkeyManager = GlobalHotkeyManager()
         self.configStore = UserDefaultsConfigStore()
-        self.firstLaunchStore = UserDefaultsFirstLaunchStore()
         self.accessibilityPermissionService = AccessibilityPermissionService()
+        self.inputMonitoringPermissionService = InputMonitoringPermissionService()
+        self.voiceStatusController = VoiceStatusWindowController()
+        self.voiceShortcutMonitor = VoiceShortcutMonitor()
+        self.audioRecorder = AudioRecorder()
+        self.insertionService = InsertionService()
+        self.apiKeyStore = LocalAPIKeyStore()
         super.init()
 
         self.windowController.onOpenSettings = { [weak self] in
             self?.openSettings()
         }
-        self.setupController.onOpenSettings = { [weak self] in
-            self?.openSettings()
+        self.voiceStatusController.onCancel = { [weak self] in
+            Task { @MainActor in
+                await self?.voiceCoordinator.cancel()
+            }
         }
     }
 
@@ -79,6 +90,7 @@ final class AppCoordinator: NSObject {
                     return
                 }
                 self?.registerConfiguredHotkey()
+                self?.configureVoiceInput()
             }
         }
 
@@ -104,8 +116,8 @@ final class AppCoordinator: NSObject {
         }
 
         registerConfiguredHotkey()
-        requestAccessibilityPermissionIfNeeded()
-        showSetupWindowIfNeeded()
+        configureVoiceInput()
+        showPermissionSettingsIfNeeded()
         installSettingsShortcutMonitor()
     }
 
@@ -131,6 +143,7 @@ final class AppCoordinator: NSObject {
             self.settingsShortcutMonitor = nil
         }
         hotkeyManager.unregister()
+        voiceShortcutMonitor.stop()
     }
 
     private func configureMainMenu() {
@@ -230,6 +243,110 @@ final class AppCoordinator: NSObject {
         }
     }
 
+    private func configureVoiceInput() {
+        do {
+            let config = try configStore.load()
+            guard config.voiceInput.shortcut == .disabled || inputMonitoringPermissionService.isTrusted else {
+                voiceShortcutMonitor.stop()
+                if !didShowInputMonitoringPermissionError {
+                    didShowInputMonitoringPermissionError = true
+                    voiceStatusController.apply(.error(L10n.text("voice.error.inputMonitoringPermission")))
+                }
+                return
+            }
+            didShowInputMonitoringPermissionError = false
+            voiceShortcutMonitor.update(shortcut: config.voiceInput.shortcut) { [weak self] in
+                Task { @MainActor in
+                    await self?.voiceCoordinator.toggle()
+                }
+            }
+        } catch {
+            NSLog("Failed to configure voice input: \(String(describing: error))")
+        }
+    }
+
+    private func makeVoiceInputCoordinator() -> VoiceInputCoordinator {
+        VoiceInputCoordinator(
+            configProvider: { [weak self] in
+                ((try? self?.configStore.load()) ?? AppConfig.defaultConfig()).voiceInput
+            },
+            targetApplicationProvider: { [weak self] in
+                self?.lastTargetApplication
+            },
+            startRecording: { [weak self] in
+                try await self?.audioRecorder.start()
+            },
+            stopRecording: { [weak self] in
+                guard let self else {
+                    throw AudioRecorder.AudioRecorderError.recordingUnavailable
+                }
+                return try await self.audioRecorder.stop()
+            },
+            cancelRecording: { [weak self] in
+                await self?.audioRecorder.cancel()
+            },
+            transcribe: { [weak self] request in
+                guard let self else {
+                    throw SpeechTranscriptionError.provider(L10n.text("voice.error.recordingUnavailable"))
+                }
+                let config = try self.configStore.load()
+                guard let endpoint = URL(string: config.voiceInput.speechEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+                    throw SpeechTranscriptionError.invalidEndpoint
+                }
+                defer {
+                    try? FileManager.default.removeItem(at: request.audioFileURL)
+                }
+                let provider = OpenAISpeechTranscriptionProvider(
+                    apiKeyProvider: { [apiKeyStore] in
+                        guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID),
+                              !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        else {
+                            throw SpeechTranscriptionError.provider(L10n.text("voice.error.missingSpeechAPIKey"))
+                        }
+                        return apiKey
+                    },
+                    endpoint: endpoint
+                )
+                return try await provider.transcribe(request)
+            },
+            cleanup: { [weak self] source, modeID in
+                guard let self else {
+                    throw CancellationError()
+                }
+                let config = try self.configStore.load()
+                let providerPreset = config.resolvedProviderPreset
+                let providerID = config.providerID
+                let apiKeyStore = self.apiKeyStore
+                let provider = LLMProviderFactory.provider(for: providerPreset) {
+                    guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: providerID),
+                          !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    else {
+                        throw TransformationError.provider(L10n.format("popover.error.missingAPIKey", providerPreset.name))
+                    }
+                    return apiKey
+                }
+                let mode = config.promptModeStore.resolve(modeID: modeID, sourceText: source)
+                let result = try await TransformationService(provider: provider).transform(
+                    sourceText: source,
+                    mode: mode,
+                    model: config.model,
+                    temperature: config.temperature,
+                    timeoutSeconds: config.timeoutSeconds
+                )
+                return result.outputText
+            },
+            insert: { [weak self] text, targetApplication in
+                guard let self else {
+                    throw CancellationError()
+                }
+                try await self.insertionService.insert(text: text, into: targetApplication)
+            },
+            statusHandler: { [weak self] status in
+                self?.voiceStatusController.apply(status)
+            }
+        )
+    }
+
     private func setHotkeyRecording(_ isRecording: Bool) {
         guard isRecordingHotkey != isRecording else {
             return
@@ -243,22 +360,16 @@ final class AppCoordinator: NSObject {
         }
     }
 
-    private func requestAccessibilityPermissionIfNeeded() {
-        guard !didRequestAccessibilityPermissionThisLaunch else {
+    private func showPermissionSettingsIfNeeded() {
+        let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
+        let needsAccessibility = !accessibilityPermissionService.isTrusted
+        let needsInputMonitoring = config.voiceInput.shortcut != .disabled && !inputMonitoringPermissionService.isTrusted
+
+        guard needsAccessibility || needsInputMonitoring else {
             return
         }
 
-        didRequestAccessibilityPermissionThisLaunch = true
-        accessibilityPermissionService.requestIfNeeded()
-    }
-
-    private func showSetupWindowIfNeeded() {
-        guard firstLaunchStore.needsSetupWindow else {
-            return
-        }
-
-        firstLaunchStore.markSetupWindowSeen()
-        setupController.show()
+        showSettings(section: .permissions)
     }
 
     private func configureStatusItemIcon() {
@@ -316,13 +427,16 @@ final class AppCoordinator: NSObject {
     }
 
     @objc func openPopover() {
-        requestAccessibilityPermissionIfNeeded()
         windowController.show(fallbackApplication: lastTargetApplication)
     }
 
     @objc func openSettings() {
+        showSettings(section: .general)
+    }
+
+    private func showSettings(section: SettingsSection) {
         windowController.hide()
-        settingsController.show()
+        settingsController.show(section: section)
     }
 
     @objc func quit() {

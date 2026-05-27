@@ -9,11 +9,14 @@ final class SettingsViewModel: ObservableObject {
     @Published var config: AppConfig
     @Published var message: String
     @Published var providerAPIKey: String
+    @Published var voiceAPIKey: String
     @Published var selectedPromptModeID: String
     @Published var interfaceLanguage: InterfaceLanguage
     @Published var cachedProviderModels: [String: [String]]
     @Published var isRefreshingModelCatalog: Bool
     @Published var isEditingCustomModel: Bool
+    @Published var isEditingCustomSpeechEndpoint: Bool
+    @Published var permissionRefreshID: UUID
 
     private let configStore: UserDefaultsConfigStore
     private let apiKeyStore: LocalAPIKeyStore
@@ -37,6 +40,7 @@ final class SettingsViewModel: ObservableObject {
         self.message = ""
         self.interfaceLanguage = InkletLanguageStore.selectedLanguage
         self.providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: loadedConfig.providerID) ?? ""
+        self.voiceAPIKey = apiKeyStore.loadAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID) ?? ""
         self.selectedPromptModeID = loadedConfig.promptModes.sorted { $0.sortOrder < $1.sortOrder }.first?.id
             ?? PromptMode.translateToEnglishID
         self.cachedProviderModels = Dictionary(
@@ -49,6 +53,11 @@ final class SettingsViewModel: ObservableObject {
         )
         self.isRefreshingModelCatalog = false
         self.isEditingCustomModel = false
+        self.isEditingCustomSpeechEndpoint = VoiceInputConfig.SpeechProfile.matching(
+            endpoint: loadedConfig.voiceInput.speechEndpoint,
+            model: loadedConfig.voiceInput.speechModel
+        ) == .custom
+        self.permissionRefreshID = UUID()
 
         installAutoSave()
     }
@@ -115,6 +124,33 @@ final class SettingsViewModel: ObservableObject {
         AccessibilityPermissionService().isTrusted
     }
 
+    var isInputMonitoringTrusted: Bool {
+        InputMonitoringPermissionService().isTrusted
+    }
+
+    func refreshPermissions() {
+        permissionRefreshID = UUID()
+    }
+
+    var selectedSpeechProfile: VoiceInputConfig.SpeechProfile {
+        if isEditingCustomSpeechEndpoint {
+            return .custom
+        }
+
+        return VoiceInputConfig.SpeechProfile.matching(
+            endpoint: config.voiceInput.speechEndpoint,
+            model: config.voiceInput.speechModel
+        )
+    }
+
+    var shouldShowCustomSpeechFields: Bool {
+        isEditingCustomSpeechEndpoint || selectedSpeechProfile == .custom
+    }
+
+    var voiceCleanupModes: [PromptMode] {
+        config.visiblePromptModes
+    }
+
     func modelMenuTitle(for modelID: String) -> String {
         if modelID == config.model, !selectedModelIsDefault {
             return "\(modelID) *"
@@ -140,6 +176,21 @@ final class SettingsViewModel: ObservableObject {
 
         isEditingCustomModel = false
         config.model = value
+        save()
+    }
+
+    func selectSpeechProfile(_ profile: VoiceInputConfig.SpeechProfile) {
+        guard profile != .custom else {
+            isEditingCustomSpeechEndpoint = true
+            return
+        }
+        guard let endpoint = profile.endpoint, let model = profile.model else {
+            return
+        }
+
+        isEditingCustomSpeechEndpoint = false
+        config.voiceInput.speechEndpoint = endpoint
+        config.voiceInput.speechModel = model
         save()
     }
 
@@ -304,6 +355,13 @@ final class SettingsViewModel: ObservableObject {
                     return
                 }
             }
+            guard let speechEndpoint = URL(string: config.voiceInput.speechEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)),
+                  speechEndpoint.scheme?.hasPrefix("http") == true,
+                  speechEndpoint.host != nil
+            else {
+                message = L10n.text("voice.error.invalidSpeechEndpoint")
+                return
+            }
 
             _ = try Hotkey.parse(config.hotkey)
             InkletLanguageStore.selectedLanguage = interfaceLanguage
@@ -315,6 +373,11 @@ final class SettingsViewModel: ObservableObject {
             if !trimmedKey.isEmpty {
                 apiKeyStore.saveAPIKey(trimmedKey, forProviderID: config.providerID)
             }
+            apiKeyStore.deleteAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID)
+            let trimmedVoiceKey = voiceAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedVoiceKey.isEmpty {
+                apiKeyStore.saveAPIKey(trimmedVoiceKey, forProviderID: VoiceInputConfig.openAISpeechProviderID)
+            }
             message = L10n.text("settings.saved")
             NotificationCenter.default.post(name: .appConfigDidSave, object: nil)
         } catch let error as HotkeyError {
@@ -325,10 +388,10 @@ final class SettingsViewModel: ObservableObject {
     }
 
     private func installAutoSave() {
-        Publishers.CombineLatest3($config, $providerAPIKey, $interfaceLanguage)
+        Publishers.CombineLatest4($config, $providerAPIKey, $voiceAPIKey, $interfaceLanguage)
             .dropFirst()
             .debounce(for: .milliseconds(450), scheduler: RunLoop.main)
-            .sink { [weak self] _, _, _ in
+            .sink { [weak self] _, _, _, _ in
                 guard let self, !self.isLoadingProviderKey else {
                     return
                 }
@@ -345,6 +408,19 @@ final class SettingsViewModel: ObservableObject {
             return
         }
 
+        NotificationCenter.default.post(name: .inkletDidOpenPermissionSettings, object: nil)
+        NSWorkspace.shared.open(url)
+    }
+
+    func openInputMonitoringSettings() {
+        guard let url = URL(
+            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+        ) else {
+            message = L10n.text("settings.error.openAccessibility")
+            return
+        }
+
+        NotificationCenter.default.post(name: .inkletDidOpenPermissionSettings, object: nil)
         NSWorkspace.shared.open(url)
     }
 }
@@ -352,18 +428,21 @@ final class SettingsViewModel: ObservableObject {
 extension Notification.Name {
     static let appConfigDidSave = Notification.Name("InkletAppConfigDidSave")
     static let hotkeyRecordingDidChange = Notification.Name("InkletHotkeyRecordingDidChange")
+    static let inkletDidOpenPermissionSettings = Notification.Name("InkletDidOpenPermissionSettings")
 }
 
 private extension PromptMode {
     static let builtInIDs: Set<String> = [
         PromptMode.translateToEnglishID,
-        PromptMode.chineseSummaryID
+        PromptMode.chineseSummaryID,
+        PromptMode.voiceCleanupID
     ]
 }
 
-private enum SettingsSection: String, CaseIterable, Identifiable {
+enum SettingsSection: String, CaseIterable, Identifiable {
     case general = "General"
     case providers = "Providers"
+    case voice = "Voice"
     case promptModes = "Prompt Modes"
     case permissions = "Permissions"
 
@@ -373,6 +452,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: L10n.text("settings.section.general")
         case .providers: L10n.text("settings.section.providers")
+        case .voice: L10n.text("settings.section.voice")
         case .promptModes: L10n.text("settings.section.promptModes")
         case .permissions: L10n.text("settings.section.permissions")
         }
@@ -382,6 +462,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: "gearshape"
         case .providers: "sparkles"
+        case .voice: "mic"
         case .promptModes: "slider.horizontal.3"
         case .permissions: "lock.shield"
         }
@@ -390,8 +471,12 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     @StateObject private var model = SettingsViewModel()
-    @State private var selectedSection: SettingsSection = .general
+    @State private var selectedSection: SettingsSection
     @State private var promptModePendingDeletionID: String?
+
+    init(initialSection: SettingsSection = .general) {
+        _selectedSection = State(initialValue: initialSection)
+    }
 
     private var isSavedMessage: Bool {
         model.message == L10n.text("settings.saved")
@@ -413,6 +498,12 @@ struct SettingsView: View {
         .preferredColorScheme(model.config.appearance.colorScheme)
         .task {
             await model.refreshModelCatalogIfNeeded()
+        }
+        .onAppear {
+            model.refreshPermissions()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            model.refreshPermissions()
         }
         .alert(
             L10n.text("settings.mode.deleteConfirmTitle"),
@@ -522,6 +613,12 @@ struct SettingsView: View {
                     }
                 case .providers:
                     providersPanel
+                case .voice:
+                    ScrollView {
+                        voicePanel
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 20)
+                    }
                 case .promptModes:
                     promptModesPanel
                 case .permissions:
@@ -567,6 +664,8 @@ struct SettingsView: View {
             L10n.text("settings.description.general")
         case .providers:
             L10n.text("settings.description.providers")
+        case .voice:
+            L10n.text("settings.description.voice")
         case .promptModes:
             L10n.text("settings.description.promptModes")
         case .permissions:
@@ -695,6 +794,71 @@ struct SettingsView: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 20)
             }
+    }
+
+    private var voicePanel: some View {
+        let selectedSpeechProfileBinding = Binding(
+            get: { model.selectedSpeechProfile },
+            set: { model.selectSpeechProfile($0) }
+        )
+
+        return settingsPanel {
+            settingsRow(L10n.text("settings.row.voiceShortcut"), help: L10n.text("settings.help.voiceShortcut")) {
+                Picker("", selection: $model.config.voiceInput.shortcut) {
+                    ForEach(VoiceInputConfig.Shortcut.allCases) { shortcut in
+                        Text(shortcut.localizedName).tag(shortcut)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(L10n.text("settings.row.speechAPIKey"), help: L10n.text("settings.help.speechAPIKey")) {
+                SecureField("sk-...", text: $model.voiceAPIKey)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            settingsRow(L10n.text("settings.row.speechProfile"), help: L10n.text("settings.help.speechProfile")) {
+                Picker("", selection: selectedSpeechProfileBinding) {
+                    ForEach(VoiceInputConfig.SpeechProfile.allCases) { profile in
+                        Text(profile.localizedName).tag(profile)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            if model.shouldShowCustomSpeechFields {
+                settingsRow(L10n.text("settings.row.speechEndpoint"), help: L10n.text("settings.help.speechEndpoint")) {
+                    TextField(VoiceInputConfig.defaultSpeechEndpoint, text: $model.config.voiceInput.speechEndpoint)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                settingsRow(
+                    L10n.text("settings.row.speechModel"),
+                    help: L10n.format("settings.help.speechModel", VoiceInputConfig.defaultSpeechModel)
+                ) {
+                    TextField(VoiceInputConfig.defaultSpeechModel, text: $model.config.voiceInput.speechModel)
+                        .textFieldStyle(.roundedBorder)
+                }
+            }
+
+            settingsRow(L10n.text("settings.row.voiceAutoProcess"), help: L10n.text("settings.help.voiceAutoProcess")) {
+                Toggle("", isOn: $model.config.voiceInput.autoProcessTranscription)
+                    .labelsHidden()
+            }
+
+            settingsRow(L10n.text("settings.row.voiceCleanupMode"), help: L10n.text("settings.help.voiceCleanupMode")) {
+                Picker("", selection: $model.config.voiceInput.voiceCleanupPromptModeID) {
+                    ForEach(model.voiceCleanupModes) { mode in
+                        Text(mode.localizedName).tag(mode.id)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+                .disabled(!model.config.voiceInput.autoProcessTranscription)
+            }
+        }
     }
 
     private var promptModesPanel: some View {
@@ -834,6 +998,47 @@ struct SettingsView: View {
                     .stroke(InkletTheme.subtleBorder)
             }
 
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: model.isInputMonitoringTrusted ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(model.isInputMonitoringTrusted ? InkletTheme.success : InkletTheme.warning)
+                        .frame(width: 40, height: 40)
+                        .background((model.isInputMonitoringTrusted ? InkletTheme.success : InkletTheme.warning).opacity(0.18), in: RoundedRectangle(cornerRadius: 9))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(L10n.text("settings.permission.inputMonitoring"))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(InkletTheme.textPrimary)
+                        Text(L10n.text("settings.permission.inputMonitoringDescription"))
+                            .font(.system(size: 12))
+                            .foregroundStyle(InkletTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer()
+                    Text(model.isInputMonitoringTrusted ? L10n.text("settings.permission.inputMonitoringAuthorized") : L10n.text("settings.permission.inputMonitoringRequired"))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(model.isInputMonitoringTrusted ? InkletTheme.success : InkletTheme.warning)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background((model.isInputMonitoringTrusted ? InkletTheme.success : InkletTheme.warning).opacity(0.16), in: RoundedRectangle(cornerRadius: 6))
+                }
+
+                Button {
+                    model.openInputMonitoringSettings()
+                } label: {
+                    Label(L10n.text("settings.permission.open"), systemImage: "arrow.up.forward.app")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+            .padding(16)
+            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 16))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(InkletTheme.subtleBorder)
+            }
+
             VStack(alignment: .leading, spacing: 10) {
                 Text(L10n.text("settings.privacy.title"))
                     .font(.system(size: 14, weight: .semibold))
@@ -841,6 +1046,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(L10n.text("settings.privacy.keychain"))
                     Text(L10n.text("settings.privacy.provider"))
+                    Text(L10n.text("settings.privacy.voice"))
                     Text(L10n.text("settings.privacy.clipboard"))
                 }
                 .font(.system(size: 12))
@@ -853,6 +1059,7 @@ struct SettingsView: View {
                     .stroke(InkletTheme.subtleBorder)
             }
         }
+        .id(model.permissionRefreshID)
     }
 
     private var footer: some View {
