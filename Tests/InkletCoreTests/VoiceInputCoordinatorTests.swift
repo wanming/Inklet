@@ -13,6 +13,26 @@ final class VoiceInputCoordinatorTests: XCTestCase {
         XCTAssertEqual(harness.statuses, [.listening])
     }
 
+    func testRepeatedToggleDuringStartupStartsRecordingOnce() async {
+        let harness = VoiceInputHarness()
+        harness.pauseStartRecording = true
+
+        let startTask = Task {
+            await harness.coordinator.toggle()
+        }
+        await Task.yield()
+        await harness.coordinator.toggle()
+
+        XCTAssertEqual(harness.startRecordingCount, 1)
+        XCTAssertEqual(harness.statuses, [])
+
+        harness.resumeStartRecording()
+        await startTask.value
+
+        XCTAssertEqual(harness.startRecordingCount, 1)
+        XCTAssertEqual(harness.statuses, [.listening])
+    }
+
     func testCancelDuringListeningStopsRecordingAndShowsIdle() async {
         let harness = VoiceInputHarness()
 
@@ -121,6 +141,8 @@ private final class VoiceInputHarness {
     var cleanedText = "Hello."
     var transcriptionError: Error?
     var cleanupError: Error?
+    var pauseStartRecording = false
+    private var startRecordingContinuation: CheckedContinuation<Void, Never>?
 
     var coordinator: VoiceInputCoordinator!
 
@@ -137,6 +159,11 @@ private final class VoiceInputHarness {
             targetApplicationProvider: { targetApplication },
             startRecording: { [weak self] in
                 self?.startRecordingCount += 1
+                if self?.pauseStartRecording == true {
+                    await withCheckedContinuation { continuation in
+                        self?.startRecordingContinuation = continuation
+                    }
+                }
             },
             stopRecording: { [weak self] in
                 self?.stopRecordingCount += 1
@@ -165,5 +192,11 @@ private final class VoiceInputHarness {
                 self?.statuses.append(status)
             }
         )
+    }
+
+    func resumeStartRecording() {
+        pauseStartRecording = false
+        startRecordingContinuation?.resume()
+        startRecordingContinuation = nil
     }
 }

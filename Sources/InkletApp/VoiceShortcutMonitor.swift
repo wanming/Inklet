@@ -1,7 +1,6 @@
 import AppKit
 import InkletCore
 
-@MainActor
 final class VoiceShortcutMonitor {
     private var eventTap: CFMachPort?
     private var eventTapSource: CFRunLoopSource?
@@ -67,19 +66,17 @@ final class VoiceShortcutMonitor {
         let monitor = Unmanaged<VoiceShortcutMonitor>.fromOpaque(userInfo).takeUnretainedValue()
         let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
         let flags = event.flags
-        Task { @MainActor in
-            switch type {
-            case .flagsChanged:
-                monitor.handleFlagsChanged(keyCode: keyCode, flags: flags)
-            case .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown:
-                monitor.markCandidateInterrupted()
-            case .tapDisabledByTimeout, .tapDisabledByUserInput:
-                if let eventTap = monitor.eventTap {
-                    CGEvent.tapEnable(tap: eventTap, enable: true)
-                }
-            default:
-                break
+        switch type {
+        case .flagsChanged:
+            monitor.handleFlagsChanged(keyCode: keyCode, flags: flags)
+        case .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown:
+            monitor.markCandidateInterrupted()
+        case .tapDisabledByTimeout, .tapDisabledByUserInput:
+            if let eventTap = monitor.eventTap {
+                CGEvent.tapEnable(tap: eventTap, enable: true)
             }
+        default:
+            break
         }
         return Unmanaged.passUnretained(event)
     }

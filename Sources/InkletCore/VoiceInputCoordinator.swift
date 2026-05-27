@@ -25,6 +25,7 @@ public final class VoiceInputCoordinator {
 
     private enum State {
         case idle
+        case starting
         case listening
         case transcribing
         case polishing
@@ -72,7 +73,7 @@ public final class VoiceInputCoordinator {
             await start()
         case .listening:
             await stop()
-        case .transcribing, .polishing, .inserting, .cancelling:
+        case .starting, .transcribing, .polishing, .inserting, .cancelling:
             return
         }
     }
@@ -83,11 +84,20 @@ public final class VoiceInputCoordinator {
         }
 
         sessionID += 1
+        let activeSessionID = sessionID
+        state = .starting
         do {
             try await startRecordingHandler()
+            guard activeSessionID == sessionID else {
+                await cancelRecordingHandler()
+                return
+            }
             state = .listening
             statusHandler(.listening)
         } catch {
+            guard activeSessionID == sessionID else {
+                return
+            }
             state = .idle
             statusHandler(.error(userFacingMessage(for: error)))
         }
@@ -156,18 +166,18 @@ public final class VoiceInputCoordinator {
     }
 
     public func cancel() async {
-        guard case .listening = state else {
+        switch state {
+        case .starting, .listening:
+            sessionID += 1
+            state = .cancelling
+            await cancelRecordingHandler()
+            state = .idle
+            statusHandler(.idle)
+        case .idle, .transcribing, .polishing, .inserting, .cancelling:
             sessionID += 1
             state = .idle
             statusHandler(.idle)
-            return
         }
-
-        sessionID += 1
-        state = .cancelling
-        await cancelRecordingHandler()
-        state = .idle
-        statusHandler(.idle)
     }
 
     private func insertText(_ text: String) async throws {
