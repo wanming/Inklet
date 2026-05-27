@@ -19,10 +19,8 @@ final class AppCoordinator: NSObject {
     private let statusItem: NSStatusItem
     private let windowController: InkletPopoverWindowController
     private let settingsController: SettingsWindowController
-    private let setupController: SetupWindowController
     private let hotkeyManager: GlobalHotkeyManager
     private let configStore: UserDefaultsConfigStore
-    private let firstLaunchStore: UserDefaultsFirstLaunchStore
     private let accessibilityPermissionService: AccessibilityPermissionService
     private let inputMonitoringPermissionService: InputMonitoringPermissionService
     private let voiceStatusController: VoiceStatusWindowController
@@ -44,10 +42,8 @@ final class AppCoordinator: NSObject {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.windowController = InkletPopoverWindowController()
         self.settingsController = SettingsWindowController()
-        self.setupController = SetupWindowController()
         self.hotkeyManager = GlobalHotkeyManager()
         self.configStore = UserDefaultsConfigStore()
-        self.firstLaunchStore = UserDefaultsFirstLaunchStore()
         self.accessibilityPermissionService = AccessibilityPermissionService()
         self.inputMonitoringPermissionService = InputMonitoringPermissionService()
         self.voiceStatusController = VoiceStatusWindowController()
@@ -58,9 +54,6 @@ final class AppCoordinator: NSObject {
         super.init()
 
         self.windowController.onOpenSettings = { [weak self] in
-            self?.openSettings()
-        }
-        self.setupController.onOpenSettings = { [weak self] in
             self?.openSettings()
         }
         self.voiceStatusController.onCancel = { [weak self] in
@@ -124,7 +117,7 @@ final class AppCoordinator: NSObject {
 
         registerConfiguredHotkey()
         configureVoiceInput()
-        showSetupWindowIfNeeded()
+        showPermissionSettingsIfNeeded()
         installSettingsShortcutMonitor()
     }
 
@@ -367,13 +360,16 @@ final class AppCoordinator: NSObject {
         }
     }
 
-    private func showSetupWindowIfNeeded() {
-        guard firstLaunchStore.needsSetupWindow else {
+    private func showPermissionSettingsIfNeeded() {
+        let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
+        let needsAccessibility = !accessibilityPermissionService.isTrusted
+        let needsInputMonitoring = config.voiceInput.shortcut != .disabled && !inputMonitoringPermissionService.isTrusted
+
+        guard needsAccessibility || needsInputMonitoring else {
             return
         }
 
-        firstLaunchStore.markSetupWindowSeen()
-        setupController.show()
+        showSettings(section: .permissions)
     }
 
     private func configureStatusItemIcon() {
@@ -435,8 +431,12 @@ final class AppCoordinator: NSObject {
     }
 
     @objc func openSettings() {
+        showSettings(section: .general)
+    }
+
+    private func showSettings(section: SettingsSection) {
         windowController.hide()
-        settingsController.show()
+        settingsController.show(section: section)
     }
 
     @objc func quit() {

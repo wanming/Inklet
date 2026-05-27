@@ -436,7 +436,7 @@ private extension PromptMode {
     ]
 }
 
-private enum SettingsSection: String, CaseIterable, Identifiable {
+enum SettingsSection: String, CaseIterable, Identifiable {
     case general = "General"
     case providers = "Providers"
     case voice = "Voice"
@@ -468,8 +468,12 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     @StateObject private var model = SettingsViewModel()
-    @State private var selectedSection: SettingsSection = .general
+    @State private var selectedSection: SettingsSection
     @State private var promptModePendingDeletionID: String?
+
+    init(initialSection: SettingsSection = .general) {
+        _selectedSection = State(initialValue: initialSection)
+    }
 
     private var isSavedMessage: Bool {
         model.message == L10n.text("settings.saved")

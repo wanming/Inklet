@@ -61,10 +61,13 @@ final class SettingsWindowController: NSWindowController {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func show() {
+    func show(section: SettingsSection = .general) {
         window?.title = L10n.text("settings.window.title")
         let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
         window?.appearance = config.appearance.nsAppearance
+        if let hostingView = window?.contentView as? RoundedSettingsHostingView<SettingsView> {
+            hostingView.rootView = SettingsView(initialSection: section)
+        }
         window?.center()
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
