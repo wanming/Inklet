@@ -7,7 +7,8 @@ final class VoiceShortcutMonitor {
     private var shortcut: VoiceInputConfig.Shortcut = .disabled
     private var onTrigger: (() -> Void)?
     private var candidateKeyCode: UInt16?
-    private var candidateSawOtherKey = false
+    private var triggerWorkItem: DispatchWorkItem?
+    private let triggerDelay: TimeInterval = 0.08
 
     func update(shortcut: VoiceInputConfig.Shortcut, onTrigger: @escaping () -> Void) {
         stop()
@@ -54,7 +55,7 @@ final class VoiceShortcutMonitor {
         eventTapSource = nil
         eventTap = nil
         candidateKeyCode = nil
-        candidateSawOtherKey = false
+        cancelPendingTrigger()
         onTrigger = nil
     }
 
@@ -85,33 +86,47 @@ final class VoiceShortcutMonitor {
         guard let expectedKeyCode = shortcut.keyCode,
               keyCode == expectedKeyCode
         else {
-            if candidateKeyCode != nil {
-                candidateSawOtherKey = true
-            }
             return
         }
 
         if isConfiguredModifierDown(in: flags) {
-            candidateKeyCode = keyCode
-            candidateSawOtherKey = false
-            return
-        }
-
-        guard candidateKeyCode == keyCode, !candidateSawOtherKey else {
-            candidateKeyCode = nil
-            candidateSawOtherKey = false
+            scheduleTrigger(for: keyCode)
             return
         }
 
         candidateKeyCode = nil
-        candidateSawOtherKey = false
-        onTrigger?()
     }
 
     private func markCandidateInterrupted() {
         if candidateKeyCode != nil {
-            candidateSawOtherKey = true
+            cancelPendingTrigger()
         }
+    }
+
+    private func scheduleTrigger(for keyCode: UInt16) {
+        guard candidateKeyCode == nil else {
+            return
+        }
+
+        cancelPendingTrigger()
+        candidateKeyCode = keyCode
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self, self.candidateKeyCode == keyCode else {
+                return
+            }
+
+            self.candidateKeyCode = nil
+            self.triggerWorkItem = nil
+            self.onTrigger?()
+        }
+        triggerWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + triggerDelay, execute: workItem)
+    }
+
+    private func cancelPendingTrigger() {
+        triggerWorkItem?.cancel()
+        triggerWorkItem = nil
+        candidateKeyCode = nil
     }
 
     private func isConfiguredModifierDown(in flags: CGEventFlags) -> Bool {
