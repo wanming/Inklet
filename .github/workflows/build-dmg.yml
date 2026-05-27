@@ -85,7 +85,6 @@ jobs:
           chmod +x "$app_path/Contents/MacOS/$app_name"
 
           if [[ -d "$bin_path/Inklet_InkletCore.bundle" ]]; then
-            cp -R "$bin_path/Inklet_InkletCore.bundle" "$app_path/Inklet_InkletCore.bundle"
             cp -R "$bin_path/Inklet_InkletCore.bundle" "$app_path/Contents/Resources/Inklet_InkletCore.bundle"
           fi
           cp "Assets/AppIcon.icns" "$app_path/Contents/Resources/AppIcon.icns"
