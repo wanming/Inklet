@@ -533,18 +533,6 @@ struct InkletPopoverView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-
-            if isBusy {
-                HStack(spacing: 6) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text(busyTitle)
-                        .font(.system(size: 11))
-                        .foregroundStyle(InkletTheme.textSecondary)
-                }
-                .padding(.trailing, 16)
-                .padding(.bottom, 12)
-            }
         }
         .frame(height: inputHeight)
         .background {
@@ -639,7 +627,7 @@ struct InkletPopoverView: View {
 
             Spacer()
 
-            Text("\(model.currentProviderName)  ·  \(model.currentModelName)")
+            Text("\(model.currentProviderName) · \(model.currentModelName)")
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundStyle(InkletTheme.textSecondary.opacity(0.62))
                 .lineLimit(1)
