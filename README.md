@@ -1,50 +1,18 @@
 # Inklet
 
-**Inklet** is a macOS AI writing popover for turning rough text into clear, natural writing without leaving the app you are already using.
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-Press a global shortcut, type or paste text, choose a writing mode, let your preferred LLM transform it, then insert the result back into the original text field.
+**Inklet** is a macOS writing assistant that helps you turn typed, pasted, or spoken thoughts into clear text without leaving the app you are already using.
+
+Use the global shortcut to open a small writing popover, or tap the voice shortcut to dictate a short phrase. Inklet can rewrite, summarize, clean up speech transcription, and insert the result back into the text field you were using.
 
 ## Demo
 
 Watch the demo video: [Inklet on YouTube](https://www.youtube.com/watch?v=F5wmFruo0a4).
 
-## What It Does
-
-- Opens from a global macOS hotkey. The default is `Option+Space`.
-- Starts short voice dictation from a single modifier-key tap. The default voice shortcut is Right Option.
-- Transforms text with built-in prompt modes:
-  - To Simple and Correct English
-  - To Chinese Summary
-  - Voice Cleanup
-- Inserts generated text back into the previously focused app.
-- Restores your clipboard after insertion.
-- Lets you edit prompt modes, model, timeout, temperature, hotkey, voice shortcut, speech endpoint, and speech model.
-- Supports multiple LLM providers, including OpenAI, Anthropic, Google Gemini, DeepSeek, Qwen, Moonshot Kimi, Zhipu GLM, MiniMax, SiliconFlow, Volcengine Ark, Tencent Hunyuan, Baichuan, 01.AI Yi, xAI, Groq, Mistral, OpenRouter, Perplexity, Together AI, Cerebras, and custom OpenAI-compatible endpoints.
-- Provides English and Chinese app UI localization.
-
-## Current Status
-
-Inklet is an early MVP. The repository currently includes:
-
-- A Swift Package for the macOS app and core writing engine.
-- A menu bar app with a writing popover and settings window.
-- Provider adapters and configuration storage.
-- Unit tests for core behavior.
-- Manual test notes in [docs/manual-test-checklist.md](docs/manual-test-checklist.md).
-
-## Requirements
-
-- macOS 14 or newer.
-- Swift 6 toolchain.
-- Full Xcode is recommended for XCTest support.
-- Accessibility permission for Inklet, required for returning focus to the previous app and pasting the generated result.
-- Microphone permission for voice dictation.
-- An API key for at least one configured LLM provider.
-- A speech transcription API key for voice dictation.
-
 ## Install
 
-Until Inklet has Developer ID signing and notarization, the easiest install path is the script below. It downloads the latest DMG, verifies its checksum, copies Inklet to `/Applications`, and removes the macOS quarantine flag that can otherwise show a misleading "damaged" warning.
+Inklet currently ships as an early MVP. Until it has Developer ID signing and notarization, the easiest install path is the script below. It downloads the latest DMG, verifies its checksum, copies Inklet to `/Applications`, and removes the macOS quarantine flag that can otherwise show a misleading "damaged" warning.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install.sh | bash
@@ -65,6 +33,72 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
   INKLET_INSTALL_DIR="$HOME/Applications" bash
 ```
 
+## First-Time Setup
+
+1. Open Inklet from your Applications folder, or start it from source with `swift run Inklet`.
+2. Click the Inklet menu bar icon and open Settings.
+3. Choose an LLM provider and enter its API key.
+4. Confirm the model and prompt modes you want to use.
+5. Optional: configure Voice settings with a speech API key, speech preset, voice shortcut, and cleanup mode.
+6. Grant Accessibility permission when macOS asks. Inklet needs this to return focus to the previous app and paste the result.
+7. Grant Input Monitoring permission if you use the voice shortcut while another app is active.
+8. Grant Microphone permission the first time you use voice dictation.
+
+## Everyday Use
+
+Text workflow:
+
+1. Focus any text field in another app.
+2. Press `Option+Space`.
+3. Type or paste rough text.
+4. Press `Enter` to transform it.
+5. Press `Enter` again to insert the result.
+
+Voice workflow:
+
+1. Focus any text field in another app.
+2. Tap Right Option once to start recording.
+3. Speak a short phrase.
+4. Tap Right Option again to stop recording.
+5. Inklet transcribes the audio, optionally cleans up the transcript with the selected prompt mode, and inserts the final text.
+
+The default voice shortcut is Right Option. You can change it to Right Command, Left Option, Left Command, or Disabled in Settings.
+
+## What It Does
+
+- Opens from a global macOS hotkey. The default is `Option+Space`.
+- Starts short voice dictation from a single modifier-key tap. The default voice shortcut is Right Option.
+- Transforms text with built-in prompt modes:
+  - To Simple and Correct English
+  - To Chinese Summary
+  - Voice Cleanup
+- Inserts generated text back into the previously focused app.
+- Restores your clipboard after insertion.
+- Lets you edit prompt modes, model, timeout, temperature, hotkey, voice shortcut, speech preset, speech endpoint, and speech model.
+- Supports multiple LLM providers, including OpenAI, Anthropic, Google Gemini, DeepSeek, Qwen, Moonshot Kimi, Zhipu GLM, MiniMax, SiliconFlow, Volcengine Ark, Tencent Hunyuan, Baichuan, 01.AI Yi, xAI, Groq, Mistral, OpenRouter, Perplexity, Together AI, Cerebras, and custom OpenAI-compatible endpoints.
+- Provides English and Chinese app UI localization.
+
+## Current Status
+
+Inklet is an early MVP. The repository currently includes:
+
+- A Swift Package for the macOS app and core writing engine.
+- A menu bar app with a writing popover and settings window.
+- Provider adapters and configuration storage.
+- Unit tests for core behavior.
+- Manual test notes in [docs/manual-test-checklist.md](docs/manual-test-checklist.md).
+
+## Requirements
+
+- macOS 14 or newer.
+- Swift 6 toolchain.
+- Full Xcode is recommended for XCTest support.
+- Accessibility permission for Inklet, required for returning focus to the previous app and pasting the generated result.
+- Input Monitoring permission for detecting the voice shortcut while another app is active.
+- Microphone permission for voice dictation.
+- An API key for at least one configured LLM provider.
+- A speech transcription API key for voice dictation.
+
 ## Build And Run
 
 From the repository root:
@@ -81,18 +115,6 @@ swift test
 ```
 
 If tests fail because `XCTest` is unavailable, install the full Xcode app instead of using only Command Line Tools.
-
-## First-Time Setup
-
-1. Start the app with `swift run Inklet`.
-2. Open Inklet from the menu bar and go to Settings.
-3. Choose a provider and enter its API key.
-4. Confirm the model, timeout, temperature, and prompt mode order.
-5. Configure Voice settings if you want dictation, including the speech API key and speech model.
-6. Grant Accessibility permission in macOS System Settings when prompted.
-7. Grant Microphone permission when using voice dictation for the first time.
-8. Focus any text field in another app, press `Option+Space`, enter text, press `Enter` to transform, then press `Enter` again to insert.
-9. For voice dictation, focus any text field in another app, tap Right Option, speak a short phrase, then tap Right Option again to transcribe, clean up, and insert.
 
 ## Keyboard Flow
 
