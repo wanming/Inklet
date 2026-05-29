@@ -348,6 +348,18 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.visiblePromptModes.map(\.id), ["earlier", "later"])
     }
 
+    func testHiddenPromptModesRemainAvailableForSettingsUse() {
+        var config = AppConfig.defaultConfig()
+        config.promptModes = [
+            mode(id: "first-visible", sortOrder: 0),
+            mode(id: "hidden-available-in-settings", sortOrder: 1, isVisible: false),
+            mode(id: "second-visible", sortOrder: 2)
+        ]
+
+        XCTAssertEqual(config.visiblePromptModes.map(\.id), ["first-visible", "second-visible"])
+        XCTAssertTrue(config.promptModes.contains { $0.id == "hidden-available-in-settings" })
+    }
+
     func testLocalAPIKeyStoreRoundTripsAndDeletesProviderKey() throws {
         let suiteName = "LocalAPIKeyStoreTests-\(UUID().uuidString)"
         let userDefaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

@@ -148,7 +148,7 @@ final class SettingsViewModel: ObservableObject {
     }
 
     var voiceCleanupModes: [PromptMode] {
-        config.visiblePromptModes
+        orderedPromptModes
     }
 
     func modelMenuTitle(for modelID: String) -> String {
