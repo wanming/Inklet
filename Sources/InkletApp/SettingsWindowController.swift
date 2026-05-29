@@ -6,6 +6,19 @@ import InkletCore
 private final class SettingsWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+
+    override func cancelOperation(_ sender: Any?) {
+        close()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        guard event.keyCode == 53 else {
+            super.keyDown(with: event)
+            return
+        }
+
+        close()
+    }
 }
 
 @MainActor

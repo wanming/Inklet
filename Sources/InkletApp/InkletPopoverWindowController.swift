@@ -4,8 +4,23 @@ import SwiftUI
 
 @MainActor
 private final class InkletPopoverPanel: NSPanel {
+    var onEscape: (() -> Void)?
+
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+
+    override func cancelOperation(_ sender: Any?) {
+        onEscape?()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        guard event.keyCode == 53 else {
+            super.keyDown(with: event)
+            return
+        }
+
+        onEscape?()
+    }
 }
 
 @MainActor
@@ -68,6 +83,9 @@ final class InkletPopoverWindowController: NSWindowController {
         panel.contentView = ClearHostingView(rootView: InkletPopoverView(model: model))
 
         super.init(window: panel)
+        panel.onEscape = { [weak self] in
+            self?.model.escape()
+        }
         shouldCascadeWindows = false
 
         model.$preferredPopoverHeight

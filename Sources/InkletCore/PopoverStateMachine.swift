@@ -82,9 +82,9 @@ public final class PopoverStateMachine {
             state = .closed
             return [.hidePopover]
 
-        case (.previewingResult(let source, _), .escape):
-            state = .editingSource(source: source, errorMessage: nil)
-            return [.focusSourceInput]
+        case (.previewingResult, .escape):
+            state = .closed
+            return [.hidePopover]
 
         case (.previewingResult(_, let result), .submit):
             state = .inserting(text: result)

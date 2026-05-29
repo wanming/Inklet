@@ -58,13 +58,13 @@ final class PopoverStateMachineTests: XCTestCase {
         XCTAssertEqual(actions, [])
     }
 
-    func testEscapeRejectsPreviewAndReturnsToSource() {
+    func testEscapeClosesPreview() {
         let machine = PopoverStateMachine(state: .previewingResult(source: "hi", result: "Hello."))
 
         let actions = machine.send(.escape)
 
-        XCTAssertEqual(machine.state, .editingSource(source: "hi", errorMessage: nil))
-        XCTAssertEqual(actions, [.focusSourceInput])
+        XCTAssertEqual(machine.state, .closed)
+        XCTAssertEqual(actions, [.hidePopover])
     }
 
     func testCommandEnterInsertsOriginalSource() {

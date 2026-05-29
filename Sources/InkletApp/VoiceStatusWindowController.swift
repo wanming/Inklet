@@ -4,9 +4,14 @@ import InkletCore
 @MainActor
 private final class VoiceStatusPanel: NSPanel {
     var onCancel: (() -> Void)?
+    var onEscape: (() -> Void)?
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    override func cancelOperation(_ sender: Any?) {
+        onEscape?()
+    }
 
     override func keyDown(with event: NSEvent) {
         guard event.keyCode == 53 else {
@@ -14,7 +19,7 @@ private final class VoiceStatusPanel: NSPanel {
             return
         }
 
-        onCancel?()
+        onEscape?()
     }
 }
 
@@ -59,6 +64,9 @@ final class VoiceStatusWindowController: NSWindowController {
         panel.alphaValue = Self.panelAlpha
         panel.isMovableByWindowBackground = true
         super.init(window: panel)
+        panel.onEscape = { [weak self] in
+            self?.cancel()
+        }
         panel.contentView = makeContentView()
     }
 
