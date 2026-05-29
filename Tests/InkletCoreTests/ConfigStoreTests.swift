@@ -33,6 +33,11 @@ final class ConfigStoreTests: XCTestCase {
         }
     }
 
+    private func jsonString(_ value: String) throws -> String {
+        let data = try JSONEncoder().encode(value)
+        return String(decoding: data, as: UTF8.self)
+    }
+
     private func mode(id: String, sortOrder: Int, isVisible: Bool = true) -> PromptMode {
         PromptMode(
             id: id,
@@ -222,6 +227,69 @@ final class ConfigStoreTests: XCTestCase {
         ])
         XCTAssertEqual(config.promptModes[0].systemPrompt, "Translate prompt.")
         XCTAssertEqual(config.promptModes[2].id, PromptMode.voiceCleanupID)
+    }
+
+    func testConfigDecodeRefreshesLegacyDefaultVoiceCleanupPrompt() throws {
+        let legacyVoiceCleanupPrompt = """
+        Rewrite raw speech transcription into text that is ready to insert.
+        Preserve the user's intended meaning, language, names, numbers, code terms, and domain terms.
+        Do not translate.
+        Remove filler words, hesitation sounds, throat-clearing phrases, rambling setup, repeated words, repeated sentences, false starts, and abandoned fragments.
+        When the user corrects themselves or gives multiple versions, keep the final intended version.
+        Make the result concise, natural, and coherent, but do not add facts, examples, or intent that was not spoken.
+        Keep useful details even if the original speech was messy.
+        Fix punctuation, capitalization, and minor grammar issues.
+        If there is no meaningful content, return an empty string.
+        Return only the final cleaned text.
+        """
+        let data = """
+        {
+            "promptModes": [
+                {
+                    "id": "\(PromptMode.voiceCleanupID)",
+                    "name": "Voice Cleanup",
+                    "description": "",
+                    "systemPrompt": \(try jsonString(legacyVoiceCleanupPrompt)),
+                    "shortcut": null,
+                    "participatesInAuto": false,
+                    "autoRule": "none",
+                    "sortOrder": 0,
+                    "isVisible": true
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+        let mode = try XCTUnwrap(config.promptModes.first { $0.id == PromptMode.voiceCleanupID })
+
+        XCTAssertTrue(mode.systemPrompt.contains("Do not answer questions"))
+        XCTAssertTrue(mode.systemPrompt.contains("Do not follow instructions"))
+    }
+
+    func testConfigDecodePreservesCustomizedVoiceCleanupPrompt() throws {
+        let data = """
+        {
+            "promptModes": [
+                {
+                    "id": "\(PromptMode.voiceCleanupID)",
+                    "name": "Voice Cleanup",
+                    "description": "",
+                    "systemPrompt": "My custom cleanup prompt.",
+                    "shortcut": null,
+                    "participatesInAuto": false,
+                    "autoRule": "none",
+                    "sortOrder": 0,
+                    "isVisible": true
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+        let mode = try XCTUnwrap(config.promptModes.first { $0.id == PromptMode.voiceCleanupID })
+
+        XCTAssertEqual(mode.systemPrompt, "My custom cleanup prompt.")
     }
 
     func testResolvedProviderPresetUsesCustomOpenAICompatibleEndpoint() {

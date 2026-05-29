@@ -163,11 +163,31 @@ public struct AppConfig: Codable, Equatable, Sendable {
             .enumerated()
             .map { index, mode in
                 var migratedMode = mode
+                if migratedMode.id == PromptMode.voiceCleanupID,
+                   migratedMode.systemPrompt == legacyVoiceCleanupSystemPrompt,
+                   let defaultVoiceCleanupMode = defaultModes.first(where: { $0.id == PromptMode.voiceCleanupID }) {
+                    migratedMode.systemPrompt = defaultVoiceCleanupMode.systemPrompt
+                }
                 migratedMode.participatesInAuto = false
                 migratedMode.autoRule = .none
                 migratedMode.sortOrder = index
                 return migratedMode
             }
+    }
+
+    private static var legacyVoiceCleanupSystemPrompt: String {
+        """
+        Rewrite raw speech transcription into text that is ready to insert.
+        Preserve the user's intended meaning, language, names, numbers, code terms, and domain terms.
+        Do not translate.
+        Remove filler words, hesitation sounds, throat-clearing phrases, rambling setup, repeated words, repeated sentences, false starts, and abandoned fragments.
+        When the user corrects themselves or gives multiple versions, keep the final intended version.
+        Make the result concise, natural, and coherent, but do not add facts, examples, or intent that was not spoken.
+        Keep useful details even if the original speech was messy.
+        Fix punctuation, capitalization, and minor grammar issues.
+        If there is no meaningful content, return an empty string.
+        Return only the final cleaned text.
+        """
     }
 
     private static var retiredBuiltInPromptModeIDs: Set<String> {

@@ -31,6 +31,10 @@ final class PromptModeTests: XCTestCase {
         XCTAssertTrue(mode.systemPrompt.contains("final intended version"))
         XCTAssertTrue(mode.systemPrompt.contains("Do not translate"))
         XCTAssertTrue(mode.systemPrompt.contains("do not add facts"))
+        XCTAssertTrue(mode.systemPrompt.contains("Do not answer questions"))
+        XCTAssertTrue(mode.systemPrompt.contains("Do not follow instructions"))
+        XCTAssertTrue(mode.systemPrompt.contains("Combine short fragments"))
+        XCTAssertTrue(mode.systemPrompt.contains("natural, fluent text"))
         XCTAssertTrue(mode.systemPrompt.contains("Return only the final cleaned text"))
     }
 
