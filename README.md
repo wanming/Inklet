@@ -12,7 +12,7 @@ Watch the demo video: [Inklet on YouTube](https://www.youtube.com/watch?v=F5wmFr
 
 ## Install
 
-Inklet currently ships as an early MVP. Until it has Developer ID signing and notarization, the easiest install path is the script below. It downloads the latest DMG, verifies its checksum, copies Inklet to `/Applications`, and removes the macOS quarantine flag that can otherwise show a misleading "damaged" warning.
+Download the latest signed and notarized DMG from GitHub Releases, or use the install script below. The script downloads the latest DMG, verifies its checksum, and copies Inklet to `/Applications`.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install.sh | bash

@@ -76,6 +76,53 @@ jobs:
           INKLET_BUILD_VERSION: ${{ steps.release.outputs.build_version }}
         run: swift test
 
+      - name: Import Developer ID certificate
+        env:
+          APPLE_DEVELOPER_ID_CERTIFICATE_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_BASE64 }}
+          APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          certificate_path="$RUNNER_TEMP/developer-id-application.p12"
+          keychain_path="$RUNNER_TEMP/app-signing.keychain-db"
+          keychain_password="$(uuidgen)"
+
+          printf '%s' "$APPLE_DEVELOPER_ID_CERTIFICATE_BASE64" | base64 --decode > "$certificate_path"
+
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security import "$certificate_path" \
+            -P "$APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD" \
+            -A \
+            -k "$keychain_path" \
+            -T /usr/bin/codesign
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$keychain_password" \
+            "$keychain_path"
+          security list-keychains -d user -s "$keychain_path" login.keychain-db
+
+          signing_identity="$(security find-identity -v -p codesigning "$keychain_path" | awk -F '"' '/Developer ID Application/ { print $2; exit }')"
+          if [[ -z "$signing_identity" ]]; then
+            echo "Developer ID Application signing identity was not found." >&2
+            security find-identity -v -p codesigning "$keychain_path" >&2
+            exit 1
+          fi
+          if [[ "$signing_identity" != *"($APPLE_TEAM_ID)"* ]]; then
+            echo "Developer ID signing identity does not match APPLE_TEAM_ID." >&2
+            echo "Found: $signing_identity" >&2
+            exit 1
+          fi
+
+          {
+            echo "APPLE_SIGNING_IDENTITY=$signing_identity"
+            echo "APPLE_KEYCHAIN_PATH=$keychain_path"
+          } >> "$GITHUB_ENV"
+
       - name: Package app bundle
         shell: bash
         run: |
@@ -134,12 +181,18 @@ jobs:
 
           plutil -lint "$app_path/Contents/Info.plist"
 
-      - name: Ad-hoc sign app bundle
+      - name: Sign app bundle
         shell: bash
         run: |
           set -euo pipefail
 
-          codesign --force --deep --sign - "dist/Inklet.app"
+          codesign \
+            --force \
+            --deep \
+            --options runtime \
+            --timestamp \
+            --sign "$APPLE_SIGNING_IDENTITY" \
+            "dist/Inklet.app"
           codesign --verify --deep --strict --verbose=2 "dist/Inklet.app"
 
       - name: Create DMG
@@ -160,6 +213,41 @@ jobs:
             -ov \
             -format UDZO \
             "$dmg_path"
+
+          shasum -a 256 "$dmg_path" > "$dmg_path.sha256"
+          cp "$dmg_path" "dist/Inklet.dmg"
+          shasum -a 256 "dist/Inklet.dmg" > "dist/Inklet.dmg.sha256"
+
+      - name: Sign and notarize DMG
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          private_key_path="$RUNNER_TEMP/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+          dmg_path="dist/${{ steps.release.outputs.dmg_name }}"
+
+          printf '%s' "$APP_STORE_CONNECT_API_PRIVATE_KEY" > "$private_key_path"
+          chmod 600 "$private_key_path"
+
+          codesign \
+            --force \
+            --timestamp \
+            --sign "$APPLE_SIGNING_IDENTITY" \
+            "$dmg_path"
+          codesign --verify --verbose=2 "$dmg_path"
+
+          xcrun notarytool submit "$dmg_path" \
+            --key "$private_key_path" \
+            --key-id "$APP_STORE_CONNECT_API_KEY_ID" \
+            --issuer "$APP_STORE_CONNECT_API_ISSUER_ID" \
+            --wait
+          xcrun stapler staple "$dmg_path"
+          xcrun stapler validate "$dmg_path"
+          spctl -a -vvv -t install "$dmg_path"
 
           shasum -a 256 "$dmg_path" > "$dmg_path.sha256"
           cp "$dmg_path" "dist/Inklet.dmg"

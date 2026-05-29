@@ -12,7 +12,7 @@
 
 ## 安装
 
-Inklet 目前还是早期 MVP。正式的 Developer ID 签名和 notarization 完成前，推荐使用下面的安装脚本。它会下载最新 DMG，校验 checksum，复制 Inklet 到 `/Applications`，并移除 macOS quarantine 标记，避免出现误导性的 "damaged" 提示。
+从 GitHub Releases 下载最新已签名并公证的 DMG，或使用下面的安装脚本。脚本会下载最新 DMG，校验 checksum，并复制 Inklet 到 `/Applications`。
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install.sh | bash
