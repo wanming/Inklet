@@ -20,7 +20,14 @@ let package = Package(
         .executableTarget(
             name: "Inklet",
             dependencies: ["InkletCore"],
-            path: "Sources/InkletApp"
+            path: "Sources/InkletApp",
+            plugins: [
+                .plugin(name: "BuildInfoPlugin")
+            ]
+        ),
+        .plugin(
+            name: "BuildInfoPlugin",
+            capability: .buildTool()
         ),
         .testTarget(
             name: "InkletCoreTests",

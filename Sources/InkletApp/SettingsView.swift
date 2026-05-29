@@ -408,7 +408,11 @@ final class SettingsViewModel: ObservableObject {
             return
         }
 
-        NotificationCenter.default.post(name: .inkletDidOpenPermissionSettings, object: nil)
+        NotificationCenter.default.post(
+            name: .inkletDidOpenPermissionSettings,
+            object: nil,
+            userInfo: ["permission": PermissionSettingsDestination.accessibility.rawValue]
+        )
         NSWorkspace.shared.open(url)
     }
 
@@ -420,7 +424,11 @@ final class SettingsViewModel: ObservableObject {
             return
         }
 
-        NotificationCenter.default.post(name: .inkletDidOpenPermissionSettings, object: nil)
+        NotificationCenter.default.post(
+            name: .inkletDidOpenPermissionSettings,
+            object: nil,
+            userInfo: ["permission": PermissionSettingsDestination.inputMonitoring.rawValue]
+        )
         NSWorkspace.shared.open(url)
     }
 }
@@ -586,7 +594,7 @@ struct SettingsView: View {
             .padding(.horizontal, 8)
 
             Spacer()
-            Text(L10n.format("settings.version", "1.0.0"))
+            Text(L10n.format("settings.version", BuildInfo.displayVersion))
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundStyle(InkletTheme.textFaint)
                 .padding(.horizontal, 20)
@@ -622,11 +630,10 @@ struct SettingsView: View {
                 case .promptModes:
                     promptModesPanel
                 case .permissions:
-                    ScrollView {
-                        permissionsPanel
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 20)
-                    }
+                    permissionsPanel
+                        .padding(.horizontal, 24)
+                        .padding(.top, 8)
+                        .padding(.bottom, 10)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -956,110 +963,169 @@ struct SettingsView: View {
     }
 
     private var permissionsPanel: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: model.isAccessibilityTrusted ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(model.isAccessibilityTrusted ? InkletTheme.success : InkletTheme.warning)
-                        .frame(width: 40, height: 40)
-                        .background((model.isAccessibilityTrusted ? InkletTheme.success : InkletTheme.warning).opacity(0.18), in: RoundedRectangle(cornerRadius: 9))
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(L10n.text("settings.permission.accessibility"))
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(InkletTheme.textPrimary)
-                        Text(L10n.text("settings.permission.description"))
-                            .font(.system(size: 12))
-                            .foregroundStyle(InkletTheme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer()
-                    Text(model.isAccessibilityTrusted ? L10n.text("settings.permission.authorized") : L10n.text("settings.permission.required"))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(model.isAccessibilityTrusted ? InkletTheme.success : InkletTheme.warning)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background((model.isAccessibilityTrusted ? InkletTheme.success : InkletTheme.warning).opacity(0.16), in: RoundedRectangle(cornerRadius: 6))
-                }
-
-                Button {
-                    model.openAccessibilitySettings()
-                } label: {
-                    Label(L10n.text("settings.permission.open"), systemImage: "arrow.up.forward.app")
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-            }
-            .padding(16)
-            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 16))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(InkletTheme.subtleBorder)
+        VStack(alignment: .leading, spacing: 22) {
+            permissionSection(title: L10n.text("settings.quickStart.title")) {
+                quickStartShortcuts
             }
 
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: model.isInputMonitoringTrusted ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(model.isInputMonitoringTrusted ? InkletTheme.success : InkletTheme.warning)
-                        .frame(width: 40, height: 40)
-                        .background((model.isInputMonitoringTrusted ? InkletTheme.success : InkletTheme.warning).opacity(0.18), in: RoundedRectangle(cornerRadius: 9))
+            permissionSection(title: L10n.text("settings.systemPermissions.title")) {
+                VStack(spacing: 12) {
+                    permissionLine(
+                        title: L10n.text("settings.permission.accessibility"),
+                        description: L10n.text("settings.permission.description"),
+                        isTrusted: model.isAccessibilityTrusted,
+                        action: { model.openAccessibilitySettings() }
+                    )
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(L10n.text("settings.permission.inputMonitoring"))
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(InkletTheme.textPrimary)
-                        Text(L10n.text("settings.permission.inputMonitoringDescription"))
-                            .font(.system(size: 12))
-                            .foregroundStyle(InkletTheme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer()
-                    Text(model.isInputMonitoringTrusted ? L10n.text("settings.permission.inputMonitoringAuthorized") : L10n.text("settings.permission.inputMonitoringRequired"))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(model.isInputMonitoringTrusted ? InkletTheme.success : InkletTheme.warning)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background((model.isInputMonitoringTrusted ? InkletTheme.success : InkletTheme.warning).opacity(0.16), in: RoundedRectangle(cornerRadius: 6))
+                    permissionLine(
+                        title: L10n.text("settings.permission.inputMonitoring"),
+                        description: L10n.text("settings.permission.inputMonitoringDescription"),
+                        isTrusted: model.isInputMonitoringTrusted,
+                        action: { model.openInputMonitoringSettings() }
+                    )
                 }
-
-                Button {
-                    model.openInputMonitoringSettings()
-                } label: {
-                    Label(L10n.text("settings.permission.open"), systemImage: "arrow.up.forward.app")
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-            }
-            .padding(16)
-            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 16))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(InkletTheme.subtleBorder)
             }
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text(L10n.text("settings.privacy.title"))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(InkletTheme.textPrimary)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(L10n.text("settings.privacy.keychain"))
-                    Text(L10n.text("settings.privacy.provider"))
-                    Text(L10n.text("settings.privacy.voice"))
-                    Text(L10n.text("settings.privacy.clipboard"))
+            permissionSection(title: L10n.text("settings.privacy.title")) {
+                VStack(alignment: .leading, spacing: 8) {
+                    privacyLine(L10n.text("settings.privacy.keychain"))
+                    privacyLine(L10n.text("settings.privacy.provider"))
+                    privacyLine(L10n.text("settings.privacy.voice"))
+                    privacyLine(L10n.text("settings.privacy.clipboard"))
                 }
-                .font(.system(size: 12))
-                .foregroundStyle(InkletTheme.textSecondary)
-            }
-            .padding(16)
-            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 16))
-            .overlay {
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(InkletTheme.subtleBorder)
             }
         }
+        .padding(.horizontal, 20)
+        .frame(maxWidth: 680, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .id(model.permissionRefreshID)
+    }
+
+    private var quickStartShortcuts: some View {
+        HStack(alignment: .top, spacing: 48) {
+            VStack(alignment: .leading, spacing: 8) {
+                shortcutLine(keys: [model.config.hotkey], title: L10n.text("settings.quickStart.open"), keyWidth: 102, keyAlignment: .trailing)
+                shortcutLine(keys: ["⌘", "↵"], title: L10n.text("settings.quickStart.original"), keyWidth: 102, keyAlignment: .trailing)
+                if model.config.voiceInput.shortcut != .disabled {
+                    shortcutLine(keys: [model.config.voiceInput.shortcut.localizedName], title: L10n.text("settings.quickStart.voice"), keyWidth: 102, keyAlignment: .trailing)
+                }
+            }
+            .frame(width: 292, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 8) {
+                shortcutLine(keys: ["↵"], title: L10n.text("settings.quickStart.submit"), keyWidth: 34, keyAlignment: .leading, textSpacing: 8)
+                shortcutLine(keys: ["esc"], title: L10n.text("settings.quickStart.close"), keyWidth: 34, keyAlignment: .leading, textSpacing: 8)
+            }
+            .frame(width: 220, alignment: .leading)
+        }
+        .frame(width: 560, alignment: .leading)
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func permissionStatusColor(isTrusted: Bool) -> Color {
+        isTrusted ? InkletTheme.primary : InkletTheme.warning
+    }
+
+    private func permissionSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(0.7)
+                .textCase(.uppercase)
+                .foregroundStyle(InkletTheme.textTertiary)
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func shortcutLine(keys: [String], title: String, keyWidth: CGFloat, keyAlignment: Alignment, textSpacing: CGFloat = 14) -> some View {
+        HStack(spacing: textSpacing) {
+            shortcutKeys(keys)
+                .frame(width: keyWidth, alignment: keyAlignment)
+
+            shortcutTitle(title)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func shortcutKeys(_ keys: [String]) -> some View {
+        HStack(spacing: 4) {
+            ForEach(keys, id: \.self) { key in
+                Keycap(title: key)
+            }
+        }
+    }
+
+    private func shortcutTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 12))
+            .foregroundStyle(InkletTheme.textSecondary)
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func permissionLine(
+        title: String,
+        description: String,
+        isTrusted: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        let statusColor = permissionStatusColor(isTrusted: isTrusted)
+
+        return HStack(alignment: .center, spacing: 14) {
+            Image(systemName: isTrusted ? "checkmark" : "exclamationmark")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(statusColor)
+                .frame(width: 42, height: 42)
+                .background(statusColor.opacity(0.11), in: Circle())
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(InkletTheme.textPrimary)
+                }
+
+                Text(description)
+                    .font(.system(size: 12))
+                    .foregroundStyle(InkletTheme.textTertiary)
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button(action: action) {
+                Label(L10n.text("settings.permission.openShort"), systemImage: "arrow.up.forward.app")
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(InkletTheme.textSecondary)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
+            .fixedSize()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(InkletTheme.controlFill.opacity(0.58), in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(InkletTheme.subtleBorder)
+        }
+    }
+
+    private func privacyLine(_ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Circle()
+                .fill(InkletTheme.textFaint)
+                .frame(width: 3, height: 3)
+                .alignmentGuide(.firstTextBaseline) { context in
+                    context[VerticalAlignment.center]
+                }
+            Text(text.replacingOccurrences(of: "• ", with: ""))
+                .font(.system(size: 12))
+                .foregroundStyle(InkletTheme.textSecondary)
+        }
     }
 
     private var footer: some View {

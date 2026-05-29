@@ -37,6 +37,7 @@ final class SettingsWindowController: NSWindowController {
     private let configStore: UserDefaultsConfigStore
     private var appActivationObserver: NSObjectProtocol?
     private var permissionSettingsObserver: NSObjectProtocol?
+    private var permissionRestoreTask: Task<Void, Never>?
     private var shouldRestoreAfterPermissionSettings = false
     private var lastShownSection: SettingsSection = .general
 
@@ -63,10 +64,15 @@ final class SettingsWindowController: NSWindowController {
             forName: .inkletDidOpenPermissionSettings,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
+        ) { [weak self] notification in
+            let rawPermission = notification.userInfo?["permission"] as? String
             Task { @MainActor in
                 self?.shouldRestoreAfterPermissionSettings = true
                 self?.lastShownSection = .permissions
+                if let rawPermission,
+                    let permission = PermissionSettingsDestination(rawValue: rawPermission) {
+                    self?.schedulePermissionRestore(for: permission)
+                }
             }
         }
 
@@ -104,5 +110,40 @@ final class SettingsWindowController: NSWindowController {
 
         shouldRestoreAfterPermissionSettings = false
         show(section: lastShownSection)
+    }
+
+    private func schedulePermissionRestore(for permission: PermissionSettingsDestination) {
+        permissionRestoreTask?.cancel()
+        permissionRestoreTask = Task { @MainActor in
+            for _ in 0..<60 {
+                guard !Task.isCancelled else {
+                    return
+                }
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else {
+                    return
+                }
+                if permission.isTrusted {
+                    shouldRestoreAfterPermissionSettings = false
+                    show(section: lastShownSection)
+                    return
+                }
+            }
+        }
+    }
+}
+
+@MainActor
+enum PermissionSettingsDestination: String {
+    case accessibility
+    case inputMonitoring
+
+    var isTrusted: Bool {
+        switch self {
+        case .accessibility:
+            AccessibilityPermissionService().isTrusted
+        case .inputMonitoring:
+            InputMonitoringPermissionService().isTrusted
+        }
     }
 }

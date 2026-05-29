@@ -39,6 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          build_version="$(date -u '+%Y.%m%d.%H%M')"
 
           if [[ -n "${{ inputs.tag_name }}" ]]; then
             tag_name="${{ inputs.tag_name }}"
@@ -55,17 +56,24 @@ jobs:
           fi
 
           asset_tag="${tag_name//\//-}"
+          dmg_name="Inklet-${build_version}.dmg"
 
           {
             echo "tag_name=$tag_name"
             echo "release_name=$release_name"
             echo "asset_tag=$asset_tag"
+            echo "build_version=$build_version"
+            echo "dmg_name=$dmg_name"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build release binary
+        env:
+          INKLET_BUILD_VERSION: ${{ steps.release.outputs.build_version }}
         run: swift build -c release
 
       - name: Run tests
+        env:
+          INKLET_BUILD_VERSION: ${{ steps.release.outputs.build_version }}
         run: swift test
 
       - name: Package app bundle
@@ -109,9 +117,9 @@ jobs:
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>CFBundleShortVersionString</key>
-            <string>0.0.${{ github.run_number }}</string>
+            <string>1.0.0</string>
             <key>CFBundleVersion</key>
-            <string>${{ github.run_number }}</string>
+            <string>${{ steps.release.outputs.build_version }}</string>
             <key>LSMinimumSystemVersion</key>
             <string>14.0</string>
             <key>LSUIElement</key>
@@ -140,26 +148,29 @@ jobs:
           set -euo pipefail
 
           dmg_root="dist/dmg-root"
-          dmg_path="dist/Inklet.dmg"
+          dmg_path="dist/${{ steps.release.outputs.dmg_name }}"
 
           mkdir -p "$dmg_root"
           cp -R "dist/Inklet.app" "$dmg_root/Inklet.app"
           ln -s /Applications "$dmg_root/Applications"
 
           hdiutil create \
-            -volname "Inklet" \
+            -volname "Inklet ${{ steps.release.outputs.build_version }}" \
             -srcfolder "$dmg_root" \
             -ov \
             -format UDZO \
             "$dmg_path"
 
           shasum -a 256 "$dmg_path" > "$dmg_path.sha256"
+          cp "$dmg_path" "dist/Inklet.dmg"
+          shasum -a 256 "dist/Inklet.dmg" > "dist/Inklet.dmg.sha256"
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ steps.release.outputs.tag_name }}
           RELEASE_NAME: ${{ steps.release.outputs.release_name }}
+          BUILD_VERSION: ${{ steps.release.outputs.build_version }}
           DRAFT: ${{ inputs.draft }}
           PRERELEASE: ${{ inputs.prerelease }}
         shell: bash
@@ -178,7 +189,7 @@ jobs:
               --target "$GITHUB_SHA"
               --title "$RELEASE_NAME"
               --latest
-              --notes "Manual macOS DMG build from workflow run ${GITHUB_RUN_NUMBER}."
+              --notes "macOS DMG build ${BUILD_VERSION} from workflow run ${GITHUB_RUN_NUMBER}."
             )
 
             if [[ "$DRAFT" == "true" ]]; then

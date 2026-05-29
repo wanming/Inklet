@@ -4,7 +4,7 @@ set -euo pipefail
 repo="${INKLET_REPO:-wanming/Inklet}"
 install_dir="${INKLET_INSTALL_DIR:-/Applications}"
 app_name="Inklet.app"
-asset_name="Inklet.dmg"
+asset_name="${INKLET_ASSET_NAME:-Inklet.dmg}"
 api_url="https://api.github.com/repos/${repo}/releases"
 auth_token="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
 
