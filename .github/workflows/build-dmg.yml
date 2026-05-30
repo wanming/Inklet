@@ -3,14 +3,6 @@ name: Build DMG
 on:
   workflow_dispatch:
     inputs:
-      tag_name:
-        description: "Release tag to publish to. Leave empty to use v<VERSION>-<BUILD_NUMBER>."
-        required: false
-        type: string
-      release_name:
-        description: "Release title. Leave empty to use Inklet <VERSION> (<BUILD_NUMBER>)."
-        required: false
-        type: string
       draft:
         description: "Create the release as a draft."
         required: true
@@ -44,21 +36,8 @@ jobs:
           app_version="$INKLET_VERSION"
           build_number="$INKLET_BUILD_NUMBER"
           release_version="${app_version}-${build_number}"
-
-          if [[ -n "${{ inputs.tag_name }}" ]]; then
-            tag_name="${{ inputs.tag_name }}"
-          elif [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            tag_name="$GITHUB_REF_NAME"
-          else
-            tag_name="v${release_version}"
-          fi
-
-          if [[ -n "${{ inputs.release_name }}" ]]; then
-            release_name="${{ inputs.release_name }}"
-          else
-            release_name="Inklet ${app_version} (${build_number})"
-          fi
-
+          tag_name="v${release_version}"
+          release_name="Inklet ${app_version} (${build_number})"
           asset_tag="${tag_name//\//-}"
           dmg_name="Inklet-${release_version}.dmg"
 
