@@ -6,14 +6,21 @@ final class VoiceShortcutMonitor {
     private var eventTapSource: CFRunLoopSource?
     private var shortcut: VoiceInputConfig.Shortcut = .disabled
     private var onTrigger: (() -> Void)?
+    private var onCancel: (() -> Void)?
+    private var isVoiceInputActive = false
     private var candidateKeyCode: UInt16?
     private var triggerWorkItem: DispatchWorkItem?
     private let triggerDelay: TimeInterval = 0.08
 
-    func update(shortcut: VoiceInputConfig.Shortcut, onTrigger: @escaping () -> Void) {
+    func update(
+        shortcut: VoiceInputConfig.Shortcut,
+        onTrigger: @escaping () -> Void,
+        onCancel: @escaping () -> Void
+    ) {
         stop()
         self.shortcut = shortcut
         self.onTrigger = onTrigger
+        self.onCancel = onCancel
         guard shortcut != .disabled else {
             return
         }
@@ -57,6 +64,12 @@ final class VoiceShortcutMonitor {
         candidateKeyCode = nil
         cancelPendingTrigger()
         onTrigger = nil
+        onCancel = nil
+        isVoiceInputActive = false
+    }
+
+    func setVoiceInputActive(_ isActive: Bool) {
+        isVoiceInputActive = isActive
     }
 
     private nonisolated static let eventTapCallback: CGEventTapCallBack = { _, type, event, userInfo in
@@ -70,7 +83,9 @@ final class VoiceShortcutMonitor {
         switch type {
         case .flagsChanged:
             monitor.handleFlagsChanged(keyCode: keyCode, flags: flags)
-        case .keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown:
+        case .keyDown:
+            monitor.handleKeyDown(keyCode: keyCode)
+        case .leftMouseDown, .rightMouseDown, .otherMouseDown:
             monitor.markCandidateInterrupted()
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             if let eventTap = monitor.eventTap {
@@ -80,6 +95,19 @@ final class VoiceShortcutMonitor {
             break
         }
         return Unmanaged.passUnretained(event)
+    }
+
+    private func handleKeyDown(keyCode: UInt16) {
+        markCandidateInterrupted()
+        guard VoiceInputCancellationPolicy.shouldCancel(
+            keyCode: keyCode,
+            isVoiceInputActive: isVoiceInputActive
+        ) else {
+            return
+        }
+
+        isVoiceInputActive = false
+        onCancel?()
     }
 
     private func handleFlagsChanged(keyCode: UInt16, flags: CGEventFlags) {

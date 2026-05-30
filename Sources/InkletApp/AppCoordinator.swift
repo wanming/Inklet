@@ -291,11 +291,19 @@ final class AppCoordinator: NSObject {
 
         do {
             let config = try configStore.load()
-            voiceShortcutMonitor.update(shortcut: config.voiceInput.shortcut) { [weak self] in
-                Task { @MainActor in
-                    await self?.voiceCoordinator.toggle()
+            voiceShortcutMonitor.update(
+                shortcut: config.voiceInput.shortcut,
+                onTrigger: { [weak self] in
+                    Task { @MainActor in
+                        await self?.voiceCoordinator.toggle()
+                    }
+                },
+                onCancel: { [weak self] in
+                    Task { @MainActor in
+                        await self?.voiceCoordinator.cancel()
+                    }
                 }
-            }
+            )
         } catch {
             NSLog("Failed to configure voice input: \(String(describing: error))")
         }
@@ -378,6 +386,7 @@ final class AppCoordinator: NSObject {
                 try await self.insertionService.insert(text: text, into: targetApplication)
             },
             statusHandler: { [weak self] status in
+                self?.voiceShortcutMonitor.setVoiceInputActive(status.allowsCancellation)
                 self?.voiceStatusController.apply(status)
             }
         )

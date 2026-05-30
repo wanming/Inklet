@@ -9,6 +9,15 @@ public enum VoiceInputStatus: Equatable, Sendable {
     case inserting
     case fallbackInserted(String)
     case error(String)
+
+    public var allowsCancellation: Bool {
+        switch self {
+        case .listening, .transcribing, .polishing, .inserting:
+            true
+        case .idle, .fallbackInserted, .error:
+            false
+        }
+    }
 }
 
 @MainActor
