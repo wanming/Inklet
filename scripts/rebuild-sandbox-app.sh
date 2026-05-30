@@ -2,6 +2,10 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [[ -z "${INKLET_SIGN_IDENTITY:-}" && -f "${repo_root}/.env.local" ]]; then
+  # shellcheck disable=SC1091
+  source "${repo_root}/.env.local"
+fi
 sign_identity="${INKLET_SIGN_IDENTITY:?Set INKLET_SIGN_IDENTITY to your Apple signing certificate name}"
 app_path="${repo_root}/dist/app-store-spike/Inklet.app"
 install_path="/Applications/Inklet.app"

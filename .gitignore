@@ -8,6 +8,7 @@ dist/
 *.xcuserdata/
 .env
 .env.*
+!.env.local.example
 *.dmg
 *.p8
 *.p12
