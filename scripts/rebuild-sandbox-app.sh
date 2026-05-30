@@ -11,7 +11,7 @@ app_path="${repo_root}/dist/app-store-spike/Inklet.app"
 install_path="/Applications/Inklet.app"
 
 echo "Building sandbox Inklet.app..."
-INKLET_SIGN_IDENTITY="$sign_identity" "${repo_root}/scripts/build-app-store-spike.sh"
+INKLET_SIGN_IDENTITY="$sign_identity" "${repo_root}/scripts/build-macos-app-bundle.sh"
 
 echo "Verifying signature..."
 codesign --verify --deep --strict --verbose=2 "$app_path"

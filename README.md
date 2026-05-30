@@ -2,6 +2,8 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+Homepage: [gitinklet.app](https://gitinklet.app)
+
 **Turn rough thoughts into clear text.**
 
 **Inklet** is a macOS writing assistant that helps you turn typed, pasted, or spoken thoughts into clear text without leaving the app you are already using.
@@ -14,25 +16,12 @@ Watch the demo video: [Inklet on YouTube](https://www.youtube.com/watch?v=F5wmFr
 
 ## Install
 
-Download the latest signed and notarized DMG from GitHub Releases, or use the install script below. The script downloads the latest DMG, verifies its checksum, and copies Inklet to `/Applications`.
+Mac App Store: coming soon.
+
+Alternatively, download the latest signed and notarized DMG from [GitHub Releases](https://github.com/wanming/Inklet/releases), or use the install script below. The script downloads the latest DMG, verifies its checksum, checks Gatekeeper and the app signature, and copies Inklet to `/Applications`.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install.sh | bash
-```
-
-If you are installing from a private fork or private release, pass a GitHub token that can read that repository:
-
-```bash
-export GITHUB_TOKEN="$(gh auth token)"
-curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
-  https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install.sh | bash
-```
-
-To install somewhere else:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install.sh | \
-  INKLET_INSTALL_DIR="$HOME/Applications" bash
 ```
 
 ## First-Time Setup

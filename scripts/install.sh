@@ -83,8 +83,13 @@ exit 1
   return 1
 }
 
-dmg_url="$(resolve_asset_url "$asset_name")"
+dmg_url="$(resolve_asset_url "$asset_name" || true)"
 checksum_url="$(resolve_asset_url "${asset_name}.sha256" || true)"
+
+if [[ -z "$dmg_url" ]]; then
+  echo "Could not find release asset ${asset_name}." >&2
+  exit 1
+fi
 
 curl "${curl_download_args[@]}" "$dmg_url" -o "$dmg_path"
 
@@ -113,6 +118,9 @@ if [[ "$expected_hash" != "$actual_hash" ]]; then
 fi
 echo "Checksum verified."
 
+echo "Verifying downloaded DMG..."
+spctl -a -vvv -t install "$dmg_path"
+
 echo "Mounting DMG..."
 hdiutil attach "$dmg_path" -mountpoint "$mount_dir" -nobrowse -quiet
 mounted=1
@@ -127,10 +135,14 @@ if [[ -z "${source_app:-}" || ! -d "$source_app" ]]; then
   exit 1
 fi
 
+echo "Verifying Inklet.app signature..."
+codesign --verify --deep --strict --verbose=2 "$source_app"
+
 target_app="${install_dir}/${app_name}"
 
 echo "Installing to ${target_app}..."
 osascript -e 'tell application "Inklet" to quit' >/dev/null 2>&1 || true
+pkill -x Inklet >/dev/null 2>&1 || true
 
 if [[ -w "$install_dir" ]]; then
   rm -rf "$target_app"

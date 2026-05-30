@@ -2,6 +2,8 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+官网：[gitinklet.app](https://gitinklet.app)
+
 **Turn rough thoughts into clear text.**
 
 **Inklet** 是一款 macOS 写作助手，可以把你输入、粘贴或说出的想法整理成清晰自然的文字，并直接插回正在使用的应用。
@@ -14,25 +16,12 @@
 
 ## 安装
 
-从 GitHub Releases 下载最新已签名并公证的 DMG，或使用下面的安装脚本。脚本会下载最新 DMG，校验 checksum，并复制 Inklet 到 `/Applications`。
+Mac App Store：即将上线。
+
+你也可以从 [GitHub Releases](https://github.com/wanming/Inklet/releases) 下载最新已签名并公证的 DMG，或使用下面的安装脚本。脚本会下载最新 DMG，校验 checksum，检查 Gatekeeper 和 App 签名，然后复制 Inklet 到 `/Applications`。
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install.sh | bash
-```
-
-如果你从私有 fork 或私有 release 安装，需要传入有仓库读取权限的 GitHub token：
-
-```bash
-export GITHUB_TOKEN="$(gh auth token)"
-curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
-  https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install.sh | bash
-```
-
-安装到其他目录：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install.sh | \
-  INKLET_INSTALL_DIR="$HOME/Applications" bash
 ```
 
 ## 首次设置

@@ -152,7 +152,7 @@ INKLET_SIGN_IDENTITY="${INKLET_APP_STORE_APP_SIGN_IDENTITY}" \
 INKLET_VERSION="${version}" \
 INKLET_BUILD_NUMBER="${build_number}" \
 INKLET_OUTPUT_DIR="${out_dir}" \
-"${repo_root}/scripts/build-app-store-spike.sh"
+"${repo_root}/scripts/build-macos-app-bundle.sh"
 
 echo "Embedding provisioning profile..."
 cp "${INKLET_APP_STORE_PROFILE}" "${app_path}/Contents/embedded.provisionprofile"
