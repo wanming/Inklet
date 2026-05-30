@@ -8,7 +8,7 @@ usage() {
   cat <<'EOF'
 Usage: scripts/reset-local-state.sh [--remove-installed-app] [--dry-run]
 
-Reset Inklet preferences, permissions, legacy Keychain API keys, and temporary
+Reset Inklet preferences, permissions, Keychain API keys, and temporary
 voice recordings. By default, the installed /Applications/Inklet.app is kept.
 
 Options:
@@ -60,6 +60,7 @@ bundle_ids=(
 )
 
 keychain_services=(
+  "Inklet.ProviderAPIKey"
   "Inklet.OpenAI"
   "Inklet.CustomOpenAICompatible"
   "Inklet.Anthropic"
