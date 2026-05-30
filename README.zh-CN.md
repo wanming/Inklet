@@ -39,10 +39,10 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 
 1. 从 Applications 文件夹打开 Inklet，或者在源码目录运行 `swift run Inklet`。
 2. 点击菜单栏里的 Inklet 图标，打开 Settings。
-3. 选择一个 LLM provider，并填写它的 API key。
-4. 确认你想使用的模型和 prompt modes。
-5. 可选：在 Voice 设置里配置 speech API key、speech preset、语音快捷键和 cleanup mode。
-6. 按 macOS 提示授予 Accessibility 权限。Inklet 需要这个权限来回到上一个应用并粘贴结果。
+3. 按 macOS 提示授予 Accessibility 权限。Inklet 需要这个权限来回到上一个应用并粘贴结果。系统设置打开期间 Inklet 会留在后台；关闭系统设置后 Inklet 会返回 provider 设置页。
+4. 选择一个 LLM provider，并填写它的 API key。
+5. 确认你想使用的模型和 prompt modes。
+6. 可选：在 Voice 设置里配置 speech API key、speech preset、语音快捷键和 cleanup mode。
 7. 第一次使用语音输入时，请授予 Microphone 权限。
 
 ## 日常使用

@@ -17,6 +17,12 @@ public enum OnboardingPolicy {
         providerAPIKey?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
     }
 
+    public static func shouldShowProviderSetupAfterReturningFromPermissionSettings(
+        providerAPIKey: String?
+    ) -> Bool {
+        needsProviderSetup(providerAPIKey: providerAPIKey)
+    }
+
     public static func shouldOpenPopoverAfterClosingSettings(
         didOpenAccessibilitySettings: Bool,
         isAccessibilityTrusted: Bool,

@@ -16,6 +16,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 @MainActor
 final class AppCoordinator: NSObject {
+    private static let systemSettingsBundleIdentifier = "com.apple.systempreferences"
+
     private let statusItem: NSStatusItem
     private let windowController: InkletPopoverWindowController
     private let settingsController: SettingsWindowController
@@ -36,6 +38,7 @@ final class AppCoordinator: NSObject {
     private var activeApplicationObserver: NSObjectProtocol?
     private var settingsShortcutMonitor: Any?
     private var lastTargetApplication: NSRunningApplication?
+    private var didObserveSystemSettingsActivation = false
     private var isRecordingHotkey = false
     private lazy var voiceCoordinator = makeVoiceInputCoordinator()
 
@@ -77,7 +80,7 @@ final class AppCoordinator: NSObject {
         ) { [weak self] notification in
             let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
             Task { @MainActor in
-                self?.rememberTargetApplication(application)
+                self?.handleActivatedApplication(application)
             }
         }
 
@@ -254,6 +257,30 @@ final class AppCoordinator: NSObject {
         }
 
         lastTargetApplication = application
+    }
+
+    private func handleActivatedApplication(_ application: NSRunningApplication?) {
+        if application?.bundleIdentifier == Self.systemSettingsBundleIdentifier {
+            didObserveSystemSettingsActivation = true
+            return
+        }
+
+        rememberTargetApplication(application)
+        refreshVoiceShortcutAfterReturningFromSystemSettingsIfNeeded()
+    }
+
+    private func refreshVoiceShortcutAfterReturningFromSystemSettingsIfNeeded() {
+        guard didObserveSystemSettingsActivation else {
+            return
+        }
+
+        didObserveSystemSettingsActivation = false
+        guard accessibilityPermissionService.isTrusted else {
+            voiceShortcutMonitor.stop()
+            return
+        }
+
+        configureVoiceInput()
     }
 
     private func registerConfiguredHotkey() {

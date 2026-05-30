@@ -48,19 +48,16 @@ private final class RoundedSettingsHostingView<Content: View>: NSHostingView<Con
 @MainActor
 final class SettingsWindowController: NSWindowController {
     private static let didCompleteOnboardingKey = "didCompleteOnboarding"
+    private static let systemSettingsBundleIdentifier = "com.apple.systempreferences"
 
     private let configStore: UserDefaultsConfigStore
     private let apiKeyStore: LocalAPIKeyStore
     private let userDefaults: UserDefaults
-    private var appActivationObserver: NSObjectProtocol?
     private var permissionSettingsObserver: NSObjectProtocol?
     private var settingsWindowCloseObserver: NSObjectProtocol?
-    private var systemSettingsDeactivationObserver: NSObjectProtocol?
-    private var systemSettingsTerminationObserver: NSObjectProtocol?
-    private var permissionRestoreTask: Task<Void, Never>?
+    private var permissionMonitorTask: Task<Void, Never>?
+    private var systemSettingsReturnTask: Task<Void, Never>?
     private var didOpenAccessibilitySettings = false
-    private var shouldRestoreAfterPermissionSettings = false
-    private var lastShownSection: SettingsSection = .general
 
     init() {
         self.configStore = UserDefaultsConfigStore()
@@ -78,7 +75,11 @@ final class SettingsWindowController: NSWindowController {
         window.hasShadow = true
         window.isMovableByWindowBackground = true
         window.hidesOnDeactivate = false
-        window.contentView = RoundedSettingsHostingView(rootView: SettingsView())
+        window.contentView = RoundedSettingsHostingView(
+            rootView: SettingsView { [weak window] appearance in
+                window?.appearance = appearance.nsAppearance
+            }
+        )
         window.isReleasedWhenClosed = false
 
         super.init(window: window)
@@ -91,12 +92,11 @@ final class SettingsWindowController: NSWindowController {
         ) { [weak self] notification in
             let rawPermission = notification.userInfo?["permission"] as? String
             Task { @MainActor in
-                self?.shouldRestoreAfterPermissionSettings = true
                 self?.didOpenAccessibilitySettings = true
-                self?.lastShownSection = .permissions
+                self?.scheduleSystemSettingsReturn()
                 if let rawPermission,
                     let permission = PermissionSettingsDestination(rawValue: rawPermission) {
-                    self?.schedulePermissionRestore(for: permission)
+                    self?.schedulePermissionMonitor(for: permission)
                 }
             }
         }
@@ -111,39 +111,6 @@ final class SettingsWindowController: NSWindowController {
             }
         }
 
-        appActivationObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didBecomeActiveNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.restoreAfterPermissionSettingsIfNeeded()
-            }
-        }
-
-        let workspaceNotificationCenter = NSWorkspace.shared.notificationCenter
-        systemSettingsDeactivationObserver = workspaceNotificationCenter.addObserver(
-            forName: NSWorkspace.didDeactivateApplicationNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] notification in
-            let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            let bundleIdentifier = application?.bundleIdentifier
-            Task { @MainActor in
-                self?.restoreAfterSystemSettingsClosedIfNeeded(bundleIdentifier: bundleIdentifier)
-            }
-        }
-        systemSettingsTerminationObserver = workspaceNotificationCenter.addObserver(
-            forName: NSWorkspace.didTerminateApplicationNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] notification in
-            let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            let bundleIdentifier = application?.bundleIdentifier
-            Task { @MainActor in
-                self?.restoreAfterSystemSettingsClosedIfNeeded(bundleIdentifier: bundleIdentifier)
-            }
-        }
     }
 
     @available(*, unavailable)
@@ -152,39 +119,70 @@ final class SettingsWindowController: NSWindowController {
     }
 
     func show(section: SettingsSection = .general) {
-        lastShownSection = section
         window?.title = L10n.text("settings.window.title")
         let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
         window?.appearance = config.appearance.nsAppearance
-        window?.contentView = RoundedSettingsHostingView(rootView: SettingsView(initialSection: section))
+        window?.contentView = RoundedSettingsHostingView(
+            rootView: SettingsView(initialSection: section) { [weak window] appearance in
+                window?.appearance = appearance.nsAppearance
+            }
+        )
         window?.center()
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
 
-    private func restoreAfterPermissionSettingsIfNeeded() {
-        guard shouldRestoreAfterPermissionSettings else {
+    private func scheduleSystemSettingsReturn() {
+        systemSettingsReturnTask?.cancel()
+        systemSettingsReturnTask = Task { @MainActor [weak self] in
+            var didObserveSystemSettingsRunning = false
+            while !Task.isCancelled {
+                let isSystemSettingsRunning = !NSRunningApplication.runningApplications(
+                    withBundleIdentifier: Self.systemSettingsBundleIdentifier
+                ).isEmpty
+                if PermissionSettingsRestorePolicy.shouldRefreshAccessibilityServicesAfterRestore(
+                    didObserveSystemSettingsRunning: didObserveSystemSettingsRunning,
+                    isSystemSettingsRunning: isSystemSettingsRunning,
+                    isAccessibilityTrusted: AccessibilityPermissionService().isTrusted
+                ) {
+                    self?.restoreAfterPermissionSettings()
+                    self?.notifyAccessibilityTrustIfNeeded()
+                    return
+                }
+                if PermissionSettingsRestorePolicy.shouldRestore(
+                    didObserveSystemSettingsRunning: didObserveSystemSettingsRunning,
+                    isSystemSettingsRunning: isSystemSettingsRunning
+                ) {
+                    self?.restoreAfterPermissionSettings()
+                    return
+                }
+                didObserveSystemSettingsRunning = didObserveSystemSettingsRunning || isSystemSettingsRunning
+                try? await Task.sleep(for: .milliseconds(250))
+            }
+        }
+    }
+
+    private func restoreAfterPermissionSettings() {
+        guard window?.isVisible == true else {
             return
         }
 
-        shouldRestoreAfterPermissionSettings = false
-        notifyAccessibilityTrustIfNeeded()
-        show(section: sectionAfterPermissionSettings())
-    }
-
-    private func restoreAfterSystemSettingsClosedIfNeeded(bundleIdentifier: String?) {
-        guard PermissionSettingsRestorePolicy.shouldRestore(
-            afterDeactivatingApplicationWithBundleIdentifier: bundleIdentifier
+        let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
+        let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: config.providerID)
+        guard !OnboardingPolicy.shouldShowProviderSetupAfterReturningFromPermissionSettings(
+            providerAPIKey: providerAPIKey
         ) else {
+            show(section: .providers)
             return
         }
 
-        restoreAfterPermissionSettingsIfNeeded()
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
     }
 
-    private func schedulePermissionRestore(for permission: PermissionSettingsDestination) {
-        permissionRestoreTask?.cancel()
-        permissionRestoreTask = Task { @MainActor in
+    private func schedulePermissionMonitor(for permission: PermissionSettingsDestination) {
+        permissionMonitorTask?.cancel()
+        permissionMonitorTask = Task { @MainActor in
             for _ in 0..<60 {
                 guard !Task.isCancelled else {
                     return
@@ -194,19 +192,11 @@ final class SettingsWindowController: NSWindowController {
                     return
                 }
                 if permission.isTrusted {
-                    shouldRestoreAfterPermissionSettings = false
                     notifyAccessibilityTrustIfNeeded()
-                    show(section: sectionAfterPermissionSettings())
                     return
                 }
             }
         }
-    }
-
-    private func sectionAfterPermissionSettings() -> SettingsSection {
-        let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
-        let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: config.providerID)
-        return OnboardingPolicy.needsProviderSetup(providerAPIKey: providerAPIKey) ? .providers : lastShownSection
     }
 
     private func notifyAccessibilityTrustIfNeeded() {

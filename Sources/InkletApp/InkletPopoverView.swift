@@ -516,7 +516,6 @@ struct InkletPopoverView: View {
         }
         .shadow(color: .black.opacity(0.75), radius: 48, x: 0, y: 28)
         .shadow(color: .white.opacity(0.03), radius: 0, x: 0, y: 1)
-        .preferredColorScheme(model.appearance.colorScheme)
         .onAppear {
             publishPopoverHeight()
             focusSourceEditor()

@@ -469,9 +469,14 @@ struct SettingsView: View {
     @StateObject private var model = SettingsViewModel()
     @State private var selectedSection: SettingsSection
     @State private var promptModePendingDeletionID: String?
+    private let onAppearanceChange: (AppAppearance) -> Void
 
-    init(initialSection: SettingsSection = .general) {
+    init(
+        initialSection: SettingsSection = .general,
+        onAppearanceChange: @escaping (AppAppearance) -> Void = { _ in }
+    ) {
         _selectedSection = State(initialValue: initialSection)
+        self.onAppearanceChange = onAppearanceChange
     }
 
     private var isSavedMessage: Bool {
@@ -491,12 +496,14 @@ struct SettingsView: View {
                 .stroke(InkletTheme.strongBorder)
         }
         .shadow(color: .black.opacity(0.75), radius: 48, x: 0, y: 28)
-        .preferredColorScheme(model.config.appearance.colorScheme)
         .task {
             await model.refreshModelCatalogIfNeeded()
         }
         .onAppear {
             model.refreshPermissions()
+        }
+        .onChange(of: model.config.appearance) {
+            onAppearanceChange(model.config.appearance)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             model.refreshPermissions()
@@ -1723,6 +1730,11 @@ private struct HotkeyRecorderField: NSViewRepresentable {
 
         override var acceptsFirstResponder: Bool { true }
 
+        override func viewDidChangeEffectiveAppearance() {
+            super.viewDidChangeEffectiveAppearance()
+            updateDisplay()
+        }
+
         override func mouseDown(with event: NSEvent) {
             isRecording = true
             publishRecordingState()
@@ -1774,8 +1786,8 @@ private struct HotkeyRecorderField: NSViewRepresentable {
 
         func updateDisplay(pressedModifiers: String = "") {
             let backgroundColor = isRecording ? NSColor.controlAccentColor.withAlphaComponent(0.16) : NSColor.controlBackgroundColor
-            layer?.backgroundColor = backgroundColor.cgColor
-            layer?.borderColor = (isRecording ? NSColor.controlAccentColor : NSColor.separatorColor).cgColor
+            layer?.backgroundColor = resolvedCGColor(backgroundColor)
+            layer?.borderColor = resolvedCGColor(isRecording ? .controlAccentColor : .separatorColor)
             label.textColor = isRecording ? .controlAccentColor : .labelColor
             if isRecording {
                 label.stringValue = pressedModifiers.isEmpty
@@ -1784,6 +1796,14 @@ private struct HotkeyRecorderField: NSViewRepresentable {
             } else {
                 label.stringValue = hotkey.isEmpty ? L10n.text("settings.hotkey.record") : hotkey
             }
+        }
+
+        private func resolvedCGColor(_ color: NSColor) -> CGColor {
+            var resolvedColor = color.cgColor
+            effectiveAppearance.performAsCurrentDrawingAppearance {
+                resolvedColor = color.cgColor
+            }
+            return resolvedColor
         }
 
         private func recordedHotkey(from event: NSEvent) -> Hotkey? {

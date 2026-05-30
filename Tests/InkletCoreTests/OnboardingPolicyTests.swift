@@ -7,6 +7,15 @@ final class OnboardingPolicyTests: XCTestCase {
         XCTAssertFalse(OnboardingPolicy.needsProviderSetup(providerAPIKey: "sk-text"))
     }
 
+    func testShowsProviderSetupAfterReturningFromPermissionSettingsWhenAPIKeyIsMissing() {
+        XCTAssertTrue(
+            OnboardingPolicy.shouldShowProviderSetupAfterReturningFromPermissionSettings(providerAPIKey: "  ")
+        )
+        XCTAssertFalse(
+            OnboardingPolicy.shouldShowProviderSetupAfterReturningFromPermissionSettings(providerAPIKey: "sk-text")
+        )
+    }
+
     func testReusesOfficialOpenAIKeyOnlyWhenVoiceKeyIsEmpty() {
         XCTAssertEqual(
             OnboardingPolicy.voiceAPIKey(

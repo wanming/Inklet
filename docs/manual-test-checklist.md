@@ -43,7 +43,8 @@
 - Providers: configure one provider, API key, model, and custom OpenAI-compatible endpoint when needed.
 - Voice: configure shortcut, speech API key, speech endpoint, speech model, auto-processing, and cleanup prompt mode.
 - Prompt Modes: add, edit, hide, delete with confirmation, and reorder prompt modes.
-- Permissions: verify Accessibility status and the button that opens System Settings.
+- Permissions: verify Accessibility status and the button that opens System Settings. Inklet should not steal focus while System Settings is open; close System Settings and confirm the existing Inklet Settings window returns with the refreshed status.
+- First-time onboarding: with no provider API key configured, grant Accessibility permission, close System Settings, and confirm the existing Inklet Settings window returns on the Providers page.
 - Save behavior: confirm changes persist after quitting and reopening Inklet.
 
 ## Compatibility Smoke Tests

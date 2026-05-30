@@ -39,10 +39,10 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 
 1. Open Inklet from your Applications folder, or start it from source with `swift run Inklet`.
 2. Click the Inklet menu bar icon and open Settings.
-3. Choose an LLM provider and enter its API key.
-4. Confirm the model and prompt modes you want to use.
-5. Optional: configure Voice settings with a speech API key, speech preset, voice shortcut, and cleanup mode.
-6. Grant Accessibility permission when macOS asks. Inklet needs this to return focus to the previous app and paste the result.
+3. Grant Accessibility permission when macOS asks. Inklet needs this to return focus to the previous app and paste the result. Inklet stays in the background while System Settings is open and returns to provider setup when you close it.
+4. Choose an LLM provider and enter its API key.
+5. Confirm the model and prompt modes you want to use.
+6. Optional: configure Voice settings with a speech API key, speech preset, voice shortcut, and cleanup mode.
 7. Grant Microphone permission the first time you use voice dictation.
 
 ## Everyday Use

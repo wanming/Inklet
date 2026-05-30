@@ -1,7 +1,19 @@
 public enum PermissionSettingsRestorePolicy {
     public static func shouldRestore(
-        afterDeactivatingApplicationWithBundleIdentifier bundleIdentifier: String?
+        didObserveSystemSettingsRunning: Bool,
+        isSystemSettingsRunning: Bool
     ) -> Bool {
-        bundleIdentifier == "com.apple.systempreferences"
+        didObserveSystemSettingsRunning && !isSystemSettingsRunning
+    }
+
+    public static func shouldRefreshAccessibilityServicesAfterRestore(
+        didObserveSystemSettingsRunning: Bool,
+        isSystemSettingsRunning: Bool,
+        isAccessibilityTrusted: Bool
+    ) -> Bool {
+        shouldRestore(
+            didObserveSystemSettingsRunning: didObserveSystemSettingsRunning,
+            isSystemSettingsRunning: isSystemSettingsRunning
+        ) && isAccessibilityTrusted
     }
 }

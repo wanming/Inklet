@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: "Release tag to publish to. Leave empty to create manual-dmg-<run number>."
+        description: "Release tag to publish to. Leave empty to use v<VERSION>-<BUILD_NUMBER>."
         required: false
         type: string
       release_name:
-        description: "Release title. Leave empty to use the tag."
+        description: "Release title. Leave empty to use Inklet <VERSION> (<BUILD_NUMBER>)."
         required: false
         type: string
       draft:
@@ -39,41 +39,47 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          build_version="$(date -u '+%Y.%m%d.%H%M')"
+          source VERSION
+
+          app_version="$INKLET_VERSION"
+          build_number="$INKLET_BUILD_NUMBER"
+          release_version="${app_version}-${build_number}"
 
           if [[ -n "${{ inputs.tag_name }}" ]]; then
             tag_name="${{ inputs.tag_name }}"
           elif [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
             tag_name="$GITHUB_REF_NAME"
           else
-            tag_name="$build_version"
+            tag_name="v${release_version}"
           fi
 
           if [[ -n "${{ inputs.release_name }}" ]]; then
             release_name="${{ inputs.release_name }}"
           else
-            release_name="Inklet $tag_name"
+            release_name="Inklet ${app_version} (${build_number})"
           fi
 
           asset_tag="${tag_name//\//-}"
-          dmg_name="Inklet-${build_version}.dmg"
+          dmg_name="Inklet-${release_version}.dmg"
 
           {
             echo "tag_name=$tag_name"
             echo "release_name=$release_name"
             echo "asset_tag=$asset_tag"
-            echo "build_version=$build_version"
+            echo "app_version=$app_version"
+            echo "build_number=$build_number"
+            echo "release_version=$release_version"
             echo "dmg_name=$dmg_name"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build release binary
         env:
-          INKLET_BUILD_VERSION: ${{ steps.release.outputs.build_version }}
+          INKLET_BUILD_VERSION: ${{ steps.release.outputs.build_number }}
         run: swift build -c release
 
       - name: Run tests
         env:
-          INKLET_BUILD_VERSION: ${{ steps.release.outputs.build_version }}
+          INKLET_BUILD_VERSION: ${{ steps.release.outputs.build_number }}
         run: swift test
 
       - name: Import Developer ID certificate
@@ -164,9 +170,9 @@ jobs:
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>CFBundleShortVersionString</key>
-            <string>1.0.0</string>
+            <string>${{ steps.release.outputs.app_version }}</string>
             <key>CFBundleVersion</key>
-            <string>${{ steps.release.outputs.build_version }}</string>
+            <string>${{ steps.release.outputs.build_number }}</string>
             <key>LSMinimumSystemVersion</key>
             <string>14.0</string>
             <key>LSUIElement</key>
@@ -208,7 +214,7 @@ jobs:
           ln -s /Applications "$dmg_root/Applications"
 
           hdiutil create \
-            -volname "Inklet ${{ steps.release.outputs.build_version }}" \
+            -volname "Inklet ${{ steps.release.outputs.app_version }} (${{ steps.release.outputs.build_number }})" \
             -srcfolder "$dmg_root" \
             -ov \
             -format UDZO \
@@ -258,7 +264,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ steps.release.outputs.tag_name }}
           RELEASE_NAME: ${{ steps.release.outputs.release_name }}
-          BUILD_VERSION: ${{ steps.release.outputs.build_version }}
+          APP_VERSION: ${{ steps.release.outputs.app_version }}
+          BUILD_NUMBER: ${{ steps.release.outputs.build_number }}
           DRAFT: ${{ inputs.draft }}
           PRERELEASE: ${{ inputs.prerelease }}
         shell: bash
@@ -277,7 +284,7 @@ jobs:
               --target "$GITHUB_SHA"
               --title "$RELEASE_NAME"
               --latest
-              --notes "macOS DMG build ${BUILD_VERSION} from workflow run ${GITHUB_RUN_NUMBER}."
+              --notes "macOS DMG build ${APP_VERSION} (${BUILD_NUMBER}) from workflow run ${GITHUB_RUN_NUMBER}."
             )
 
             if [[ "$DRAFT" == "true" ]]; then

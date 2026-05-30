@@ -3,19 +3,53 @@ import Testing
 
 struct PermissionSettingsRestorePolicyTests {
     @Test
-    func restoresAfterSystemSettingsDeactivates() {
+    func restoresAfterObservedSystemSettingsExits() {
         #expect(
             PermissionSettingsRestorePolicy.shouldRestore(
-                afterDeactivatingApplicationWithBundleIdentifier: "com.apple.systempreferences"
+                didObserveSystemSettingsRunning: true,
+                isSystemSettingsRunning: false
             )
         )
     }
 
     @Test
-    func doesNotRestoreAfterUnrelatedApplicationDeactivates() {
+    func doesNotRestoreBeforeSystemSettingsRuns() {
         #expect(
             !PermissionSettingsRestorePolicy.shouldRestore(
-                afterDeactivatingApplicationWithBundleIdentifier: "com.apple.TextEdit"
+                didObserveSystemSettingsRunning: false,
+                isSystemSettingsRunning: false
+            )
+        )
+    }
+
+    @Test
+    func doesNotRestoreWhileSystemSettingsIsStillRunning() {
+        #expect(
+            !PermissionSettingsRestorePolicy.shouldRestore(
+                didObserveSystemSettingsRunning: true,
+                isSystemSettingsRunning: true
+            )
+        )
+    }
+
+    @Test
+    func refreshesAccessibilityServicesAfterTrustedSystemSettingsReturn() {
+        #expect(
+            PermissionSettingsRestorePolicy.shouldRefreshAccessibilityServicesAfterRestore(
+                didObserveSystemSettingsRunning: true,
+                isSystemSettingsRunning: false,
+                isAccessibilityTrusted: true
+            )
+        )
+    }
+
+    @Test
+    func doesNotRefreshAccessibilityServicesWhenPermissionIsStillMissing() {
+        #expect(
+            !PermissionSettingsRestorePolicy.shouldRefreshAccessibilityServicesAfterRestore(
+                didObserveSystemSettingsRunning: true,
+                isSystemSettingsRunning: false,
+                isAccessibilityTrusted: false
             )
         )
     }
