@@ -135,7 +135,7 @@ The first visible prompt mode in Settings is selected when the popover opens.
 Sources/InkletApp/       macOS app, popover UI, settings UI, menu bar coordination
 Sources/InkletCore/      core config, providers, prompts, hotkeys, insertion, state machine
 Tests/InkletCoreTests/   unit tests for core behavior
-docs/                           manual QA and planning documents
+docs/                           manual QA and privacy policy
 ```
 
 ## Development Notes
@@ -154,6 +154,7 @@ docs/                           manual QA and planning documents
 - Inklet uses Accessibility permission to return focus to the previous app and paste text.
 - Inklet uses Microphone permission only while recording voice dictation.
 - Inklet temporarily uses the clipboard for insertion and then restores the previous clipboard contents.
+- Inklet fetches the public model catalog from `models.dev` at most once per day. This request does not include your text, audio, API keys, or app settings.
 - Do not send private text or audio to a provider unless you trust that provider's data handling policies.
 
 ## Contributing

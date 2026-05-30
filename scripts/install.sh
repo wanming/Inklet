@@ -88,19 +88,30 @@ checksum_url="$(resolve_asset_url "${asset_name}.sha256" || true)"
 
 curl "${curl_download_args[@]}" "$dmg_url" -o "$dmg_path"
 
-if [[ -n "$checksum_url" ]] && curl "${curl_download_args[@]}" "$checksum_url" -o "$checksum_path" >/dev/null 2>&1; then
-  expected_hash="$(awk '{print $1}' "$checksum_path")"
-  actual_hash="$(shasum -a 256 "$dmg_path" | awk '{print $1}')"
-  if [[ "$expected_hash" != "$actual_hash" ]]; then
-    echo "Checksum verification failed." >&2
-    echo "Expected: $expected_hash" >&2
-    echo "Actual:   $actual_hash" >&2
-    exit 1
-  fi
-  echo "Checksum verified."
-else
-  echo "No checksum found; continuing without checksum verification."
+if [[ -z "$checksum_url" ]]; then
+  echo "Could not find checksum asset ${asset_name}.sha256." >&2
+  exit 1
 fi
+
+if ! curl "${curl_download_args[@]}" "$checksum_url" -o "$checksum_path" >/dev/null 2>&1; then
+  echo "Could not download checksum asset ${asset_name}.sha256." >&2
+  exit 1
+fi
+
+expected_hash="$(awk 'NR == 1 { print $1 }' "$checksum_path")"
+if [[ ! "$expected_hash" =~ ^[[:xdigit:]]{64}$ ]]; then
+  echo "Checksum asset ${asset_name}.sha256 is invalid." >&2
+  exit 1
+fi
+
+actual_hash="$(shasum -a 256 "$dmg_path" | awk '{print $1}')"
+if [[ "$expected_hash" != "$actual_hash" ]]; then
+  echo "Checksum verification failed." >&2
+  echo "Expected: $expected_hash" >&2
+  echo "Actual:   $actual_hash" >&2
+  exit 1
+fi
+echo "Checksum verified."
 
 echo "Mounting DMG..."
 hdiutil attach "$dmg_path" -mountpoint "$mount_dir" -nobrowse -quiet
@@ -124,12 +135,10 @@ osascript -e 'tell application "Inklet" to quit' >/dev/null 2>&1 || true
 if [[ -w "$install_dir" ]]; then
   rm -rf "$target_app"
   ditto "$source_app" "$target_app"
-  xattr -dr com.apple.quarantine "$target_app" >/dev/null 2>&1 || true
 else
   sudo mkdir -p "$install_dir"
   sudo rm -rf "$target_app"
   sudo ditto "$source_app" "$target_app"
-  sudo xattr -dr com.apple.quarantine "$target_app" >/dev/null 2>&1 || true
 fi
 
 echo "Inklet installed."

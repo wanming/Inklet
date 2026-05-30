@@ -1,8 +1,6 @@
-# Inklet Privacy Policy Draft
+# Inklet Privacy Policy
 
 Last updated: May 29, 2026
-
-This draft is intended to be hosted publicly and linked from App Store Connect.
 
 ## Overview
 
@@ -37,6 +35,8 @@ Inklet sends text and audio only to the provider endpoints you configure for app
 Text may be sent to the selected AI provider for rewriting, summarization, or cleanup. Audio may be sent to the selected speech transcription provider for voice dictation.
 
 Provider handling of your data is governed by the provider's own privacy policy and account terms. Do not send private text or audio to a provider unless you trust that provider.
+
+Inklet may fetch the public model catalog from `models.dev` periodically, currently no more than once per day. This request does not include your text, audio, API keys, or app settings.
 
 ## Local Storage
 

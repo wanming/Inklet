@@ -43,8 +43,7 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 4. 确认你想使用的模型和 prompt modes。
 5. 可选：在 Voice 设置里配置 speech API key、speech preset、语音快捷键和 cleanup mode。
 6. 按 macOS 提示授予 Accessibility 权限。Inklet 需要这个权限来回到上一个应用并粘贴结果。
-7. 如果要在其他应用中使用语音快捷键，请授予 Input Monitoring 权限。
-8. 第一次使用语音输入时，请授予 Microphone 权限。
+7. 第一次使用语音输入时，请授予 Microphone 权限。
 
 ## 日常使用
 
@@ -96,7 +95,6 @@ Inklet 是早期 MVP。当前仓库包含：
 - Swift 6 toolchain。
 - 推荐安装完整 Xcode，以获得 XCTest 支持。
 - Accessibility 权限，用于回到上一个应用并粘贴生成结果。
-- Input Monitoring 权限，用于在其他应用活跃时检测语音快捷键。
 - Microphone 权限，用于语音输入。
 - 至少一个已配置 LLM provider 的 API key。
 - 语音输入需要 speech transcription API key。
@@ -137,7 +135,7 @@ Popover 打开时会默认选中 Settings 里第一个可见的 prompt mode。
 Sources/InkletApp/       macOS app, popover UI, settings UI, menu bar coordination
 Sources/InkletCore/      core config, providers, prompts, hotkeys, insertion, state machine
 Tests/InkletCoreTests/   unit tests for core behavior
-docs/                    manual QA and planning documents
+docs/                    手动测试说明和隐私政策
 ```
 
 ## 开发说明
@@ -156,6 +154,7 @@ docs/                    manual QA and planning documents
 - Inklet 使用 Accessibility 权限回到上一个应用并粘贴文本。
 - Inklet 只在录音语音输入时使用 Microphone 权限。
 - Inklet 会临时使用剪贴板完成插入，然后恢复之前的剪贴板内容。
+- Inklet 最多每天从 `models.dev` 获取一次公开模型目录。该请求不包含你的文本、音频、API keys 或应用设置。
 - 除非你信任某个 provider 的数据处理政策，否则不要向它发送私密文本或音频。
 
 ## 贡献
