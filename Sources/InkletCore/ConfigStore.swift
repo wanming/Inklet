@@ -258,27 +258,50 @@ public struct UserDefaultsConfigStore: ConfigStore {
 
 public struct LocalAPIKeyStore: @unchecked Sendable {
     public static let defaultKeyPrefix = "providerAPIKey"
+    public static let defaultKeychainService = "Inklet.ProviderAPIKey"
 
     private let userDefaults: UserDefaults
     private let keyPrefix: String
+    private let keychainStore: (String) -> KeychainStore
 
     public init(
         userDefaults: UserDefaults = .standard,
-        keyPrefix: String = LocalAPIKeyStore.defaultKeyPrefix
+        keyPrefix: String = LocalAPIKeyStore.defaultKeyPrefix,
+        keychainStore: @escaping (String) -> KeychainStore = { providerID in
+            KeychainStore(service: LocalAPIKeyStore.defaultKeychainService, account: providerID)
+        }
     ) {
         self.userDefaults = userDefaults
         self.keyPrefix = keyPrefix
+        self.keychainStore = keychainStore
     }
 
     public func loadAPIKey(forProviderID providerID: String) -> String? {
-        userDefaults.string(forKey: key(forProviderID: providerID))
+        let store = keychainStore(providerID)
+        if let apiKey = try? store.loadAPIKey() {
+            return apiKey
+        }
+
+        guard let legacyAPIKey = userDefaults.string(forKey: key(forProviderID: providerID)) else {
+            return nil
+        }
+
+        do {
+            try store.saveAPIKey(legacyAPIKey)
+            userDefaults.removeObject(forKey: key(forProviderID: providerID))
+        } catch {
+            return legacyAPIKey
+        }
+        return legacyAPIKey
     }
 
-    public func saveAPIKey(_ apiKey: String, forProviderID providerID: String) {
-        userDefaults.set(apiKey, forKey: key(forProviderID: providerID))
+    public func saveAPIKey(_ apiKey: String, forProviderID providerID: String) throws {
+        try keychainStore(providerID).saveAPIKey(apiKey)
+        userDefaults.removeObject(forKey: key(forProviderID: providerID))
     }
 
-    public func deleteAPIKey(forProviderID providerID: String) {
+    public func deleteAPIKey(forProviderID providerID: String) throws {
+        try keychainStore(providerID).deleteAPIKey()
         userDefaults.removeObject(forKey: key(forProviderID: providerID))
     }
 

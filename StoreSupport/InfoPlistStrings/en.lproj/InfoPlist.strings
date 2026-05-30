@@ -1,0 +1,1 @@
+"NSMicrophoneUsageDescription" = "Inklet uses the microphone only when you start voice dictation, then sends the recording to your configured speech provider for transcription.";

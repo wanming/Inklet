@@ -147,14 +147,15 @@ enum InkletTheme {
 
 struct Keycap: View {
     var title: String
+    var compact = false
 
     var body: some View {
         Text(title)
-            .font(.system(size: 9, weight: .medium, design: .monospaced))
+            .font(.system(size: compact ? 8 : 9, weight: .medium, design: .monospaced))
             .foregroundStyle(InkletTheme.textSecondary)
-            .frame(minWidth: 15, minHeight: 15)
-            .padding(.horizontal, 4)
-            .padding(.vertical, 1)
+            .frame(minWidth: compact ? 13 : 15, minHeight: compact ? 13 : 15)
+            .padding(.horizontal, compact ? 3 : 4)
+            .padding(.vertical, compact ? 0 : 1)
             .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 4))
             .overlay {
                 RoundedRectangle(cornerRadius: 4)

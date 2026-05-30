@@ -8,12 +8,14 @@ final class ConfigStoreTests: XCTestCase {
             case copyMatching
             case update
             case add
+            case delete
         }
 
         var calls: [Call] = []
         var copyMatchingStatus: OSStatus = errSecItemNotFound
         var updateStatus: OSStatus = errSecItemNotFound
         var addStatus: OSStatus = errSecSuccess
+        var deleteStatus: OSStatus = errSecSuccess
         var copyMatchingResult: CFTypeRef?
 
         func copyMatching(_ query: [String: Any], result: UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus {
@@ -30,6 +32,11 @@ final class ConfigStoreTests: XCTestCase {
         func add(_ query: [String: Any], result: UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus {
             calls.append(.add)
             return addStatus
+        }
+
+        func delete(_ query: [String: Any]) -> OSStatus {
+            calls.append(.delete)
+            return deleteStatus
         }
     }
 
@@ -360,22 +367,65 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertTrue(config.promptModes.contains { $0.id == "hidden-available-in-settings" })
     }
 
-    func testLocalAPIKeyStoreRoundTripsAndDeletesProviderKey() throws {
+    func testLocalAPIKeyStoreSavesAndDeletesProviderKeyInKeychain() throws {
         let suiteName = "LocalAPIKeyStoreTests-\(UUID().uuidString)"
         let userDefaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer {
             userDefaults.removePersistentDomain(forName: suiteName)
         }
-        let store = LocalAPIKeyStore(userDefaults: userDefaults, keyPrefix: "testAPIKey")
+        userDefaults.set("legacy-key", forKey: "testAPIKey.openai")
+        let client = FakeKeychainClient()
+        client.updateStatus = errSecSuccess
+        let store = LocalAPIKeyStore(
+            userDefaults: userDefaults,
+            keyPrefix: "testAPIKey",
+            keychainStore: { _ in KeychainStore(client: client) }
+        )
 
-        store.saveAPIKey("local-key", forProviderID: "openai")
+        try store.saveAPIKey("local-key", forProviderID: "openai")
 
-        XCTAssertEqual(store.loadAPIKey(forProviderID: "openai"), "local-key")
-        XCTAssertNil(store.loadAPIKey(forProviderID: "anthropic"))
+        XCTAssertNil(userDefaults.string(forKey: "testAPIKey.openai"))
 
-        store.deleteAPIKey(forProviderID: "openai")
+        try store.deleteAPIKey(forProviderID: "openai")
 
-        XCTAssertNil(store.loadAPIKey(forProviderID: "openai"))
+        XCTAssertEqual(client.calls, [.update, .delete])
+    }
+
+    func testLocalAPIKeyStoreDoesNotSavePlaintextFallbackWhenKeychainSaveFails() throws {
+        let suiteName = "LocalAPIKeyStoreSaveFailureTests-\(UUID().uuidString)"
+        let userDefaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            userDefaults.removePersistentDomain(forName: suiteName)
+        }
+        let client = FakeKeychainClient()
+        client.updateStatus = errSecAuthFailed
+        let store = LocalAPIKeyStore(
+            userDefaults: userDefaults,
+            keyPrefix: "testAPIKey",
+            keychainStore: { _ in KeychainStore(client: client) }
+        )
+
+        XCTAssertThrowsError(try store.saveAPIKey("local-key", forProviderID: "openai"))
+        XCTAssertNil(userDefaults.string(forKey: "testAPIKey.openai"))
+    }
+
+    func testLocalAPIKeyStoreMigratesLegacyUserDefaultsKeyToKeychain() throws {
+        let suiteName = "LocalAPIKeyStoreMigrationTests-\(UUID().uuidString)"
+        let userDefaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            userDefaults.removePersistentDomain(forName: suiteName)
+        }
+        userDefaults.set("legacy-key", forKey: "testAPIKey.openai")
+        let client = FakeKeychainClient()
+        let store = LocalAPIKeyStore(
+            userDefaults: userDefaults,
+            keyPrefix: "testAPIKey",
+            keychainStore: { _ in KeychainStore(client: client) }
+        )
+
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "openai"), "legacy-key")
+        XCTAssertNil(userDefaults.string(forKey: "testAPIKey.openai"))
+        XCTAssertEqual(client.calls, [.copyMatching, .update, .add])
     }
 
     func testSaveAPIKeyUpdatesExistingKeyWithoutAdding() throws {

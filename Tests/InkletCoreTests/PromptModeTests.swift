@@ -11,13 +11,11 @@ final class PromptModeTests: XCTestCase {
 
         XCTAssertEqual(store.visibleModes.map(\.name), [
             "To Simple and Correct English",
-            "To Chinese Summary",
-            "Voice Cleanup"
+            "To Chinese Summary"
         ])
         XCTAssertEqual(store.visibleModes.map(\.id), [
             PromptMode.translateToEnglishID,
-            PromptMode.chineseSummaryID,
-            PromptMode.voiceCleanupID
+            PromptMode.chineseSummaryID
         ])
         XCTAssertFalse(store.visibleModes.contains { $0.id == PromptMode.autoID })
     }
@@ -25,6 +23,7 @@ final class PromptModeTests: XCTestCase {
     func testVoiceCleanupRemovesSpeechNoiseWithoutChangingIntent() throws {
         let mode = try XCTUnwrap(PromptModeStore.defaultStore().mode(id: PromptMode.voiceCleanupID))
 
+        XCTAssertFalse(mode.isVisible)
         XCTAssertTrue(mode.systemPrompt.contains("raw speech transcription"))
         XCTAssertTrue(mode.systemPrompt.contains("filler words"))
         XCTAssertTrue(mode.systemPrompt.contains("false starts"))
@@ -131,6 +130,15 @@ final class PromptModeTests: XCTestCase {
         let mode = store.resolve(modeID: "missing", sourceText: "hello")
 
         XCTAssertEqual(mode.id, PromptMode.translateToEnglishID)
+    }
+
+    func testInternalResolveReturnsHiddenVoiceCleanupMode() {
+        let store = PromptModeStore.defaultStore()
+
+        let mode = store.resolveForInternalUse(modeID: PromptMode.voiceCleanupID, sourceText: "你好")
+
+        XCTAssertEqual(mode.id, PromptMode.voiceCleanupID)
+        XCTAssertFalse(mode.isVisible)
     }
 
     func testUnknownAutoRuleDecodesAsNone() throws {

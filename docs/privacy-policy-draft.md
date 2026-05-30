@@ -1,0 +1,76 @@
+# Inklet Privacy Policy Draft
+
+Last updated: May 29, 2026
+
+This draft is intended to be hosted publicly and linked from App Store Connect.
+
+## Overview
+
+Inklet is a macOS writing assistant. It helps you transform typed, pasted, or spoken text using the AI provider and speech provider you configure.
+
+Inklet does not require an Inklet account and does not send your content to Inklet-controlled servers.
+
+## Information Processed
+
+Inklet may process:
+
+- Text you type or paste into Inklet.
+- Text selected or copied by you for insertion workflows.
+- Temporary audio recorded when you start voice dictation.
+- API keys and provider settings you enter.
+- App settings such as prompt modes, model choices, shortcuts, and preferences.
+
+## How Information Is Used
+
+Inklet uses this information to:
+
+- Transform or summarize text.
+- Transcribe voice dictation.
+- Insert text into the app you were using.
+- Save your local settings.
+- Store provider API keys locally.
+
+## AI And Speech Providers
+
+Inklet sends text and audio only to the provider endpoints you configure for app functionality.
+
+Text may be sent to the selected AI provider for rewriting, summarization, or cleanup. Audio may be sent to the selected speech transcription provider for voice dictation.
+
+Provider handling of your data is governed by the provider's own privacy policy and account terms. Do not send private text or audio to a provider unless you trust that provider.
+
+## Local Storage
+
+Inklet stores API keys locally in macOS Keychain. Inklet stores app preferences locally on your Mac.
+
+Inklet temporarily uses the clipboard to insert text into the active app and then attempts to restore the previous clipboard contents.
+
+## Permissions
+
+Inklet requests the following macOS permissions:
+
+- Accessibility: used to return focus to the previous app and insert text after you confirm insertion.
+- Microphone: used only while recording voice dictation that you start.
+
+Inklet does not use these permissions to collect text from other apps in the background.
+
+## Analytics And Tracking
+
+Inklet does not include third-party advertising, tracking, or analytics in the current app.
+
+If this changes, this policy and App Store privacy details must be updated before release.
+
+## Data Retention
+
+Inklet does not operate a server that stores your text, audio, API keys, or settings.
+
+Data sent to your configured providers may be retained according to those providers' own policies.
+
+## Contact
+
+For support or privacy questions, contact:
+
+support@getinklet.app
+
+## Changes
+
+This policy may be updated as Inklet changes. The updated date at the top of this page will reflect the latest version.

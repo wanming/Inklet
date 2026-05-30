@@ -82,11 +82,23 @@ public final class ModelCatalogService: @unchecked Sendable {
     }
 
     private static func loadBundledFallbackData() -> Data? {
-        guard let url = Bundle.module.url(forResource: "model-catalog-snapshot", withExtension: "json") else {
+        guard let url = bundledFallbackURL() else {
             return nil
         }
 
         return try? Data(contentsOf: url)
+    }
+
+    static func bundledFallbackURL(mainBundleURL: URL = Bundle.main.bundleURL) -> URL? {
+        let appResourceURL = mainBundleURL
+            .appendingPathComponent("Contents/Resources/Inklet_InkletCore.bundle", isDirectory: true)
+            .appendingPathComponent("model-catalog-snapshot.json")
+
+        if FileManager.default.fileExists(atPath: appResourceURL.path) {
+            return appResourceURL
+        }
+
+        return Bundle.module.url(forResource: "model-catalog-snapshot", withExtension: "json")
     }
 
     private static func snapshot(

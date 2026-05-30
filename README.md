@@ -2,6 +2,8 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
+**Turn rough thoughts into clear text.**
+
 **Inklet** is a macOS writing assistant that helps you turn typed, pasted, or spoken thoughts into clear text without leaving the app you are already using.
 
 Use the global shortcut to open a small writing popover, or tap the voice shortcut to dictate a short phrase. Inklet can rewrite, summarize, clean up speech transcription, and insert the result back into the text field you were using.
@@ -41,8 +43,7 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 4. Confirm the model and prompt modes you want to use.
 5. Optional: configure Voice settings with a speech API key, speech preset, voice shortcut, and cleanup mode.
 6. Grant Accessibility permission when macOS asks. Inklet needs this to return focus to the previous app and paste the result.
-7. Grant Input Monitoring permission if you use the voice shortcut while another app is active.
-8. Grant Microphone permission the first time you use voice dictation.
+7. Grant Microphone permission the first time you use voice dictation.
 
 ## Everyday Use
 
@@ -94,7 +95,6 @@ Inklet is an early MVP. The repository currently includes:
 - Swift 6 toolchain.
 - Full Xcode is recommended for XCTest support.
 - Accessibility permission for Inklet, required for returning focus to the previous app and pasting the generated result.
-- Input Monitoring permission for detecting the voice shortcut while another app is active.
 - Microphone permission for voice dictation.
 - An API key for at least one configured LLM provider.
 - A speech transcription API key for voice dictation.

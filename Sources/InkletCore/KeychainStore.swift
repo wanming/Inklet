@@ -10,6 +10,7 @@ public protocol KeychainClient {
     func copyMatching(_ query: [String: Any], result: UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus
     func update(_ query: [String: Any], attributes: [String: Any]) -> OSStatus
     func add(_ query: [String: Any], result: UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus
+    func delete(_ query: [String: Any]) -> OSStatus
 }
 
 public struct SecurityKeychainClient: KeychainClient {
@@ -25,6 +26,10 @@ public struct SecurityKeychainClient: KeychainClient {
 
     public func add(_ query: [String: Any], result: UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus {
         SecItemAdd(query as CFDictionary, result)
+    }
+
+    public func delete(_ query: [String: Any]) -> OSStatus {
+        SecItemDelete(query as CFDictionary)
     }
 }
 
@@ -90,6 +95,13 @@ public struct KeychainStore {
         }
 
         return apiKey
+    }
+
+    public func deleteAPIKey() throws {
+        let status = client.delete(baseQuery())
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw KeychainStoreError.unexpectedStatus(status)
+        }
     }
 
     private func baseQuery() -> [String: Any] {

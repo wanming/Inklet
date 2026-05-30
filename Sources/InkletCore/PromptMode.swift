@@ -137,7 +137,7 @@ public struct PromptModeStore: Equatable, Sendable {
                 participatesInAuto: false,
                 autoRule: .none,
                 sortOrder: 2,
-                isVisible: true
+                isVisible: false
             )
         ])
     }
@@ -161,6 +161,14 @@ public struct PromptModeStore: Equatable, Sendable {
 
         return visibleModes.first
             ?? PromptModeStore.defaultTranslateToEnglishMode
+    }
+
+    public func resolveForInternalUse(modeID: String, sourceText: String) -> PromptMode {
+        if let mode = mode(id: modeID), mode.id != PromptMode.autoID {
+            return mode
+        }
+
+        return resolve(modeID: modeID, sourceText: sourceText)
     }
 
     private static var defaultTranslateToEnglishMode: PromptMode {

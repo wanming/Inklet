@@ -47,15 +47,25 @@ private final class RoundedSettingsHostingView<Content: View>: NSHostingView<Con
 
 @MainActor
 final class SettingsWindowController: NSWindowController {
+    private static let didCompleteOnboardingKey = "didCompleteOnboarding"
+
     private let configStore: UserDefaultsConfigStore
+    private let apiKeyStore: LocalAPIKeyStore
+    private let userDefaults: UserDefaults
     private var appActivationObserver: NSObjectProtocol?
     private var permissionSettingsObserver: NSObjectProtocol?
+    private var settingsWindowCloseObserver: NSObjectProtocol?
+    private var systemSettingsDeactivationObserver: NSObjectProtocol?
+    private var systemSettingsTerminationObserver: NSObjectProtocol?
     private var permissionRestoreTask: Task<Void, Never>?
+    private var didOpenAccessibilitySettings = false
     private var shouldRestoreAfterPermissionSettings = false
     private var lastShownSection: SettingsSection = .general
 
     init() {
         self.configStore = UserDefaultsConfigStore()
+        self.apiKeyStore = LocalAPIKeyStore()
+        self.userDefaults = .standard
         let window = SettingsWindow(
             contentRect: NSRect(x: 0, y: 0, width: 860, height: 560),
             styleMask: [.borderless],
@@ -67,6 +77,7 @@ final class SettingsWindowController: NSWindowController {
         window.isOpaque = false
         window.hasShadow = true
         window.isMovableByWindowBackground = true
+        window.hidesOnDeactivate = false
         window.contentView = RoundedSettingsHostingView(rootView: SettingsView())
         window.isReleasedWhenClosed = false
 
@@ -81,11 +92,22 @@ final class SettingsWindowController: NSWindowController {
             let rawPermission = notification.userInfo?["permission"] as? String
             Task { @MainActor in
                 self?.shouldRestoreAfterPermissionSettings = true
+                self?.didOpenAccessibilitySettings = true
                 self?.lastShownSection = .permissions
                 if let rawPermission,
                     let permission = PermissionSettingsDestination(rawValue: rawPermission) {
                     self?.schedulePermissionRestore(for: permission)
                 }
+            }
+        }
+
+        settingsWindowCloseObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.openPopoverAfterCompletingOnboardingIfNeeded()
             }
         }
 
@@ -96,6 +118,30 @@ final class SettingsWindowController: NSWindowController {
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.restoreAfterPermissionSettingsIfNeeded()
+            }
+        }
+
+        let workspaceNotificationCenter = NSWorkspace.shared.notificationCenter
+        systemSettingsDeactivationObserver = workspaceNotificationCenter.addObserver(
+            forName: NSWorkspace.didDeactivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            let bundleIdentifier = application?.bundleIdentifier
+            Task { @MainActor in
+                self?.restoreAfterSystemSettingsClosedIfNeeded(bundleIdentifier: bundleIdentifier)
+            }
+        }
+        systemSettingsTerminationObserver = workspaceNotificationCenter.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            let application = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            let bundleIdentifier = application?.bundleIdentifier
+            Task { @MainActor in
+                self?.restoreAfterSystemSettingsClosedIfNeeded(bundleIdentifier: bundleIdentifier)
             }
         }
     }
@@ -122,7 +168,18 @@ final class SettingsWindowController: NSWindowController {
         }
 
         shouldRestoreAfterPermissionSettings = false
-        show(section: lastShownSection)
+        notifyAccessibilityTrustIfNeeded()
+        show(section: sectionAfterPermissionSettings())
+    }
+
+    private func restoreAfterSystemSettingsClosedIfNeeded(bundleIdentifier: String?) {
+        guard PermissionSettingsRestorePolicy.shouldRestore(
+            afterDeactivatingApplicationWithBundleIdentifier: bundleIdentifier
+        ) else {
+            return
+        }
+
+        restoreAfterPermissionSettingsIfNeeded()
     }
 
     private func schedulePermissionRestore(for permission: PermissionSettingsDestination) {
@@ -138,25 +195,53 @@ final class SettingsWindowController: NSWindowController {
                 }
                 if permission.isTrusted {
                     shouldRestoreAfterPermissionSettings = false
-                    show(section: lastShownSection)
+                    notifyAccessibilityTrustIfNeeded()
+                    show(section: sectionAfterPermissionSettings())
                     return
                 }
             }
         }
+    }
+
+    private func sectionAfterPermissionSettings() -> SettingsSection {
+        let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
+        let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: config.providerID)
+        return OnboardingPolicy.needsProviderSetup(providerAPIKey: providerAPIKey) ? .providers : lastShownSection
+    }
+
+    private func notifyAccessibilityTrustIfNeeded() {
+        guard AccessibilityPermissionService().isTrusted else {
+            return
+        }
+
+        NotificationCenter.default.post(name: .inkletAccessibilityDidBecomeTrusted, object: nil)
+    }
+
+    private func openPopoverAfterCompletingOnboardingIfNeeded() {
+        let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
+        let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: config.providerID)
+        guard OnboardingPolicy.shouldOpenPopoverAfterClosingSettings(
+            didOpenAccessibilitySettings: didOpenAccessibilitySettings,
+            isAccessibilityTrusted: AccessibilityPermissionService().isTrusted,
+            providerAPIKey: providerAPIKey,
+            didCompleteOnboarding: userDefaults.bool(forKey: Self.didCompleteOnboardingKey)
+        ) else {
+            return
+        }
+
+        userDefaults.set(true, forKey: Self.didCompleteOnboardingKey)
+        NotificationCenter.default.post(name: .inkletDidCompleteOnboarding, object: nil)
     }
 }
 
 @MainActor
 enum PermissionSettingsDestination: String {
     case accessibility
-    case inputMonitoring
 
     var isTrusted: Bool {
         switch self {
         case .accessibility:
             AccessibilityPermissionService().isTrusted
-        case .inputMonitoring:
-            InputMonitoringPermissionService().isTrusted
         }
     }
 }

@@ -19,22 +19,23 @@ final class AppCoordinator: NSObject {
     private let statusItem: NSStatusItem
     private let windowController: InkletPopoverWindowController
     private let settingsController: SettingsWindowController
+    private let aboutController: AboutWindowController
     private let hotkeyManager: GlobalHotkeyManager
     private let configStore: UserDefaultsConfigStore
     private let accessibilityPermissionService: AccessibilityPermissionService
-    private let inputMonitoringPermissionService: InputMonitoringPermissionService
     private let voiceStatusController: VoiceStatusWindowController
     private let voiceShortcutMonitor: VoiceShortcutMonitor
     private let audioRecorder: AudioRecorder
     private let insertionService: InsertionService
     private let apiKeyStore: LocalAPIKeyStore
     private var configObserver: NSObjectProtocol?
+    private var accessibilityObserver: NSObjectProtocol?
+    private var onboardingObserver: NSObjectProtocol?
     private var hotkeyRecordingObserver: NSObjectProtocol?
     private var languageObserver: NSObjectProtocol?
     private var activeApplicationObserver: NSObjectProtocol?
     private var settingsShortcutMonitor: Any?
     private var lastTargetApplication: NSRunningApplication?
-    private var didShowInputMonitoringPermissionError = false
     private var isRecordingHotkey = false
     private lazy var voiceCoordinator = makeVoiceInputCoordinator()
 
@@ -42,10 +43,10 @@ final class AppCoordinator: NSObject {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.windowController = InkletPopoverWindowController()
         self.settingsController = SettingsWindowController()
+        self.aboutController = AboutWindowController()
         self.hotkeyManager = GlobalHotkeyManager()
         self.configStore = UserDefaultsConfigStore()
         self.accessibilityPermissionService = AccessibilityPermissionService()
-        self.inputMonitoringPermissionService = InputMonitoringPermissionService()
         self.voiceStatusController = VoiceStatusWindowController()
         self.voiceShortcutMonitor = VoiceShortcutMonitor()
         self.audioRecorder = AudioRecorder()
@@ -94,6 +95,26 @@ final class AppCoordinator: NSObject {
             }
         }
 
+        accessibilityObserver = NotificationCenter.default.addObserver(
+            forName: .inkletAccessibilityDidBecomeTrusted,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.configureVoiceInput()
+            }
+        }
+
+        onboardingObserver = NotificationCenter.default.addObserver(
+            forName: .inkletDidCompleteOnboarding,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.openPopover()
+            }
+        }
+
         hotkeyRecordingObserver = NotificationCenter.default.addObserver(
             forName: .hotkeyRecordingDidChange,
             object: nil,
@@ -111,6 +132,7 @@ final class AppCoordinator: NSObject {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
+                self?.configureMainMenu()
                 self?.configureStatusItemMenu()
             }
         }
@@ -125,6 +147,14 @@ final class AppCoordinator: NSObject {
         if let configObserver {
             NotificationCenter.default.removeObserver(configObserver)
             self.configObserver = nil
+        }
+        if let accessibilityObserver {
+            NotificationCenter.default.removeObserver(accessibilityObserver)
+            self.accessibilityObserver = nil
+        }
+        if let onboardingObserver {
+            NotificationCenter.default.removeObserver(onboardingObserver)
+            self.onboardingObserver = nil
         }
         if let hotkeyRecordingObserver {
             NotificationCenter.default.removeObserver(hotkeyRecordingObserver)
@@ -151,6 +181,14 @@ final class AppCoordinator: NSObject {
 
         let appMenuItem = NSMenuItem()
         let appMenu = NSMenu()
+        let aboutItem = NSMenuItem(
+            title: L10n.text("app.menu.about"),
+            action: #selector(openAbout),
+            keyEquivalent: ""
+        )
+        aboutItem.target = self
+        appMenu.addItem(aboutItem)
+        appMenu.addItem(NSMenuItem.separator())
         let quitItem = NSMenuItem(
             title: L10n.text("app.menu.quit"),
             action: #selector(NSApplication.terminate(_:)),
@@ -244,17 +282,15 @@ final class AppCoordinator: NSObject {
     }
 
     private func configureVoiceInput() {
+        guard OnboardingPolicy.shouldConfigureVoiceShortcutMonitoring(
+            isAccessibilityTrusted: accessibilityPermissionService.isTrusted
+        ) else {
+            voiceShortcutMonitor.stop()
+            return
+        }
+
         do {
             let config = try configStore.load()
-            guard config.voiceInput.shortcut == .disabled || inputMonitoringPermissionService.isTrusted else {
-                voiceShortcutMonitor.stop()
-                if !didShowInputMonitoringPermissionError {
-                    didShowInputMonitoringPermissionError = true
-                    voiceStatusController.apply(.error(L10n.text("voice.error.inputMonitoringPermission")))
-                }
-                return
-            }
-            didShowInputMonitoringPermissionError = false
             voiceShortcutMonitor.update(shortcut: config.voiceInput.shortcut) { [weak self] in
                 Task { @MainActor in
                     await self?.voiceCoordinator.toggle()
@@ -325,7 +361,7 @@ final class AppCoordinator: NSObject {
                     }
                     return apiKey
                 }
-                let mode = config.promptModeStore.resolve(modeID: modeID, sourceText: source)
+                let mode = config.promptModeStore.resolveForInternalUse(modeID: modeID, sourceText: source)
                 let result = try await TransformationService(provider: provider).transform(
                     sourceText: source,
                     mode: mode,
@@ -361,11 +397,7 @@ final class AppCoordinator: NSObject {
     }
 
     private func showPermissionSettingsIfNeeded() {
-        let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
-        let needsAccessibility = !accessibilityPermissionService.isTrusted
-        let needsInputMonitoring = config.voiceInput.shortcut != .disabled && !inputMonitoringPermissionService.isTrusted
-
-        guard needsAccessibility || needsInputMonitoring else {
+        guard !accessibilityPermissionService.isTrusted else {
             return
         }
 
@@ -382,19 +414,38 @@ final class AppCoordinator: NSObject {
     }
 
     private func makeMenuBarIcon() -> NSImage {
-        let image = NSImage(size: NSSize(width: 18, height: 18))
-        image.lockFocus()
-        defer {
-            image.unlockFocus()
-            image.isTemplate = true
+        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
+            NSColor.black.setStroke()
+            PenNibGeometry.paths.forEach { geometry in
+                guard let firstPoint = geometry.points.first else {
+                    return
+                }
+
+                let path = NSBezierPath()
+                path.lineWidth = 1.5
+                path.lineCapStyle = .round
+                path.lineJoinStyle = .round
+                path.move(to: self.menuBarPoint(from: firstPoint))
+                geometry.points.dropFirst().forEach { point in
+                    path.line(to: self.menuBarPoint(from: point))
+                }
+                if geometry.isClosed {
+                    path.close()
+                }
+                path.stroke()
+            }
+            return true
         }
-
-        NSColor.black.setFill()
-        NSBezierPath(roundedRect: NSRect(x: 4.5, y: 13.1, width: 9, height: 1.8), xRadius: 0.9, yRadius: 0.9).fill()
-        NSBezierPath(roundedRect: NSRect(x: 8.0, y: 4.0, width: 2, height: 10.4), xRadius: 1.0, yRadius: 1.0).fill()
-        NSBezierPath(roundedRect: NSRect(x: 4.2, y: 3.1, width: 9.6, height: 1.8), xRadius: 0.9, yRadius: 0.9).fill()
-
+        image.isTemplate = true
         return image
+    }
+
+    private func menuBarPoint(from point: PenNibGeometry.Point) -> NSPoint {
+        let scale = 0.65
+        return NSPoint(
+            x: 1.7 + point.x * scale,
+            y: 17.3 - point.y * scale
+        )
     }
 
     private func configureStatusItemMenu() {
@@ -417,6 +468,13 @@ final class AppCoordinator: NSObject {
         menu.addItem(NSMenuItem.separator())
         menu.addItem(
             NSMenuItem(
+                title: L10n.text("app.menu.about"),
+                action: #selector(openAbout),
+                keyEquivalent: ""
+            )
+        )
+        menu.addItem(
+            NSMenuItem(
                 title: L10n.text("app.menu.quit"),
                 action: #selector(quit),
                 keyEquivalent: "q"
@@ -432,6 +490,10 @@ final class AppCoordinator: NSObject {
 
     @objc func openSettings() {
         showSettings(section: .general)
+    }
+
+    @objc func openAbout() {
+        aboutController.show()
     }
 
     private func showSettings(section: SettingsSection) {

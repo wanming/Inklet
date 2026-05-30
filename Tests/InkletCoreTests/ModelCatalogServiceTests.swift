@@ -90,6 +90,26 @@ final class ModelCatalogServiceTests: XCTestCase {
         XCTAssertFalse(service.cachedModelIDs(for: "gemini")?.isEmpty ?? true)
     }
 
+    func testBundledFallbackURLFindsAppResourcesBundle() throws {
+        let temporaryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("InkletAppBundleTests-\(UUID().uuidString)", isDirectory: true)
+        let appURL = temporaryDirectory.appendingPathComponent("Inklet.app", isDirectory: true)
+        let resourceBundleURL = appURL
+            .appendingPathComponent("Contents/Resources/Inklet_InkletCore.bundle", isDirectory: true)
+        let snapshotURL = resourceBundleURL.appendingPathComponent("model-catalog-snapshot.json")
+
+        try FileManager.default.createDirectory(at: resourceBundleURL, withIntermediateDirectories: true)
+        try Self.bundledFallbackData.write(to: snapshotURL)
+        defer {
+            try? FileManager.default.removeItem(at: temporaryDirectory)
+        }
+
+        XCTAssertEqual(
+            ModelCatalogService.bundledFallbackURL(mainBundleURL: appURL),
+            snapshotURL
+        )
+    }
+
     private static let fixtureData = Data(
         """
         {

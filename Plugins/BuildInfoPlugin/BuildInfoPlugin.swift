@@ -16,12 +16,17 @@ struct BuildInfoPlugin: BuildToolPlugin {
         mkdir -p "$(dirname "$output_file")"
         cat > "$output_file" <<SWIFT
         import Foundation
+        import InkletCore
 
         enum BuildInfo {
             static let version = "$build_version"
 
             static var displayVersion: String {
-                Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? version
+                AppVersionDisplay.format(
+                    marketingVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+                    buildNumber: Bundle.main.infoDictionary?["CFBundleVersion"] as? String,
+                    fallback: version
+                )
             }
         }
 

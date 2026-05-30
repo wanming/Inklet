@@ -15,6 +15,7 @@ final class InkletPopoverViewModel: ObservableObject {
     @Published var modes: [PromptMode]
     @Published var preferredPopoverHeight: CGFloat = 168
     @Published var appearance: AppAppearance
+    @Published var voiceShortcutHint: VoiceInputConfig.Shortcut?
 
     var onHidePopover: (() -> Void)?
     var onFocusPopover: (() -> Void)?
@@ -58,6 +59,8 @@ final class InkletPopoverViewModel: ObservableObject {
         self.modes = loadedConfig.visiblePromptModes
         self.selectedModeID = loadedConfig.defaultVisibleModeID
         self.appearance = loadedConfig.appearance
+        self.voiceShortcutHint = nil
+        refreshVoiceShortcutHint()
     }
 
     func resetForOpen(previousApplication: NSRunningApplication?) {
@@ -71,6 +74,7 @@ final class InkletPopoverViewModel: ObservableObject {
         modes = config.visiblePromptModes
         selectedModeID = config.defaultVisibleModeID
         appearance = config.appearance
+        refreshVoiceShortcutHint()
         sourceText = draftSourceText
         resultText = ""
         errorMessage = nil
@@ -84,6 +88,14 @@ final class InkletPopoverViewModel: ObservableObject {
         if !sourceText.isEmpty {
             _ = stateMachine.send(.sourceChanged(sourceText))
         }
+    }
+
+    private func refreshVoiceShortcutHint() {
+        let voiceAPIKey = apiKeyStore.loadAPIKey(forProviderID: config.voiceInput.speechProviderID)
+        voiceShortcutHint = OnboardingPolicy.shouldShowVoiceShortcutHint(
+            voiceAPIKey: voiceAPIKey,
+            shortcut: config.voiceInput.shortcut
+        ) ? config.voiceInput.shortcut : nil
     }
 
     func updateSourceText(_ text: String) {
@@ -653,7 +665,7 @@ struct InkletPopoverView: View {
     }
 
     private var actionBar: some View {
-        HStack(alignment: .center, spacing: 4) {
+        HStack(alignment: .center, spacing: 3) {
             if isBusy {
                 loadingIndicator
             } else {
@@ -672,15 +684,33 @@ struct InkletPopoverView: View {
 
                 Spacer()
 
+                if let voiceShortcutHint = model.voiceShortcutHint {
+                    voiceHint(shortcut: voiceShortcutHint)
+                }
+
                 shortcutHint(keys: ["esc"], label: model.resultText.isEmpty ? L10n.text("popover.hint.close") : L10n.text("popover.hint.back")) {
                     model.escape()
                 }
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 7)
         .frame(height: actionBarHeight)
         .background(InkletTheme.toolbarBackground)
         .accessibilityLabel(L10n.text("popover.hint.accessibility"))
+    }
+
+    private func voiceHint(shortcut: VoiceInputConfig.Shortcut) -> some View {
+        HStack(spacing: 2) {
+            Image(systemName: "mic")
+                .font(.system(size: 8))
+            Keycap(title: shortcut.localizedName, compact: true)
+            Text(L10n.text("popover.hint.voice"))
+                .font(.system(size: 8))
+                .lineLimit(1)
+        }
+        .foregroundStyle(InkletTheme.textSecondary.opacity(0.78))
+        .padding(.horizontal, 2)
+        .accessibilityLabel("\(L10n.text("settings.quickStart.voice")): \(shortcut.localizedName)")
     }
 
     private var loadingIndicator: some View {
@@ -703,18 +733,18 @@ struct InkletPopoverView: View {
 
     private func shortcutHint(keys: [String], label: String, primary: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 3) {
+            HStack(spacing: 2) {
                 ForEach(keys, id: \.self) { key in
-                    Keycap(title: key)
+                    Keycap(title: key, compact: true)
                 }
                 Text(label)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 8, weight: .medium))
                     .foregroundStyle(primary ? Color.white : InkletTheme.textSecondary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                    .minimumScaleFactor(0.75)
             }
-            .padding(.horizontal, primary ? 7 : 5)
-            .padding(.vertical, 3)
+            .padding(.horizontal, primary ? 5 : 2)
+            .padding(.vertical, 2)
             .background(primary ? InkletTheme.primary : Color.white.opacity(0.001), in: RoundedRectangle(cornerRadius: 7))
             .shadow(color: primary ? InkletTheme.primary.opacity(0.35) : .clear, radius: 8, x: 0, y: 1)
         }

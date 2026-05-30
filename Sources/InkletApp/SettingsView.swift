@@ -124,10 +124,6 @@ final class SettingsViewModel: ObservableObject {
         AccessibilityPermissionService().isTrusted
     }
 
-    var isInputMonitoringTrusted: Bool {
-        InputMonitoringPermissionService().isTrusted
-    }
-
     func refreshPermissions() {
         permissionRefreshID = UUID()
     }
@@ -367,16 +363,21 @@ final class SettingsViewModel: ObservableObject {
             InkletLanguageStore.selectedLanguage = interfaceLanguage
             try configStore.save(config)
             for provider in LLMProviderPreset.all {
-                apiKeyStore.deleteAPIKey(forProviderID: provider.id)
+                try apiKeyStore.deleteAPIKey(forProviderID: provider.id)
             }
             let trimmedKey = providerAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmedKey.isEmpty {
-                apiKeyStore.saveAPIKey(trimmedKey, forProviderID: config.providerID)
+                try apiKeyStore.saveAPIKey(trimmedKey, forProviderID: config.providerID)
             }
-            apiKeyStore.deleteAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID)
-            let trimmedVoiceKey = voiceAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            try apiKeyStore.deleteAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID)
+            let trimmedVoiceKey = OnboardingPolicy.voiceAPIKey(
+                providerID: config.providerID,
+                providerAPIKey: trimmedKey,
+                existingVoiceAPIKey: voiceAPIKey
+            )
+            voiceAPIKey = trimmedVoiceKey
             if !trimmedVoiceKey.isEmpty {
-                apiKeyStore.saveAPIKey(trimmedVoiceKey, forProviderID: VoiceInputConfig.openAISpeechProviderID)
+                try apiKeyStore.saveAPIKey(trimmedVoiceKey, forProviderID: VoiceInputConfig.openAISpeechProviderID)
             }
             message = L10n.text("settings.saved")
             NotificationCenter.default.post(name: .appConfigDidSave, object: nil)
@@ -416,27 +417,14 @@ final class SettingsViewModel: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
-    func openInputMonitoringSettings() {
-        guard let url = URL(
-            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
-        ) else {
-            message = L10n.text("settings.error.openAccessibility")
-            return
-        }
-
-        NotificationCenter.default.post(
-            name: .inkletDidOpenPermissionSettings,
-            object: nil,
-            userInfo: ["permission": PermissionSettingsDestination.inputMonitoring.rawValue]
-        )
-        NSWorkspace.shared.open(url)
-    }
 }
 
 extension Notification.Name {
     static let appConfigDidSave = Notification.Name("InkletAppConfigDidSave")
     static let hotkeyRecordingDidChange = Notification.Name("InkletHotkeyRecordingDidChange")
     static let inkletDidOpenPermissionSettings = Notification.Name("InkletDidOpenPermissionSettings")
+    static let inkletAccessibilityDidBecomeTrusted = Notification.Name("InkletAccessibilityDidBecomeTrusted")
+    static let inkletDidCompleteOnboarding = Notification.Name("InkletDidCompleteOnboarding")
 }
 
 private extension PromptMode {
@@ -542,9 +530,10 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 10) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 13, weight: .semibold))
+                    PenNibShape()
+                        .stroke(style: StrokeStyle(lineWidth: 1.45, lineCap: .round, lineJoin: .round))
                         .foregroundStyle(InkletTheme.primary)
+                        .padding(6)
                         .frame(width: 28, height: 28)
                         .background(InkletTheme.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
                         .overlay {
@@ -636,7 +625,7 @@ struct SettingsView: View {
                         .padding(.bottom, 10)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             Divider().opacity(0.12)
             footer
@@ -969,21 +958,12 @@ struct SettingsView: View {
             }
 
             permissionSection(title: L10n.text("settings.systemPermissions.title")) {
-                VStack(spacing: 12) {
-                    permissionLine(
-                        title: L10n.text("settings.permission.accessibility"),
-                        description: L10n.text("settings.permission.description"),
-                        isTrusted: model.isAccessibilityTrusted,
-                        action: { model.openAccessibilitySettings() }
-                    )
-
-                    permissionLine(
-                        title: L10n.text("settings.permission.inputMonitoring"),
-                        description: L10n.text("settings.permission.inputMonitoringDescription"),
-                        isTrusted: model.isInputMonitoringTrusted,
-                        action: { model.openInputMonitoringSettings() }
-                    )
-                }
+                permissionLine(
+                    title: L10n.text("settings.permission.accessibility"),
+                    description: L10n.text("settings.permission.description"),
+                    isTrusted: model.isAccessibilityTrusted,
+                    action: { model.openAccessibilitySettings() }
+                )
             }
 
             permissionSection(title: L10n.text("settings.privacy.title")) {
@@ -995,7 +975,6 @@ struct SettingsView: View {
                 }
             }
         }
-        .padding(.horizontal, 20)
         .frame(maxWidth: 680, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
         .id(model.permissionRefreshID)
@@ -1089,7 +1068,8 @@ struct SettingsView: View {
                 Text(description)
                     .font(.system(size: 12))
                     .foregroundStyle(InkletTheme.textTertiary)
-                    .lineLimit(2)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
