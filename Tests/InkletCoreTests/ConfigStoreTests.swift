@@ -73,6 +73,7 @@ final class ConfigStoreTests: XCTestCase {
             config.customOpenAICompatibleEndpoint,
             LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString
         )
+        XCTAssertEqual(config.selectionActions, SelectionActionsConfig.defaultConfig())
     }
 
     func testConfigRoundTripsThroughUserDefaults() throws {
@@ -90,6 +91,10 @@ final class ConfigStoreTests: XCTestCase {
         config.hotkey = "⌘Space"
         config.appearance = .dark
         config.customOpenAICompatibleEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
+        config.selectionActions = SelectionActionsConfig(
+            isEnabled: false,
+            translationLanguage: .japanese
+        )
         config.promptModes = [
             PromptMode(
                 id: "custom-test-mode",
@@ -127,6 +132,7 @@ final class ConfigStoreTests: XCTestCase {
             config.customOpenAICompatibleEndpoint,
             AppConfig.defaultConfig().customOpenAICompatibleEndpoint
         )
+        XCTAssertEqual(config.selectionActions, AppConfig.defaultConfig().selectionActions)
     }
 
     func testConfigDecodeMigratesLegacyModesToFocusedDefaults() throws {
