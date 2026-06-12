@@ -58,6 +58,7 @@ The default voice shortcut is Right Option. You can change it to Right Command, 
 
 - Opens from a global macOS hotkey. The default is `Option+Space`.
 - Starts short voice dictation from a single modifier-key tap. The default voice shortcut is Right Option.
+- Shows Selection Actions after you select text in another Mac app and pause briefly, with quick translation and AI pronunciation.
 - Transforms text with built-in prompt modes:
   - To Simple and Correct English
   - To Chinese Summary
@@ -143,6 +144,8 @@ docs/                           manual QA and privacy policy
 - Inklet uses Accessibility permission to return focus to the previous app and paste text.
 - Inklet uses Microphone permission only while recording voice dictation.
 - Inklet temporarily uses the clipboard for insertion and then restores the previous clipboard contents.
+- Selection Actions use Accessibility to read the current selection after you select text in another app. Inklet does not use the clipboard as a fallback for Selection Actions and does not save selected text.
+- Selection Actions translation sends selected text to your configured LLM provider. AI pronunciation sends selected text to OpenAI text-to-speech.
 - Inklet fetches the public model catalog from `models.dev` at most once per day. This request does not include your text, audio, API keys, or app settings.
 - Do not send private text or audio to a provider unless you trust that provider's data handling policies.
 

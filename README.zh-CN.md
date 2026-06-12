@@ -58,6 +58,7 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 
 - 使用全局 macOS 快捷键打开。默认是 `Option+Space`。
 - 用单个 modifier key 轻按开始短语音输入。默认语音快捷键是 Right Option。
+- 选中文本并短暂停顿后显示选区动作，可快速翻译或使用 AI 发音。
 - 内置文本处理模式：
   - To Simple and Correct English
   - To Chinese Summary
@@ -143,6 +144,8 @@ docs/                    手动测试说明和隐私政策
 - Inklet 使用 Accessibility 权限回到上一个应用并粘贴文本。
 - Inklet 只在录音语音输入时使用 Microphone 权限。
 - Inklet 会临时使用剪贴板完成插入，然后恢复之前的剪贴板内容。
+- 选区动作会在你选中其他 App 中的文字后，通过 Accessibility 读取当前选区。Inklet 不会为选区动作使用剪贴板 fallback，也不会保存选中文本。
+- 选区动作中的翻译会把选中文本发送到你配置的 LLM provider。AI 发音会把选中文本发送到 OpenAI 文本转语音。
 - Inklet 最多每天从 `models.dev` 获取一次公开模型目录。该请求不包含你的文本、音频、API keys 或应用设置。
 - 除非你信任某个 provider 的数据处理政策，否则不要向它发送私密文本或音频。
 

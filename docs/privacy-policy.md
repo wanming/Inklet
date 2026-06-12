@@ -1,6 +1,6 @@
 # Inklet Privacy Policy
 
-Last updated: May 29, 2026
+Last updated: June 12, 2026
 
 ## Overview
 
@@ -14,6 +14,7 @@ Inklet may process:
 
 - Text you type or paste into Inklet.
 - Text selected or copied by you for insertion workflows.
+- Text selected by you for Selection Actions.
 - Temporary audio recorded when you start voice dictation.
 - API keys and provider settings you enter.
 - App settings such as prompt modes, model choices, shortcuts, and preferences.
@@ -38,6 +39,12 @@ Provider handling of your data is governed by the provider's own privacy policy 
 
 Inklet may fetch the public model catalog from `models.dev` periodically, currently no more than once per day. This request does not include your text, audio, API keys, or app settings.
 
+## Selection Actions
+
+When Selection Actions are enabled, Inklet watches for selection-related mouse and keyboard events and then uses macOS Accessibility to read the currently selected text after a short pause. Inklet does not use the clipboard as a fallback for this feature and does not store selected text.
+
+If you choose Translate, the selected text is sent to your configured LLM provider. If you choose Pronounce, the selected text is sent to OpenAI text-to-speech using your OpenAI API key. Some apps do not expose selected text through Accessibility; in those apps the floating menu may not appear.
+
 ## Local Storage
 
 Inklet stores API keys locally in macOS Keychain. Inklet stores app preferences locally on your Mac.
@@ -48,7 +55,7 @@ Inklet temporarily uses the clipboard to insert text into the active app and the
 
 Inklet requests the following macOS permissions:
 
-- Accessibility: used to return focus to the previous app and insert text after you confirm insertion.
+- Accessibility: used to return focus to the previous app, insert text after you confirm insertion, and read selected text for Selection Actions after you select text.
 - Microphone: used only while recording voice dictation that you start.
 
 Inklet does not use these permissions to collect text from other apps in the background.
