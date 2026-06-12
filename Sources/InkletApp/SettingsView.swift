@@ -23,6 +23,9 @@ final class SettingsViewModel: ObservableObject {
     private let modelCatalogService: ModelCatalogService
     private var cancellables = Set<AnyCancellable>()
     private var isLoadingProviderKey = false
+    private var savedProviderID: String
+    private var savedProviderAPIKey: String
+    private var savedVoiceAPIKey: String
 
     static let customModelMenuID = "__custom_model__"
 
@@ -39,8 +42,13 @@ final class SettingsViewModel: ObservableObject {
         self.config = loadedConfig
         self.message = ""
         self.interfaceLanguage = InkletLanguageStore.selectedLanguage
-        self.providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: loadedConfig.providerID) ?? ""
-        self.voiceAPIKey = apiKeyStore.loadAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID) ?? ""
+        let loadedProviderAPIKey = apiKeyStore.loadAPIKey(forProviderID: loadedConfig.providerID) ?? ""
+        let loadedVoiceAPIKey = apiKeyStore.loadAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID) ?? ""
+        self.providerAPIKey = loadedProviderAPIKey
+        self.voiceAPIKey = loadedVoiceAPIKey
+        self.savedProviderID = loadedConfig.providerID
+        self.savedProviderAPIKey = loadedProviderAPIKey
+        self.savedVoiceAPIKey = loadedVoiceAPIKey
         self.selectedPromptModeID = loadedConfig.promptModes.sorted { $0.sortOrder < $1.sortOrder }.first?.id
             ?? PromptMode.translateToEnglishID
         self.cachedProviderModels = Dictionary(
@@ -158,7 +166,10 @@ final class SettingsViewModel: ObservableObject {
         config.providerID = providerID
         config.model = LLMProviderPreset.preset(id: providerID).defaultModel
         isLoadingProviderKey = true
-        providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: providerID) ?? ""
+        let loadedProviderAPIKey = apiKeyStore.loadAPIKey(forProviderID: providerID) ?? ""
+        providerAPIKey = loadedProviderAPIKey
+        savedProviderID = providerID
+        savedProviderAPIKey = loadedProviderAPIKey
         isLoadingProviderKey = false
         isEditingCustomModel = false
         save()
@@ -362,22 +373,29 @@ final class SettingsViewModel: ObservableObject {
             _ = try Hotkey.parse(config.hotkey)
             InkletLanguageStore.selectedLanguage = interfaceLanguage
             try configStore.save(config)
-            for provider in LLMProviderPreset.all {
-                try apiKeyStore.deleteAPIKey(forProviderID: provider.id)
-            }
             let trimmedKey = providerAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmedKey.isEmpty {
-                try apiKeyStore.saveAPIKey(trimmedKey, forProviderID: config.providerID)
+            if config.providerID != savedProviderID || trimmedKey != savedProviderAPIKey {
+                if trimmedKey.isEmpty {
+                    try apiKeyStore.deleteAPIKey(forProviderID: config.providerID)
+                } else {
+                    try apiKeyStore.saveAPIKey(trimmedKey, forProviderID: config.providerID)
+                }
+                savedProviderID = config.providerID
+                savedProviderAPIKey = trimmedKey
             }
-            try apiKeyStore.deleteAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID)
             let trimmedVoiceKey = OnboardingPolicy.voiceAPIKey(
                 providerID: config.providerID,
                 providerAPIKey: trimmedKey,
                 existingVoiceAPIKey: voiceAPIKey
             )
             voiceAPIKey = trimmedVoiceKey
-            if !trimmedVoiceKey.isEmpty {
-                try apiKeyStore.saveAPIKey(trimmedVoiceKey, forProviderID: VoiceInputConfig.openAISpeechProviderID)
+            if trimmedVoiceKey != savedVoiceAPIKey {
+                if trimmedVoiceKey.isEmpty {
+                    try apiKeyStore.deleteAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID)
+                } else {
+                    try apiKeyStore.saveAPIKey(trimmedVoiceKey, forProviderID: VoiceInputConfig.openAISpeechProviderID)
+                }
+                savedVoiceAPIKey = trimmedVoiceKey
             }
             message = L10n.text("settings.saved")
             NotificationCenter.default.post(name: .appConfigDidSave, object: nil)
