@@ -2,6 +2,7 @@ import SwiftUI
 
 enum SelectionActionViewState: Equatable {
     case menu(errorMessage: String?)
+    case notice(String)
     case translating
     case translationResult(String)
     case translationError(String)
@@ -36,6 +37,12 @@ struct SelectionActionView: View {
                         .foregroundStyle(InkletTheme.warning)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
+            case .notice(let message):
+                Text(message)
+                    .font(.system(size: 12))
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
             case .translating:
                 HStack(spacing: 8) {

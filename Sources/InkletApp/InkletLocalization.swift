@@ -47,6 +47,22 @@ enum InterfaceLanguage: String, CaseIterable, Identifiable {
         case .italian: "Italiano"
         }
     }
+
+    var localeIdentifier: String {
+        switch self {
+        case .system: Locale.preferredLanguages.first ?? "en"
+        case .english: "en"
+        case .simplifiedChinese: "zh-Hans"
+        case .traditionalChinese: "zh-Hant"
+        case .japanese: "ja"
+        case .korean: "ko"
+        case .spanish: "es"
+        case .french: "fr"
+        case .german: "de"
+        case .portuguese: "pt"
+        case .italian: "it"
+        }
+    }
 }
 
 enum InkletLanguageStore {

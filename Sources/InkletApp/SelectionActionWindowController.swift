@@ -76,6 +76,13 @@ final class SelectionActionWindowController: NSWindowController {
         render()
     }
 
+    func showNotice(_ message: String, at point: SelectionPoint) {
+        state = .notice(message)
+        render()
+        positionWindow(at: point)
+        window?.makeKeyAndOrderFront(nil)
+    }
+
     func showTranslating() {
         state = .translating
         render()
