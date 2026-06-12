@@ -435,10 +435,29 @@ private extension PromptMode {
     ]
 }
 
+private extension SelectionTranslationLanguage {
+    var localizedDisplayName: String {
+        switch self {
+        case .followInterfaceLanguage: L10n.text("selection.language.followInterface")
+        case .english: "English"
+        case .simplifiedChinese: "简体中文"
+        case .traditionalChinese: "繁體中文"
+        case .japanese: "日本語"
+        case .korean: "한국어"
+        case .spanish: "Español"
+        case .french: "Français"
+        case .german: "Deutsch"
+        case .portuguese: "Português"
+        case .italian: "Italiano"
+        }
+    }
+}
+
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general = "General"
     case providers = "Providers"
     case voice = "Voice"
+    case selectionActions = "Selection Actions"
     case promptModes = "Prompt Modes"
     case permissions = "Permissions"
 
@@ -449,6 +468,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .general: L10n.text("settings.section.general")
         case .providers: L10n.text("settings.section.providers")
         case .voice: L10n.text("settings.section.voice")
+        case .selectionActions: L10n.text("settings.section.selectionActions")
         case .promptModes: L10n.text("settings.section.promptModes")
         case .permissions: L10n.text("settings.section.permissions")
         }
@@ -459,6 +479,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .general: "gearshape"
         case .providers: "sparkles"
         case .voice: "mic"
+        case .selectionActions: "text.viewfinder"
         case .promptModes: "slider.horizontal.3"
         case .permissions: "lock.shield"
         }
@@ -623,6 +644,12 @@ struct SettingsView: View {
                             .padding(.horizontal, 24)
                             .padding(.vertical, 20)
                     }
+                case .selectionActions:
+                    ScrollView {
+                        selectionActionsPanel
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 20)
+                    }
                 case .promptModes:
                     promptModesPanel
                 case .permissions:
@@ -669,6 +696,8 @@ struct SettingsView: View {
             L10n.text("settings.description.providers")
         case .voice:
             L10n.text("settings.description.voice")
+        case .selectionActions:
+            L10n.text("settings.description.selectionActions")
         case .promptModes:
             L10n.text("settings.description.promptModes")
         case .permissions:
@@ -860,6 +889,44 @@ struct SettingsView: View {
                 .labelsHidden()
                 .frame(maxWidth: 320, alignment: .leading)
                 .disabled(!model.config.voiceInput.autoProcessTranscription)
+            }
+        }
+    }
+
+    private var selectionActionsPanel: some View {
+        settingsPanel {
+            settingsRow(
+                L10n.text("settings.row.selectionActionsEnabled"),
+                help: L10n.text("settings.help.selectionActionsEnabled")
+            ) {
+                Toggle("", isOn: $model.config.selectionActions.isEnabled)
+                    .labelsHidden()
+            }
+
+            settingsRow(
+                L10n.text("settings.row.translationLanguage"),
+                help: L10n.text("settings.help.translationLanguage")
+            ) {
+                Picker("", selection: $model.config.selectionActions.translationLanguage) {
+                    ForEach(SelectionTranslationLanguage.allCases) { language in
+                        Text(language.localizedDisplayName).tag(language)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(
+                L10n.text("settings.row.aiPronunciation"),
+                help: L10n.text("settings.help.aiPronunciation")
+            ) {
+                HStack(spacing: 8) {
+                    Image(systemName: "speaker.wave.2")
+                        .foregroundStyle(InkletTheme.textSecondary)
+                    Text(L10n.text("settings.aiPronunciation.openAI"))
+                        .foregroundStyle(InkletTheme.textSecondary)
+                }
+                .font(.system(size: 12))
             }
         }
     }
