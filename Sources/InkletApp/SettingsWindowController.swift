@@ -75,11 +75,7 @@ final class SettingsWindowController: NSWindowController {
         window.hasShadow = true
         window.isMovableByWindowBackground = true
         window.hidesOnDeactivate = false
-        window.contentView = RoundedSettingsHostingView(
-            rootView: SettingsView { [weak window] appearance in
-                window?.appearance = appearance.nsAppearance
-            }
-        )
+        window.contentView = RoundedSettingsHostingView(rootView: EmptyView())
         window.isReleasedWhenClosed = false
 
         super.init(window: window)

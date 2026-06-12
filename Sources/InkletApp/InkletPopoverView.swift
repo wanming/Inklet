@@ -60,7 +60,6 @@ final class InkletPopoverViewModel: ObservableObject {
         self.selectedModeID = loadedConfig.defaultVisibleModeID
         self.appearance = loadedConfig.appearance
         self.voiceShortcutHint = nil
-        refreshVoiceShortcutHint()
     }
 
     func resetForOpen(previousApplication: NSRunningApplication?) {
