@@ -3,6 +3,8 @@ import Foundation
 
 @MainActor
 final class SpeechPlaybackService: NSObject, AVAudioPlayerDelegate {
+    var onFinish: (() -> Void)?
+
     private var player: AVAudioPlayer?
 
     func play(audioData: Data) throws {
@@ -22,6 +24,7 @@ final class SpeechPlaybackService: NSObject, AVAudioPlayerDelegate {
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
             self.player = nil
+            self.onFinish?()
         }
     }
 }

@@ -84,7 +84,7 @@ final class ConfigStoreTests: XCTestCase {
         }
         let store = UserDefaultsConfigStore(userDefaults: userDefaults)
         var config = AppConfig.defaultConfig()
-        config.providerID = "anthropic"
+        config.providerID = LLMProviderPreset.openAI.id
         config.model = "test-model"
         config.temperature = 0.7
         config.timeoutSeconds = 9
@@ -93,7 +93,8 @@ final class ConfigStoreTests: XCTestCase {
         config.customOpenAICompatibleEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
         config.selectionActions = SelectionActionsConfig(
             isEnabled: false,
-            translationLanguage: .japanese
+            translationLanguage: .japanese,
+            pronunciationVoice: .cedar
         )
         config.promptModes = [
             PromptMode(
@@ -133,6 +134,22 @@ final class ConfigStoreTests: XCTestCase {
             AppConfig.defaultConfig().customOpenAICompatibleEndpoint
         )
         XCTAssertEqual(config.selectionActions, AppConfig.defaultConfig().selectionActions)
+    }
+
+    func testConfigDecodeMigratesLegacyProvidersToOpenAI() throws {
+        let data = """
+        {
+            "providerID": "anthropic",
+            "model": "claude-3-5-sonnet-latest",
+            "customOpenAICompatibleEndpoint": "http://127.0.0.1:1234/v1/chat/completions"
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+
+        XCTAssertEqual(config.providerID, LLMProviderPreset.openAI.id)
+        XCTAssertEqual(config.model, LLMProviderPreset.openAI.defaultModel)
+        XCTAssertEqual(config.resolvedProviderPreset.id, LLMProviderPreset.openAI.id)
     }
 
     func testConfigDecodeMigratesLegacyModesToFocusedDefaults() throws {
@@ -305,14 +322,14 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(mode.systemPrompt, "My custom cleanup prompt.")
     }
 
-    func testResolvedProviderPresetUsesCustomOpenAICompatibleEndpoint() {
+    func testResolvedProviderPresetAlwaysUsesOpenAI() {
         var config = AppConfig.defaultConfig()
         config.providerID = LLMProviderPreset.customOpenAICompatible.id
         config.customOpenAICompatibleEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
 
         XCTAssertEqual(
-            config.resolvedProviderPreset.endpoint.absoluteString,
-            "http://127.0.0.1:1234/v1/chat/completions"
+            config.resolvedProviderPreset,
+            LLMProviderPreset.openAI
         )
     }
 

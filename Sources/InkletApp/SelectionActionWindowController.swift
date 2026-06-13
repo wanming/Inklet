@@ -7,7 +7,7 @@ private final class SelectionActionPanel: NSPanel {
     var onEscape: (() -> Void)?
 
     override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
+    override var canBecomeMain: Bool { false }
 
     override func cancelOperation(_ sender: Any?) {
         onEscape?()
@@ -27,18 +27,20 @@ private final class SelectionActionPanel: NSPanel {
 final class SelectionActionWindowController: NSWindowController {
     var onTranslate: (() -> Void)?
     var onPronounce: (() -> Void)?
+    var onPronounceOriginal: (() -> Void)?
+    var onPronounceTranslation: (() -> Void)?
     var onCopyTranslation: (() -> Void)?
     var onRetryTranslation: (() -> Void)?
     var onDismiss: (() -> Void)?
 
-    private var state: SelectionActionViewState = .menu(errorMessage: nil)
+    private var state: SelectionActionViewState = .menu(errorMessage: nil, feedback: nil)
     private let panelWidth: CGFloat = 300
-    private let minimumPanelHeight: CGFloat = 72
+    private let minimumPanelHeight: CGFloat = 46
 
     init() {
         let panel = SelectionActionPanel(
             contentRect: NSRect(x: 0, y: 0, width: panelWidth, height: minimumPanelHeight),
-            styleMask: [.borderless],
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
@@ -48,7 +50,7 @@ final class SelectionActionWindowController: NSWindowController {
         panel.hasShadow = true
         panel.isMovableByWindowBackground = false
         panel.isReleasedWhenClosed = false
-        panel.level = .floating
+        panel.level = .popUpMenu
         panel.collectionBehavior = [.fullScreenAuxiliary, .moveToActiveSpace]
 
         super.init(window: panel)
@@ -65,14 +67,34 @@ final class SelectionActionWindowController: NSWindowController {
     }
 
     func showMenu(at point: SelectionPoint) {
-        state = .menu(errorMessage: nil)
+        state = .menu(errorMessage: nil, feedback: nil)
         render()
         positionWindow(at: point)
-        window?.makeKeyAndOrderFront(nil)
+        focusPanel()
+        if let window {
+            SelectionActionDiagnostics.log(
+                "show menu frame=\(NSStringFromRect(window.frame)) visible=\(window.isVisible)"
+            )
+        }
+    }
+
+    func restoreMenu() {
+        state = .menu(errorMessage: nil, feedback: nil)
+        render()
     }
 
     func showPronunciationError(_ message: String) {
-        state = .menu(errorMessage: message)
+        state = .menu(errorMessage: message, feedback: nil)
+        render()
+    }
+
+    func showPreparingPronunciation() {
+        state = .menu(errorMessage: nil, feedback: .loadingMenuPronunciation)
+        render()
+    }
+
+    func showPlayingPronunciation() {
+        state = .menu(errorMessage: nil, feedback: .playingMenuPronunciation)
         render()
     }
 
@@ -80,16 +102,25 @@ final class SelectionActionWindowController: NSWindowController {
         state = .notice(message)
         render()
         positionWindow(at: point)
-        window?.makeKeyAndOrderFront(nil)
+        focusPanel()
+        if let window {
+            SelectionActionDiagnostics.log(
+                "show notice frame=\(NSStringFromRect(window.frame)) visible=\(window.isVisible)"
+            )
+        }
     }
 
     func showTranslating() {
-        state = .translating
+        state = .menu(errorMessage: nil, feedback: .loadingMenuTranslation)
         render()
     }
 
-    func showTranslation(_ text: String) {
-        state = .translationResult(text)
+    func showTranslation(
+        _ text: String,
+        errorMessage: String? = nil,
+        feedback: SelectionActionFeedback? = nil
+    ) {
+        state = .translationResult(text, errorMessage: errorMessage, feedback: feedback)
         render()
     }
 
@@ -107,6 +138,8 @@ final class SelectionActionWindowController: NSWindowController {
             state: state,
             onTranslate: { [weak self] in self?.onTranslate?() },
             onPronounce: { [weak self] in self?.onPronounce?() },
+            onPronounceOriginal: { [weak self] in self?.onPronounceOriginal?() },
+            onPronounceTranslation: { [weak self] in self?.onPronounceTranslation?() },
             onCopyTranslation: { [weak self] in self?.onCopyTranslation?() },
             onRetryTranslation: { [weak self] in self?.onRetryTranslation?() }
         ))
@@ -124,10 +157,11 @@ final class SelectionActionWindowController: NSWindowController {
         }
 
         let fittingSize = contentView.fittingSize
+        let width = min(max(fittingSize.width, 120), 320)
         let height = min(max(fittingSize.height, minimumPanelHeight), 260)
         var frame = window.frame
         let topY = frame.maxY
-        frame.size = NSSize(width: panelWidth, height: height)
+        frame.size = NSSize(width: width, height: height)
         frame.origin.y = topY - height
         window.setFrame(frame, display: true)
     }
@@ -148,5 +182,9 @@ final class SelectionActionWindowController: NSWindowController {
         }
 
         window.setFrame(frame, display: true)
+    }
+
+    private func focusPanel() {
+        window?.orderFrontRegardless()
     }
 }

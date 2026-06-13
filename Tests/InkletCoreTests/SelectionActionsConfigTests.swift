@@ -7,6 +7,7 @@ final class SelectionActionsConfigTests: XCTestCase {
 
         XCTAssertTrue(config.isEnabled)
         XCTAssertEqual(config.translationLanguage, .followInterfaceLanguage)
+        XCTAssertEqual(config.pronunciationVoice, .alloy)
     }
 
     func testTranslationLanguagePromptNames() {
@@ -20,6 +21,42 @@ final class SelectionActionsConfigTests: XCTestCase {
         XCTAssertEqual(SelectionTranslationLanguage.german.promptTargetName, "German")
         XCTAssertEqual(SelectionTranslationLanguage.portuguese.promptTargetName, "Portuguese")
         XCTAssertEqual(SelectionTranslationLanguage.italian.promptTargetName, "Italian")
+    }
+
+    func testPronunciationVoicesUseOpenAIVoiceIDs() {
+        XCTAssertEqual(SelectionPronunciationVoice.allCases.map(\.rawValue), [
+            "alloy",
+            "ash",
+            "ballad",
+            "coral",
+            "echo",
+            "fable",
+            "nova",
+            "onyx",
+            "sage",
+            "shimmer",
+            "verse",
+            "marin",
+            "cedar"
+        ])
+    }
+
+    func testPronunciationPreviewTextResolvesInterfaceLanguage() {
+        XCTAssertEqual(SelectionPronunciationVoice.previewText(interfaceLanguageCode: "zh-Hans"), "这是 Inklet。")
+        XCTAssertEqual(SelectionPronunciationVoice.previewText(interfaceLanguageCode: "zh-Hant"), "這是 Inklet。")
+        XCTAssertEqual(SelectionPronunciationVoice.previewText(interfaceLanguageCode: "ja"), "Inklet です。")
+        XCTAssertEqual(SelectionPronunciationVoice.previewText(interfaceLanguageCode: "ko"), "Inklet입니다.")
+        XCTAssertEqual(SelectionPronunciationVoice.previewText(interfaceLanguageCode: "unknown"), "This is Inklet.")
+    }
+
+    func testDecodingOldConfigDefaultsPronunciationVoice() throws {
+        let data = #"{"isEnabled":false,"translationLanguage":"japanese"}"#.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(SelectionActionsConfig.self, from: data)
+
+        XCTAssertFalse(config.isEnabled)
+        XCTAssertEqual(config.translationLanguage, .japanese)
+        XCTAssertEqual(config.pronunciationVoice, .alloy)
     }
 
     func testFollowInterfaceLanguageResolvesSupportedLanguages() {

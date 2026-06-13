@@ -28,11 +28,12 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 
 1. 从 Applications 文件夹打开 Inklet，或者在源码目录运行 `swift run Inklet`。
 2. 点击菜单栏里的 Inklet 图标，打开 Settings。
-3. 按 macOS 提示授予 Accessibility 权限。Inklet 需要这个权限来回到上一个应用并粘贴结果。系统设置打开期间 Inklet 会留在后台；关闭系统设置后 Inklet 会返回 provider 设置页。
-4. 选择一个 LLM provider，并填写它的 API key。
-5. 确认你想使用的模型和 prompt modes。
-6. 可选：在 Voice 设置里配置 speech API key、speech preset、语音快捷键和 cleanup mode。
-7. 第一次使用语音输入时，请授予 Microphone 权限。
+3. 按 macOS 提示授予 Accessibility 权限。Inklet 需要这个权限来回到上一个应用并粘贴结果。系统设置打开期间 Inklet 会留在后台；关闭系统设置后 Inklet 会返回 General 设置页。
+4. 在 General 中填写 OpenAI API key。Inklet 会用这一把 key 处理写作、语音转写、选区翻译和发音。
+5. 在 Write Assistant 中配置模型、写作快捷键、生成参数和 prompt modes。
+6. 可选：在 Voice Write Assistant 中配置 speech preset、语音快捷键和 cleanup mode。
+7. 可选：在 Selection Assistant 中配置翻译语言和 AI 发音声音，并在设置中试听该声音。
+8. 第一次使用语音输入时，请授予 Microphone 权限。
 
 ## 日常使用
 
@@ -59,14 +60,15 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 - 使用全局 macOS 快捷键打开。默认是 `Option+Space`。
 - 用单个 modifier key 轻按开始短语音输入。默认语音快捷键是 Right Option。
 - 选中文本并短暂停顿后显示选区动作，可快速翻译或使用 AI 发音。
+- 可直接播放选中文本，也可在翻译结果里分别播放原文和译文。
 - 内置文本处理模式：
   - To Simple and Correct English
   - To Chinese Summary
   - Voice Cleanup
 - 把生成结果插回之前聚焦的应用。
 - 插入后恢复你的剪贴板内容。
-- 可以编辑 prompt modes、模型、timeout、temperature、热键、语音快捷键、speech preset、speech endpoint 和 speech model。
-- 支持多个 LLM provider，包括 OpenAI、Anthropic、Google Gemini、DeepSeek、Qwen、Moonshot Kimi、Zhipu GLM、MiniMax、SiliconFlow、Volcengine Ark、Tencent Hunyuan、Baichuan、01.AI Yi、xAI、Groq、Mistral、OpenRouter、Perplexity、Together AI、Cerebras，以及自定义 OpenAI-compatible endpoint。
+- 可以编辑 prompt modes、OpenAI 模型、timeout、temperature、写作快捷键、语音快捷键、speech preset、speech endpoint、speech model、选区翻译语言和 AI 发音声音。
+- 使用一把共享的 OpenAI API key 处理写作、语音转写、选区翻译和发音。
 - 提供英文和中文应用界面。
 
 ## 当前状态
@@ -86,8 +88,7 @@ Inklet 是早期 MVP。当前仓库包含：
 - 推荐安装完整 Xcode，以获得 XCTest 支持。
 - Accessibility 权限，用于回到上一个应用并粘贴生成结果。
 - Microphone 权限，用于语音输入。
-- 至少一个已配置 LLM provider 的 API key。
-- 语音输入需要 speech transcription API key。
+- 一个 OpenAI API key。
 
 ## 从源码构建和运行
 
@@ -137,17 +138,16 @@ docs/                    手动测试说明和隐私政策
 
 ## 隐私
 
-- Inklet 使用你配置的 provider API key 调用所选 LLM provider。
-- 使用语音输入时，临时音频会发送到你配置的 speech transcription provider。
-- API keys 存储在你的 Mac 本地。
-- Speech API keys 存储在你的 Mac 本地。
+- Inklet 使用你配置的 OpenAI API key 调用 OpenAI，处理写作、语音转写、选区翻译和发音。
+- 使用语音输入时，临时音频会发送到 OpenAI 转写接口。
+- OpenAI API key 存储在你的 Mac 本地。
 - Inklet 使用 Accessibility 权限回到上一个应用并粘贴文本。
 - Inklet 只在录音语音输入时使用 Microphone 权限。
 - Inklet 会临时使用剪贴板完成插入，然后恢复之前的剪贴板内容。
 - 选区动作会在你选中其他 App 中的文字后，通过 Accessibility 读取当前选区。Inklet 不会为选区动作使用剪贴板 fallback，也不会保存选中文本。
-- 选区动作中的翻译会把选中文本发送到你配置的 LLM provider。AI 发音会把选中文本发送到 OpenAI 文本转语音。
+- Selection Assistant 的翻译和 AI 发音会把选中文本发送到 OpenAI。
 - Inklet 最多每天从 `models.dev` 获取一次公开模型目录。该请求不包含你的文本、音频、API keys 或应用设置。
-- 除非你信任某个 provider 的数据处理政策，否则不要向它发送私密文本或音频。
+- 除非你信任 OpenAI 的数据处理政策，否则不要发送私密文本或音频。
 
 ## 贡献
 

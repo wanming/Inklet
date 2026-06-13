@@ -90,9 +90,9 @@ final class InkletPopoverViewModel: ObservableObject {
     }
 
     private func refreshVoiceShortcutHint() {
-        let voiceAPIKey = apiKeyStore.loadAPIKey(forProviderID: config.voiceInput.speechProviderID)
+        let openAIAPIKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id)
         voiceShortcutHint = OnboardingPolicy.shouldShowVoiceShortcutHint(
-            voiceAPIKey: voiceAPIKey,
+            openAIAPIKey: openAIAPIKey,
             shortcut: config.voiceInput.shortcut
         ) ? config.voiceInput.shortcut : nil
     }

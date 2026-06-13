@@ -15,6 +15,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 @MainActor
+private enum SelectionPronunciationReturnState: Equatable {
+    case menu
+    case translationResult
+}
+
+@MainActor
 final class AppCoordinator: NSObject {
     private static let systemSettingsBundleIdentifier = "com.apple.systempreferences"
 
@@ -48,8 +54,13 @@ final class AppCoordinator: NSObject {
     private var selectionReadTask: Task<Void, Never>?
     private var selectionTranslationTask: Task<Void, Never>?
     private var selectionTTSTask: Task<Void, Never>?
+    private var selectionCopyFeedbackTask: Task<Void, Never>?
     private var currentSelectionText = ""
     private var currentTranslationText = ""
+    private var selectionPronunciationReturnState = SelectionPronunciationReturnState.menu
+    private var pendingSelectionSourceProcessIdentifier: pid_t?
+    private var pendingSelectionLocation: SelectionPoint?
+    private var panelDismissalPolicy = SelectionPanelDismissalPolicy()
     private lazy var voiceCoordinator = makeVoiceInputCoordinator()
 
     override init() {
@@ -87,10 +98,15 @@ final class AppCoordinator: NSObject {
                 self?.handleSelectionActionCandidate(at: point)
             }
         }
+        self.selectionActionMonitor.onCopyTrigger = { [weak self] point in
+            Task { @MainActor in
+                self?.handleSelectionActionCopyTrigger(at: point)
+            }
+        }
         self.selectionActionMonitor.onDismiss = { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
-                self.handleSelectionActionEffects(self.selectionActionCoordinator.handle(.dismiss))
+                self.handleSelectionDismissRequest()
             }
         }
         self.selectionActionWindowController.onTranslate = { [weak self] in
@@ -103,6 +119,16 @@ final class AppCoordinator: NSObject {
                 self?.pronounceCurrentSelection()
             }
         }
+        self.selectionActionWindowController.onPronounceOriginal = { [weak self] in
+            Task { @MainActor in
+                self?.pronounceOriginalFromTranslation()
+            }
+        }
+        self.selectionActionWindowController.onPronounceTranslation = { [weak self] in
+            Task { @MainActor in
+                self?.pronounceCurrentTranslation()
+            }
+        }
         self.selectionActionWindowController.onCopyTranslation = { [weak self] in
             self?.copyCurrentTranslation()
         }
@@ -113,7 +139,10 @@ final class AppCoordinator: NSObject {
         }
         self.selectionActionWindowController.onDismiss = { [weak self] in
             guard let self else { return }
-            self.handleSelectionActionEffects(self.selectionActionCoordinator.handle(.dismiss))
+            self.forceDismissSelectionActions()
+        }
+        self.speechPlaybackService.onFinish = { [weak self] in
+            self?.restoreSelectionPronunciationReturnState()
         }
     }
 
@@ -234,6 +263,7 @@ final class AppCoordinator: NSObject {
         selectionReadTask?.cancel()
         selectionTranslationTask?.cancel()
         selectionTTSTask?.cancel()
+        selectionCopyFeedbackTask?.cancel()
         speechPlaybackService.stop()
     }
 
@@ -324,7 +354,7 @@ final class AppCoordinator: NSObject {
         }
 
         rememberTargetApplication(application)
-        handleSelectionActionEffects(selectionActionCoordinator.handle(.dismiss))
+        handleSelectionDismissRequest()
         refreshVoiceShortcutAfterReturningFromSystemSettingsIfNeeded()
     }
 
@@ -398,7 +428,11 @@ final class AppCoordinator: NSObject {
     private func configureSelectionActions() {
         let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
         handleSelectionActionEffects(selectionActionCoordinator.handle(.updateConfig(config.selectionActions)))
-        if config.selectionActions.isEnabled, accessibilityPermissionService.isTrusted {
+        let isAccessibilityTrusted = accessibilityPermissionService.isTrusted
+        SelectionActionDiagnostics.log(
+            "configure enabled=\(config.selectionActions.isEnabled) accessibilityTrusted=\(isAccessibilityTrusted)"
+        )
+        if config.selectionActions.isEnabled, isAccessibilityTrusted {
             selectionActionMonitor.start()
         } else {
             selectionActionMonitor.stop()
@@ -413,41 +447,141 @@ final class AppCoordinator: NSObject {
         }
 
         let bundleID = sourceApp.bundleIdentifier ?? "pid-\(sourceApp.processIdentifier)"
+        pendingSelectionSourceProcessIdentifier = sourceApp.processIdentifier
+        pendingSelectionLocation = point
+        SelectionActionDiagnostics.log("candidate sourceApp=\(bundleID)")
         handleSelectionActionEffects(selectionActionCoordinator.handle(
             .candidateSelection(sourceAppBundleID: bundleID, mouseLocation: point)
         ))
+    }
+
+    private func handleSelectionActionCopyTrigger(at point: SelectionPoint) {
+        guard let sourceApp = NSWorkspace.shared.frontmostApplication,
+              sourceApp.processIdentifier != NSRunningApplication.current.processIdentifier
+        else {
+            return
+        }
+
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(120))
+            await MainActor.run {
+                guard let self else { return }
+                let text = NSPasteboard.general.string(forType: .string)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                guard !text.isEmpty else {
+                    SelectionActionDiagnostics.log("copy trigger empty clipboard")
+                    return
+                }
+
+                SelectionActionDiagnostics.log("copy trigger showPanel length=\(text.count)")
+                self.currentSelectionText = text
+                self.currentTranslationText = ""
+                self.selectionActionWindowController.showMenu(at: point)
+            }
+        }
     }
 
     private func handleSelectionActionEffects(_ effects: [SelectionActionEffect]) {
         for effect in effects {
             switch effect {
             case .scheduleRead(let delayMilliseconds):
+                SelectionActionDiagnostics.log("effect scheduleRead delayMs=\(delayMilliseconds)")
                 selectionReadTask?.cancel()
                 selectionReadTask = Task { [weak self] in
                     try? await Task.sleep(nanoseconds: UInt64(delayMilliseconds) * 1_000_000)
                     guard !Task.isCancelled else { return }
                     await MainActor.run {
                         guard let self else { return }
-                        let result = self.selectedTextReader.readSelectedText()
-                        self.handleSelectionActionEffects(self.selectionActionCoordinator.handle(.readCompleted(result)))
+                        let result = self.selectedTextReader.readSelectedText(
+                            sourceProcessIdentifier: self.pendingSelectionSourceProcessIdentifier,
+                            mouseLocation: self.pendingSelectionLocation
+                        )
+                        let fallbackResult = self.fallbackClipboardResultIfNeeded(after: result)
+                        SelectionActionDiagnostics.log("read result \(self.diagnosticSummary(for: fallbackResult))")
+                        self.handleSelectionActionEffects(self.selectionActionCoordinator.handle(.readCompleted(fallbackResult)))
                     }
                 }
             case .cancelRead:
+                SelectionActionDiagnostics.log("effect cancelRead")
                 selectionReadTask?.cancel()
                 selectionReadTask = nil
+                pendingSelectionSourceProcessIdentifier = nil
+                pendingSelectionLocation = nil
             case .hidePanel:
+                SelectionActionDiagnostics.log("effect hidePanel")
                 selectionActionWindowController.hidePanel()
             case .cancelWork:
+                SelectionActionDiagnostics.log("effect cancelWork")
                 selectionTranslationTask?.cancel()
                 selectionTTSTask?.cancel()
+                selectionCopyFeedbackTask?.cancel()
                 speechPlaybackService.stop()
             case .showPanel(let text, let location):
+                SelectionActionDiagnostics.log("effect showPanel length=\(text.count)")
+                panelDismissalPolicy.recordPanelShown(at: Date().timeIntervalSinceReferenceDate)
+                pendingSelectionSourceProcessIdentifier = nil
+                pendingSelectionLocation = nil
                 currentSelectionText = text
                 currentTranslationText = ""
+                selectionPronunciationReturnState = .menu
+                selectionCopyFeedbackTask?.cancel()
                 selectionActionWindowController.showMenu(at: location)
             case .showUnsupportedNotice:
+                SelectionActionDiagnostics.log("effect showUnsupportedNotice")
+                panelDismissalPolicy.recordPanelShown(at: Date().timeIntervalSinceReferenceDate)
                 showSelectionUnsupportedNotice()
             }
+        }
+    }
+
+    private func handleSelectionDismissRequest() {
+        guard panelDismissalPolicy.shouldDismiss(at: Date().timeIntervalSinceReferenceDate) else {
+            SelectionActionDiagnostics.log("panel dismiss suppressed during visibility grace")
+            return
+        }
+
+        forceDismissSelectionActions()
+    }
+
+    private func forceDismissSelectionActions() {
+        handleSelectionActionEffects(selectionActionCoordinator.handle(.dismiss))
+    }
+
+    private func diagnosticSummary(for result: SelectedTextReadResult) -> String {
+        switch result {
+        case .success(let text):
+            "success length=\(text.count)"
+        case .permissionDenied:
+            "permissionDenied"
+        case .emptySelection:
+            "emptySelection"
+        case .unsupported:
+            "unsupported"
+        case .missingFocusedElement:
+            "missingFocusedElement"
+        case .failed(let message):
+            "failed \(message)"
+        }
+    }
+
+    private func fallbackClipboardResultIfNeeded(after result: SelectedTextReadResult) -> SelectedTextReadResult {
+        switch result {
+        case .success:
+            return result
+        case .unsupported, .missingFocusedElement, .failed, .emptySelection:
+            switch SelectionClipboardReader.readSelectedText() {
+            case .success(let text):
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else {
+                    return result
+                }
+                SelectionActionDiagnostics.log("clipboard fallback success length=\(trimmed.count)")
+                return .success(trimmed)
+            case .failure:
+                return result
+            }
+        case .permissionDenied:
+            return result
         }
     }
 
@@ -506,12 +640,43 @@ final class AppCoordinator: NSObject {
     }
 
     private func pronounceCurrentSelection() {
-        let sourceText = currentSelectionText
-        guard !sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return
-        }
+        pronounceSelectionText(currentSelectionText, returnState: .menu)
+    }
 
+    private func pronounceOriginalFromTranslation() {
+        pronounceSelectionText(
+            currentSelectionText,
+            returnState: .translationResult,
+            loadingFeedback: .loadingOriginalPronunciation,
+            playingFeedback: .playingOriginalPronunciation
+        )
+    }
+
+    private func pronounceCurrentTranslation() {
+        pronounceSelectionText(
+            currentTranslationText,
+            returnState: .translationResult,
+            loadingFeedback: .loadingTranslationPronunciation,
+            playingFeedback: .playingTranslationPronunciation
+        )
+    }
+
+    private func pronounceSelectionText(
+        _ text: String,
+        returnState: SelectionPronunciationReturnState,
+        loadingFeedback: SelectionActionFeedback? = nil,
+        playingFeedback: SelectionActionFeedback? = nil
+    ) {
+        let sourceText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sourceText.isEmpty else { return }
+
+        selectionPronunciationReturnState = returnState
         selectionTTSTask?.cancel()
+        if returnState == .translationResult, !currentTranslationText.isEmpty {
+            selectionActionWindowController.showTranslation(currentTranslationText, feedback: loadingFeedback)
+        } else {
+            selectionActionWindowController.showPreparingPronunciation()
+        }
         selectionTTSTask = Task { [weak self] in
             do {
                 guard let self else { return }
@@ -526,24 +691,56 @@ final class AppCoordinator: NSObject {
                 let config = (try? self.configStore.load()) ?? AppConfig.defaultConfig()
                 let audioData = try await provider.speechAudio(OpenAITTSRequest(
                     input: sourceText,
+                    voice: config.selectionActions.pronunciationVoice.rawValue,
                     timeoutSeconds: config.timeoutSeconds
                 ))
                 await MainActor.run {
                     do {
                         try self.speechPlaybackService.play(audioData: audioData)
+                        if returnState == .menu {
+                            self.selectionActionWindowController.showPlayingPronunciation()
+                        } else if !self.currentTranslationText.isEmpty {
+                            self.selectionActionWindowController.showTranslation(
+                                self.currentTranslationText,
+                                feedback: playingFeedback
+                            )
+                        }
                     } catch {
-                        self.selectionActionWindowController.showPronunciationError(
-                            L10n.text("selection.action.pronunciationFailed")
-                        )
+                        self.showSelectionPronunciationError(returnState: returnState)
                     }
                 }
             } catch is CancellationError {
             } catch {
                 await MainActor.run {
-                    self?.selectionActionWindowController.showPronunciationError(
-                        L10n.text("selection.action.pronunciationFailed")
-                    )
+                    self?.showSelectionPronunciationError(returnState: returnState)
                 }
+            }
+        }
+    }
+
+    private func restoreSelectionPronunciationReturnState() {
+        switch selectionPronunciationReturnState {
+        case .menu:
+            selectionActionWindowController.restoreMenu()
+        case .translationResult:
+            if currentTranslationText.isEmpty {
+                selectionActionWindowController.restoreMenu()
+            } else {
+                selectionActionWindowController.showTranslation(currentTranslationText)
+            }
+        }
+    }
+
+    private func showSelectionPronunciationError(returnState: SelectionPronunciationReturnState) {
+        let message = L10n.text("selection.action.pronunciationFailed")
+        switch returnState {
+        case .menu:
+            selectionActionWindowController.showPronunciationError(message)
+        case .translationResult:
+            if currentTranslationText.isEmpty {
+                selectionActionWindowController.showPronunciationError(message)
+            } else {
+                selectionActionWindowController.showTranslation(currentTranslationText, errorMessage: message)
             }
         }
     }
@@ -555,6 +752,15 @@ final class AppCoordinator: NSObject {
 
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(currentTranslationText, forType: .string)
+        selectionCopyFeedbackTask?.cancel()
+        selectionActionWindowController.showTranslation(currentTranslationText, feedback: .copiedTranslation)
+        selectionCopyFeedbackTask = Task { [weak self, copiedText = currentTranslationText] in
+            try? await Task.sleep(for: .milliseconds(900))
+            await MainActor.run {
+                guard let self, self.currentTranslationText == copiedText else { return }
+                self.selectionActionWindowController.showTranslation(self.currentTranslationText)
+            }
+        }
     }
 
     private func makeVoiceInputCoordinator() -> VoiceInputCoordinator {
@@ -590,7 +796,7 @@ final class AppCoordinator: NSObject {
                 }
                 let provider = OpenAISpeechTranscriptionProvider(
                     apiKeyProvider: { [apiKeyStore] in
-                        guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID),
+                        guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id),
                               !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         else {
                             throw SpeechTranscriptionError.provider(L10n.text("voice.error.missingSpeechAPIKey"))
@@ -658,7 +864,7 @@ final class AppCoordinator: NSObject {
             return
         }
 
-        showSettings(section: .permissions)
+        showSettings(section: .general)
     }
 
     private func configureStatusItemIcon() {
@@ -742,17 +948,17 @@ final class AppCoordinator: NSObject {
     }
 
     @objc func openPopover() {
-        handleSelectionActionEffects(selectionActionCoordinator.handle(.dismiss))
+        forceDismissSelectionActions()
         windowController.show(fallbackApplication: lastTargetApplication)
     }
 
     @objc func openSettings() {
-        handleSelectionActionEffects(selectionActionCoordinator.handle(.dismiss))
+        forceDismissSelectionActions()
         showSettings(section: .general)
     }
 
     @objc func openAbout() {
-        handleSelectionActionEffects(selectionActionCoordinator.handle(.dismiss))
+        forceDismissSelectionActions()
         aboutController.show()
     }
 

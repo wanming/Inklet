@@ -163,12 +163,11 @@ final class SettingsWindowController: NSWindowController {
             return
         }
 
-        let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
-        let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: config.providerID)
+        let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id)
         guard !OnboardingPolicy.shouldShowProviderSetupAfterReturningFromPermissionSettings(
             providerAPIKey: providerAPIKey
         ) else {
-            show(section: .providers)
+            show(section: .general)
             return
         }
 
@@ -204,8 +203,7 @@ final class SettingsWindowController: NSWindowController {
     }
 
     private func openPopoverAfterCompletingOnboardingIfNeeded() {
-        let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
-        let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: config.providerID)
+        let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id)
         guard OnboardingPolicy.shouldOpenPopoverAfterClosingSettings(
             didOpenAccessibilitySettings: didOpenAccessibilitySettings,
             isAccessibilityTrusted: AccessibilityPermissionService().isTrusted,

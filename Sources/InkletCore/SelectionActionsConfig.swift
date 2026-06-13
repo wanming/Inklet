@@ -3,17 +3,78 @@ import Foundation
 public struct SelectionActionsConfig: Codable, Equatable, Sendable {
     public var isEnabled: Bool
     public var translationLanguage: SelectionTranslationLanguage
+    public var pronunciationVoice: SelectionPronunciationVoice
 
     public init(
         isEnabled: Bool = true,
-        translationLanguage: SelectionTranslationLanguage = .followInterfaceLanguage
+        translationLanguage: SelectionTranslationLanguage = .followInterfaceLanguage,
+        pronunciationVoice: SelectionPronunciationVoice = .alloy
     ) {
         self.isEnabled = isEnabled
         self.translationLanguage = translationLanguage
+        self.pronunciationVoice = pronunciationVoice
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case isEnabled
+        case translationLanguage
+        case pronunciationVoice
+    }
+
+    public init(from decoder: Decoder) throws {
+        let defaults = Self.defaultConfig()
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? defaults.isEnabled
+        translationLanguage = try container.decodeIfPresent(
+            SelectionTranslationLanguage.self,
+            forKey: .translationLanguage
+        ) ?? defaults.translationLanguage
+        pronunciationVoice = try container.decodeIfPresent(
+            SelectionPronunciationVoice.self,
+            forKey: .pronunciationVoice
+        ) ?? defaults.pronunciationVoice
     }
 
     public static func defaultConfig() -> SelectionActionsConfig {
         SelectionActionsConfig()
+    }
+}
+
+public enum SelectionPronunciationVoice: String, Codable, CaseIterable, Equatable, Identifiable, Sendable {
+    case alloy
+    case ash
+    case ballad
+    case coral
+    case echo
+    case fable
+    case nova
+    case onyx
+    case sage
+    case shimmer
+    case verse
+    case marin
+    case cedar
+
+    public var id: String { rawValue }
+
+    public var displayName: String {
+        rawValue.capitalized
+    }
+
+    public static func previewText(interfaceLanguageCode: String) -> String {
+        let normalized = interfaceLanguageCode.lowercased()
+        if normalized.hasPrefix("zh-hant") || normalized.hasPrefix("zh-tw") || normalized.hasPrefix("zh-hk") {
+            return "這是 Inklet。"
+        }
+        if normalized.hasPrefix("zh") { return "这是 Inklet。" }
+        if normalized.hasPrefix("ja") { return "Inklet です。" }
+        if normalized.hasPrefix("ko") { return "Inklet입니다." }
+        if normalized.hasPrefix("es") { return "Esto es Inklet." }
+        if normalized.hasPrefix("fr") { return "Voici Inklet." }
+        if normalized.hasPrefix("de") { return "Das ist Inklet." }
+        if normalized.hasPrefix("pt") { return "Este e o Inklet." }
+        if normalized.hasPrefix("it") { return "Questo e Inklet." }
+        return "This is Inklet."
     }
 }
 

@@ -28,11 +28,12 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 
 1. Open Inklet from your Applications folder, or start it from source with `swift run Inklet`.
 2. Click the Inklet menu bar icon and open Settings.
-3. Grant Accessibility permission when macOS asks. Inklet needs this to return focus to the previous app and paste the result. Inklet stays in the background while System Settings is open and returns to provider setup when you close it.
-4. Choose an LLM provider and enter its API key.
-5. Confirm the model and prompt modes you want to use.
-6. Optional: configure Voice settings with a speech API key, speech preset, voice shortcut, and cleanup mode.
-7. Grant Microphone permission the first time you use voice dictation.
+3. Grant Accessibility permission when macOS asks. Inklet needs this to return focus to the previous app and paste the result. Inklet stays in the background while System Settings is open and returns to General settings when you close it.
+4. Enter your OpenAI API key in General. Inklet uses this one key for writing, voice transcription, selection translation, and pronunciation.
+5. Configure Write Assistant with the model, writing shortcut, generation settings, and prompt modes you want to use.
+6. Optional: configure Voice Write Assistant with a speech preset, voice shortcut, and cleanup mode.
+7. Optional: configure Selection Assistant with a translation language and AI pronunciation voice, then preview the voice in Settings.
+8. Grant Microphone permission the first time you use voice dictation.
 
 ## Everyday Use
 
@@ -59,14 +60,15 @@ The default voice shortcut is Right Option. You can change it to Right Command, 
 - Opens from a global macOS hotkey. The default is `Option+Space`.
 - Starts short voice dictation from a single modifier-key tap. The default voice shortcut is Right Option.
 - Shows Selection Actions after you select text in another Mac app and pause briefly, with quick translation and AI pronunciation.
+- Plays selected text directly, and can play both the original text and translated text from the translation result.
 - Transforms text with built-in prompt modes:
   - To Simple and Correct English
   - To Chinese Summary
   - Voice Cleanup
 - Inserts generated text back into the previously focused app.
 - Restores your clipboard after insertion.
-- Lets you edit prompt modes, model, timeout, temperature, hotkey, voice shortcut, speech preset, speech endpoint, and speech model.
-- Supports multiple LLM providers, including OpenAI, Anthropic, Google Gemini, DeepSeek, Qwen, Moonshot Kimi, Zhipu GLM, MiniMax, SiliconFlow, Volcengine Ark, Tencent Hunyuan, Baichuan, 01.AI Yi, xAI, Groq, Mistral, OpenRouter, Perplexity, Together AI, Cerebras, and custom OpenAI-compatible endpoints.
+- Lets you edit prompt modes, OpenAI model, timeout, temperature, writing shortcut, voice shortcut, speech preset, speech endpoint, speech model, selection translation language, and AI pronunciation voice.
+- Uses one shared OpenAI API key for writing, voice transcription, selection translation, and pronunciation.
 - Provides English and Chinese app UI localization.
 
 ## Current Status
@@ -86,8 +88,7 @@ Inklet is an early MVP. The repository currently includes:
 - Full Xcode is recommended for XCTest support.
 - Accessibility permission for Inklet, required for returning focus to the previous app and pasting the generated result.
 - Microphone permission for voice dictation.
-- An API key for at least one configured LLM provider.
-- A speech transcription API key for voice dictation.
+- An OpenAI API key.
 
 ## Build And Run
 
@@ -137,17 +138,16 @@ docs/                           manual QA and privacy policy
 
 ## Privacy
 
-- Inklet uses your configured provider API key to call the selected LLM provider.
-- Voice dictation sends temporary audio to the configured speech transcription provider.
-- API keys are stored locally on your Mac.
-- Speech API keys are stored locally on your Mac.
+- Inklet uses your configured OpenAI API key to call OpenAI for writing, voice transcription, selection translation, and pronunciation.
+- Voice dictation sends temporary audio to OpenAI transcription.
+- Your OpenAI API key is stored locally on your Mac.
 - Inklet uses Accessibility permission to return focus to the previous app and paste text.
 - Inklet uses Microphone permission only while recording voice dictation.
 - Inklet temporarily uses the clipboard for insertion and then restores the previous clipboard contents.
 - Selection Actions use Accessibility to read the current selection after you select text in another app. Inklet does not use the clipboard as a fallback for Selection Actions and does not save selected text.
-- Selection Actions translation sends selected text to your configured LLM provider. AI pronunciation sends selected text to OpenAI text-to-speech.
+- Selection Assistant translation and AI pronunciation send selected text to OpenAI.
 - Inklet fetches the public model catalog from `models.dev` at most once per day. This request does not include your text, audio, API keys, or app settings.
-- Do not send private text or audio to a provider unless you trust that provider's data handling policies.
+- Do not send private text or audio to OpenAI unless you trust OpenAI's data handling policies.
 
 ## Contributing
 

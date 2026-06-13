@@ -60,12 +60,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
     }
 
     public var resolvedProviderPreset: LLMProviderPreset {
-        var preset = LLMProviderPreset.preset(id: providerID)
-        if providerID == LLMProviderPreset.customOpenAICompatible.id,
-           let endpoint = URL(string: customOpenAICompatibleEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)) {
-            preset.endpoint = endpoint
-        }
-        return preset
+        LLMProviderPreset.openAI
     }
 
     public var promptModeStore: PromptModeStore {
@@ -108,8 +103,13 @@ public struct AppConfig: Codable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         version = try container.decodeIfPresent(Int.self, forKey: .version) ?? defaults.version
-        providerID = try container.decodeIfPresent(String.self, forKey: .providerID) ?? defaults.providerID
-        model = try container.decodeIfPresent(String.self, forKey: .model) ?? defaults.model
+        let decodedProviderID = try container.decodeIfPresent(String.self, forKey: .providerID) ?? defaults.providerID
+        providerID = LLMProviderPreset.openAI.id
+        if decodedProviderID == LLMProviderPreset.openAI.id {
+            model = try container.decodeIfPresent(String.self, forKey: .model) ?? defaults.model
+        } else {
+            model = defaults.model
+        }
         temperature = try container.decodeIfPresent(Double.self, forKey: .temperature) ?? defaults.temperature
         timeoutSeconds = try container.decodeIfPresent(Double.self, forKey: .timeoutSeconds) ?? defaults.timeoutSeconds
         hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey) ?? defaults.hotkey

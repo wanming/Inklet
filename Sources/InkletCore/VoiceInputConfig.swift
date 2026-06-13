@@ -1,7 +1,7 @@
 import Foundation
 
 public struct VoiceInputConfig: Codable, Equatable, Sendable {
-    public static let openAISpeechProviderID = "openai-speech"
+    public static let openAISpeechProviderID = LLMProviderPreset.openAI.id
     public static let defaultSpeechEndpoint = "https://api.openai.com/v1/audio/transcriptions"
     public static let defaultSpeechModel = "gpt-4o-mini-transcribe"
 

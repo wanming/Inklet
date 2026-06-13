@@ -51,15 +51,10 @@ final class SelectionActionCoordinatorTests: XCTestCase {
         XCTAssertEqual(actions, [])
     }
 
-    func testUnsupportedShowsNoticeOnlyOncePerApp() {
+    func testUnsupportedReadIsIgnoredForPassiveSelection() {
         var coordinator = SelectionActionCoordinator(config: .defaultConfig())
         _ = coordinator.handle(.candidateSelection(sourceAppBundleID: "com.apple.TextEdit", mouseLocation: .zero))
-        XCTAssertEqual(
-            coordinator.handle(.readCompleted(.unsupported)),
-            [.showUnsupportedNotice(appBundleID: "com.apple.TextEdit")]
-        )
 
-        _ = coordinator.handle(.candidateSelection(sourceAppBundleID: "com.apple.TextEdit", mouseLocation: .zero))
         XCTAssertEqual(coordinator.handle(.readCompleted(.unsupported)), [])
     }
 

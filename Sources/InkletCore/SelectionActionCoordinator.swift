@@ -56,7 +56,7 @@ public struct SelectionActionCoordinator: Sendable {
             return [.scheduleRead(delayMilliseconds: 600)]
 
         case .readCompleted(let result):
-            guard config.isEnabled, let appBundleID = pendingAppBundleID else {
+            guard config.isEnabled, pendingAppBundleID != nil else {
                 return []
             }
             pendingAppBundleID = nil
@@ -69,10 +69,7 @@ public struct SelectionActionCoordinator: Sendable {
                 lastShownText = text
                 return [.showPanel(text: text, location: pendingLocation)]
             case .unsupported, .missingFocusedElement, .failed:
-                guard unsupportedNoticeAppIDs.insert(appBundleID).inserted else {
-                    return []
-                }
-                return [.showUnsupportedNotice(appBundleID: appBundleID)]
+                return []
             case .permissionDenied, .emptySelection:
                 return []
             }
