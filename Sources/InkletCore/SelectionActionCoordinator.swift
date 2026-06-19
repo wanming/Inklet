@@ -38,7 +38,7 @@ public struct SelectionActionCoordinator: Sendable {
 
     public init(
         config: SelectionActionsConfig,
-        maxSelectionLength: Int = 4_000
+        maxSelectionLength: Int = 1_500
     ) {
         self.config = config
         self.maxSelectionLength = maxSelectionLength

@@ -66,4 +66,24 @@ final class SelectionActionCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(actions, [])
     }
+
+    func testDefaultSelectionLengthLimitAllowsFifteenHundredCharacters() {
+        let text = String(repeating: "a", count: 1_500)
+        var coordinator = SelectionActionCoordinator(config: .defaultConfig())
+        _ = coordinator.handle(.candidateSelection(sourceAppBundleID: "com.apple.TextEdit", mouseLocation: .zero))
+
+        let actions = coordinator.handle(.readCompleted(.success(text)))
+
+        XCTAssertEqual(actions, [.showPanel(text: text, location: .zero)])
+    }
+
+    func testDefaultSelectionLengthLimitIgnoresMoreThanFifteenHundredCharacters() {
+        let text = String(repeating: "a", count: 1_501)
+        var coordinator = SelectionActionCoordinator(config: .defaultConfig())
+        _ = coordinator.handle(.candidateSelection(sourceAppBundleID: "com.apple.TextEdit", mouseLocation: .zero))
+
+        let actions = coordinator.handle(.readCompleted(.success(text)))
+
+        XCTAssertEqual(actions, [])
+    }
 }

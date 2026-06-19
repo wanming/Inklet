@@ -60,6 +60,7 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 - 使用全局 macOS 快捷键打开。默认是 `Option+Space`。
 - 用单个 modifier key 轻按开始短语音输入。默认语音快捷键是 Right Option。
 - 选中文本并短暂停顿后显示选区动作，可快速翻译或使用 AI 发音。
+- 超过 1,500 个字符的选中文本会被忽略，避免误选整页时触发。
 - 可直接播放选中文本，也可在翻译结果里分别播放原文和译文。
 - 内置文本处理模式：
   - To Simple and Correct English

@@ -60,6 +60,7 @@ The default voice shortcut is Right Option. You can change it to Right Command, 
 - Opens from a global macOS hotkey. The default is `Option+Space`.
 - Starts short voice dictation from a single modifier-key tap. The default voice shortcut is Right Option.
 - Shows Selection Actions after you select text in another Mac app and pause briefly, with quick translation and AI pronunciation.
+- Ignores selected text longer than 1,500 characters to avoid accidental long-page triggers.
 - Plays selected text directly, and can play both the original text and translated text from the translation result.
 - Transforms text with built-in prompt modes:
   - To Simple and Correct English
