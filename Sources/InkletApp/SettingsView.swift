@@ -952,10 +952,10 @@ struct SettingsView: View {
                                 .controlSize(.small)
                                 .frame(width: 18, height: 18)
                         case .playing(let voice) where voice == model.config.selectionActions.pronunciationVoice:
-                            Image(systemName: "speaker.wave.3.fill")
+                            SpeakerWaveIcon(state: .playing, fontSize: 13, weight: .regular)
                                 .frame(width: 18, height: 18)
                         default:
-                            Image(systemName: "speaker.wave.2")
+                            SpeakerWaveIcon(state: .idle, fontSize: 13, weight: .regular)
                                 .frame(width: 18, height: 18)
                         }
                     }

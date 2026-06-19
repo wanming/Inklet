@@ -172,13 +172,21 @@ final class SelectionActionWindowController: NSWindowController {
         }
 
         var frame = window.frame
-        frame.origin = NSPoint(x: point.x + 8, y: point.y - frame.height - 8)
 
         if let screen = NSScreen.screens.first(where: { $0.visibleFrame.contains(NSPoint(x: point.x, y: point.y)) })
             ?? NSScreen.main {
             let visibleFrame = screen.visibleFrame
-            frame.origin.x = min(max(frame.origin.x, visibleFrame.minX + 8), visibleFrame.maxX - frame.width - 8)
-            frame.origin.y = min(max(frame.origin.y, visibleFrame.minY + 8), visibleFrame.maxY - frame.height - 8)
+            let origin = SelectionPanelPlacement.origin(
+                forPanelSize: SelectionPanelSize(width: frame.width, height: frame.height),
+                near: point,
+                in: SelectionScreenFrame(
+                    x: visibleFrame.minX,
+                    y: visibleFrame.minY,
+                    width: visibleFrame.width,
+                    height: visibleFrame.height
+                )
+            )
+            frame.origin = NSPoint(x: origin.x, y: origin.y)
         }
 
         window.setFrame(frame, display: true)

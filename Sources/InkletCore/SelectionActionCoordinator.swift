@@ -53,7 +53,7 @@ public struct SelectionActionCoordinator: Sendable {
             }
             pendingAppBundleID = sourceAppBundleID
             pendingLocation = mouseLocation
-            return [.scheduleRead(delayMilliseconds: 600)]
+            return [.scheduleRead(delayMilliseconds: 120)]
 
         case .readCompleted(let result):
             guard config.isEnabled, pendingAppBundleID != nil else {

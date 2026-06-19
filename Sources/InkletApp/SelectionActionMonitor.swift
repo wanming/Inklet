@@ -2,10 +2,26 @@ import AppKit
 import InkletCore
 
 @MainActor
+enum SelectionActionDismissReason {
+    case keyboard
+    case mouseClick
+    case pointerEvent(NSEvent.EventType)
+
+    var bypassesPanelGrace: Bool {
+        switch self {
+        case .keyboard:
+            return false
+        case .mouseClick, .pointerEvent:
+            return true
+        }
+    }
+}
+
+@MainActor
 final class SelectionActionMonitor {
     var onCandidateSelection: ((SelectionPoint) -> Void)?
     var onCopyTrigger: ((SelectionPoint) -> Void)?
-    var onDismiss: (() -> Void)?
+    var onDismiss: ((SelectionActionDismissReason) -> Void)?
 
     private var monitors: [Any] = []
     private var dismissalPolicy = SelectionDismissalPolicy()
@@ -22,8 +38,17 @@ final class SelectionActionMonitor {
             Task { @MainActor in
                 guard let self else { return }
                 let point = SelectionPoint(x: NSEvent.mouseLocation.x, y: NSEvent.mouseLocation.y)
-                guard event.type != .leftMouseUp || self.dragPolicy.consumeMouseUp(at: point) else {
-                    return
+                if event.type == .leftMouseUp {
+                    switch self.dragPolicy.consumeMouseUpAction(at: point) {
+                    case .candidateSelection:
+                        break
+                    case .dismiss:
+                        SelectionActionDiagnostics.log("dismiss from mouse click")
+                        self.onDismiss?(.mouseClick)
+                        return
+                    case .ignore:
+                        return
+                    }
                 }
 
                 SelectionActionDiagnostics.log("candidate mouse selection")
@@ -58,7 +83,8 @@ final class SelectionActionMonitor {
                     SelectionActionDiagnostics.log("dismiss suppressed during selection grace")
                     return
                 }
-                self.onDismiss?()
+                SelectionActionDiagnostics.log("dismiss from keyDown")
+                self.onDismiss?(.keyboard)
             }
         } as Any)
 
@@ -67,12 +93,15 @@ final class SelectionActionMonitor {
                 guard let self else { return }
                 if event.type == .leftMouseDown {
                     self.dragPolicy.recordMouseDown(at: SelectionPoint(x: NSEvent.mouseLocation.x, y: NSEvent.mouseLocation.y))
+                    SelectionActionDiagnostics.log("mouse down recorded for selection drag")
+                    return
                 }
                 guard self.dismissalPolicy.shouldDismiss(at: Date().timeIntervalSinceReferenceDate) else {
                     SelectionActionDiagnostics.log("dismiss suppressed during selection grace")
                     return
                 }
-                self.onDismiss?()
+                SelectionActionDiagnostics.log("dismiss from \(event.type)")
+                self.onDismiss?(.pointerEvent(event.type))
             }
         } as Any)
     }
@@ -80,6 +109,10 @@ final class SelectionActionMonitor {
     func stop() {
         monitors.forEach { NSEvent.removeMonitor($0) }
         monitors.removeAll()
+    }
+
+    func recordPanelShown() {
+        dismissalPolicy.recordPanelShown()
     }
 
     private func isCopyShortcut(_ event: NSEvent) -> Bool {

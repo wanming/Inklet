@@ -7,7 +7,7 @@ final class SelectionActionCoordinatorTests: XCTestCase {
 
         let actions = coordinator.handle(.candidateSelection(sourceAppBundleID: "com.apple.TextEdit", mouseLocation: .zero))
 
-        XCTAssertEqual(actions, [.scheduleRead(delayMilliseconds: 600)])
+        XCTAssertEqual(actions, [.scheduleRead(delayMilliseconds: 120)])
     }
 
     func testDisabledConfigIgnoresCandidateEvents() {

@@ -4,7 +4,7 @@ public struct SelectionPanelDismissalPolicy: Equatable, Sendable {
     private let graceInterval: TimeInterval
     private var visibleUntil: TimeInterval?
 
-    public init(graceInterval: TimeInterval = 3) {
+    public init(graceInterval: TimeInterval = 0.25) {
         self.graceInterval = graceInterval
     }
 
@@ -12,7 +12,11 @@ public struct SelectionPanelDismissalPolicy: Equatable, Sendable {
         visibleUntil = time + graceInterval
     }
 
-    public func shouldDismiss(at time: TimeInterval) -> Bool {
+    public func shouldDismiss(at time: TimeInterval, bypassingGrace: Bool = false) -> Bool {
+        if bypassingGrace {
+            return true
+        }
+
         guard let visibleUntil else {
             return true
         }

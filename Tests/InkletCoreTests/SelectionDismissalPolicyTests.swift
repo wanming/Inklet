@@ -21,4 +21,12 @@ final class SelectionDismissalPolicyTests: XCTestCase {
 
         XCTAssertTrue(policy.shouldDismiss(at: 10.91))
     }
+
+    func testDismissalIsAllowedAfterPanelIsShownDuringCandidateGraceInterval() {
+        var policy = SelectionDismissalPolicy(candidateGraceInterval: 0.9)
+        policy.recordCandidate(at: 10)
+        policy.recordPanelShown()
+
+        XCTAssertTrue(policy.shouldDismiss(at: 10.2))
+    }
 }

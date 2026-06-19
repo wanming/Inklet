@@ -103,10 +103,13 @@ final class AppCoordinator: NSObject {
                 self?.handleSelectionActionCopyTrigger(at: point)
             }
         }
-        self.selectionActionMonitor.onDismiss = { [weak self] in
+        self.selectionActionMonitor.onDismiss = { [weak self] reason in
             Task { @MainActor in
                 guard let self else { return }
-                self.handleSelectionDismissRequest()
+                self.handleSelectionDismissRequest(
+                    reason: String(describing: reason),
+                    bypassingPanelGrace: reason.bypassesPanelGrace
+                )
             }
         }
         self.selectionActionWindowController.onTranslate = { [weak self] in
@@ -139,7 +142,7 @@ final class AppCoordinator: NSObject {
         }
         self.selectionActionWindowController.onDismiss = { [weak self] in
             guard let self else { return }
-            self.forceDismissSelectionActions()
+            self.forceDismissSelectionActions(reason: "selectionPanelEscape")
         }
         self.speechPlaybackService.onFinish = { [weak self] in
             self?.restoreSelectionPronunciationReturnState()
@@ -354,7 +357,17 @@ final class AppCoordinator: NSObject {
         }
 
         rememberTargetApplication(application)
-        handleSelectionDismissRequest()
+        if SelectionActivationDismissalPolicy.shouldDismiss(
+            activatedProcessIdentifier: application?.processIdentifier,
+            currentProcessIdentifier: NSRunningApplication.current.processIdentifier
+        ) {
+            SelectionActionDiagnostics.log(
+                "activated external app dismiss pid=\(application?.processIdentifier ?? -1)"
+            )
+            handleSelectionDismissRequest(reason: "externalActivation", bypassingPanelGrace: true)
+        } else {
+            SelectionActionDiagnostics.log("activated current app ignored for selection dismiss")
+        }
         refreshVoiceShortcutAfterReturningFromSystemSettingsIfNeeded()
     }
 
@@ -474,6 +487,7 @@ final class AppCoordinator: NSObject {
                 }
 
                 SelectionActionDiagnostics.log("copy trigger showPanel length=\(text.count)")
+                self.selectionActionMonitor.recordPanelShown()
                 self.currentSelectionText = text
                 self.currentTranslationText = ""
                 self.selectionActionWindowController.showMenu(at: point)
@@ -519,6 +533,7 @@ final class AppCoordinator: NSObject {
             case .showPanel(let text, let location):
                 SelectionActionDiagnostics.log("effect showPanel length=\(text.count)")
                 panelDismissalPolicy.recordPanelShown(at: Date().timeIntervalSinceReferenceDate)
+                selectionActionMonitor.recordPanelShown()
                 pendingSelectionSourceProcessIdentifier = nil
                 pendingSelectionLocation = nil
                 currentSelectionText = text
@@ -529,21 +544,26 @@ final class AppCoordinator: NSObject {
             case .showUnsupportedNotice:
                 SelectionActionDiagnostics.log("effect showUnsupportedNotice")
                 panelDismissalPolicy.recordPanelShown(at: Date().timeIntervalSinceReferenceDate)
+                selectionActionMonitor.recordPanelShown()
                 showSelectionUnsupportedNotice()
             }
         }
     }
 
-    private func handleSelectionDismissRequest() {
-        guard panelDismissalPolicy.shouldDismiss(at: Date().timeIntervalSinceReferenceDate) else {
-            SelectionActionDiagnostics.log("panel dismiss suppressed during visibility grace")
+    private func handleSelectionDismissRequest(reason: String = "unknown", bypassingPanelGrace: Bool = false) {
+        guard panelDismissalPolicy.shouldDismiss(
+            at: Date().timeIntervalSinceReferenceDate,
+            bypassingGrace: bypassingPanelGrace
+        ) else {
+            SelectionActionDiagnostics.log("panel dismiss suppressed during visibility grace reason=\(reason)")
             return
         }
 
-        forceDismissSelectionActions()
+        forceDismissSelectionActions(reason: reason)
     }
 
-    private func forceDismissSelectionActions() {
+    private func forceDismissSelectionActions(reason: String = "force") {
+        SelectionActionDiagnostics.log("force dismiss selection actions reason=\(reason)")
         handleSelectionActionEffects(selectionActionCoordinator.handle(.dismiss))
     }
 
@@ -948,17 +968,17 @@ final class AppCoordinator: NSObject {
     }
 
     @objc func openPopover() {
-        forceDismissSelectionActions()
+        forceDismissSelectionActions(reason: "openPopover")
         windowController.show(fallbackApplication: lastTargetApplication)
     }
 
     @objc func openSettings() {
-        forceDismissSelectionActions()
+        forceDismissSelectionActions(reason: "openSettings")
         showSettings(section: .general)
     }
 
     @objc func openAbout() {
-        forceDismissSelectionActions()
+        forceDismissSelectionActions(reason: "openAbout")
         aboutController.show()
     }
 

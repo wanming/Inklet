@@ -1,5 +1,11 @@
 import Foundation
 
+public enum SelectionMouseUpAction: Equatable, Sendable {
+    case candidateSelection
+    case dismiss
+    case ignore
+}
+
 public struct SelectionDragPolicy: Equatable, Sendable {
     private let minimumDistance: Double
     private var startPoint: SelectionPoint?
@@ -13,16 +19,20 @@ public struct SelectionDragPolicy: Equatable, Sendable {
     }
 
     public mutating func consumeMouseUp(at point: SelectionPoint) -> Bool {
+        consumeMouseUpAction(at: point) == .candidateSelection
+    }
+
+    public mutating func consumeMouseUpAction(at point: SelectionPoint) -> SelectionMouseUpAction {
         defer {
             startPoint = nil
         }
 
         guard let startPoint else {
-            return false
+            return .ignore
         }
 
         let dx = point.x - startPoint.x
         let dy = point.y - startPoint.y
-        return (dx * dx + dy * dy).squareRoot() >= minimumDistance
+        return (dx * dx + dy * dy).squareRoot() >= minimumDistance ? .candidateSelection : .dismiss
     }
 }

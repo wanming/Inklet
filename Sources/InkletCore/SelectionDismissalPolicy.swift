@@ -12,6 +12,10 @@ public struct SelectionDismissalPolicy: Equatable, Sendable {
         lastCandidateTime = time
     }
 
+    public mutating func recordPanelShown() {
+        lastCandidateTime = nil
+    }
+
     public func shouldDismiss(at time: TimeInterval) -> Bool {
         guard let lastCandidateTime else {
             return true
