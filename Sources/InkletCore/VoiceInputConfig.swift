@@ -61,6 +61,7 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
     public var speechProviderID: String
     public var speechEndpoint: String
     public var speechModel: String
+    public var microphoneDeviceID: String?
     public var autoProcessTranscription: Bool
     public var voiceCleanupPromptModeID: String
 
@@ -69,6 +70,7 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
         speechProviderID: String,
         speechEndpoint: String,
         speechModel: String,
+        microphoneDeviceID: String?,
         autoProcessTranscription: Bool,
         voiceCleanupPromptModeID: String
     ) {
@@ -76,6 +78,7 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
         self.speechProviderID = speechProviderID
         self.speechEndpoint = speechEndpoint
         self.speechModel = speechModel
+        self.microphoneDeviceID = microphoneDeviceID
         self.autoProcessTranscription = autoProcessTranscription
         self.voiceCleanupPromptModeID = voiceCleanupPromptModeID
     }
@@ -86,6 +89,7 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
             speechProviderID: openAISpeechProviderID,
             speechEndpoint: defaultSpeechEndpoint,
             speechModel: defaultSpeechModel,
+            microphoneDeviceID: nil,
             autoProcessTranscription: true,
             voiceCleanupPromptModeID: PromptMode.voiceCleanupID
         )

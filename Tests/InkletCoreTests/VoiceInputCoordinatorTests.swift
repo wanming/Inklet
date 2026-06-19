@@ -50,6 +50,7 @@ final class VoiceInputCoordinatorTests: XCTestCase {
             speechProviderID: VoiceInputConfig.openAISpeechProviderID,
             speechEndpoint: VoiceInputConfig.defaultSpeechEndpoint,
             speechModel: VoiceInputConfig.defaultSpeechModel,
+            microphoneDeviceID: nil,
             autoProcessTranscription: false,
             voiceCleanupPromptModeID: PromptMode.voiceCleanupID
         ))

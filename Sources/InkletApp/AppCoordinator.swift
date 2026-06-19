@@ -792,7 +792,8 @@ final class AppCoordinator: NSObject {
                 self?.lastTargetApplication
             },
             startRecording: { [weak self] in
-                try await self?.audioRecorder.start()
+                let voiceInput = ((try? self?.configStore.load()) ?? AppConfig.defaultConfig()).voiceInput
+                try await self?.audioRecorder.start(microphoneDeviceID: voiceInput.microphoneDeviceID)
             },
             stopRecording: { [weak self] in
                 guard let self else {

@@ -31,7 +31,7 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 3. Grant Accessibility permission when macOS asks. Inklet needs this to return focus to the previous app and paste the result. Inklet stays in the background while System Settings is open and returns to General settings when you close it.
 4. Enter your OpenAI API key in General. Inklet uses this one key for writing, voice transcription, selection translation, and pronunciation.
 5. Configure Write Assistant with the model, writing shortcut, generation settings, and prompt modes you want to use.
-6. Optional: configure Voice Write Assistant with a speech preset, voice shortcut, and cleanup mode.
+6. Optional: configure Voice Write Assistant with a microphone, speech preset, voice shortcut, and cleanup mode.
 7. Optional: configure Selection Assistant with a translation language and AI pronunciation voice, then preview the voice in Settings.
 8. Grant Microphone permission the first time you use voice dictation.
 
@@ -48,7 +48,7 @@ Text workflow:
 Voice workflow:
 
 1. Focus any text field in another app.
-2. Tap Right Option once to start recording.
+2. Tap Right Option once to start recording with the selected microphone.
 3. Speak a short phrase.
 4. Tap Right Option again to stop recording.
 5. Inklet transcribes the audio, optionally cleans up the transcript with the selected prompt mode, and inserts the final text.
@@ -68,7 +68,7 @@ The default voice shortcut is Right Option. You can change it to Right Command, 
   - Voice Cleanup
 - Inserts generated text back into the previously focused app.
 - Restores your clipboard after insertion.
-- Lets you edit prompt modes, OpenAI model, timeout, temperature, writing shortcut, voice shortcut, speech preset, speech endpoint, speech model, selection translation language, and AI pronunciation voice.
+- Lets you edit prompt modes, OpenAI model, timeout, temperature, writing shortcut, voice shortcut, microphone, speech preset, speech endpoint, speech model, selection translation language, and AI pronunciation voice.
 - Uses one shared OpenAI API key for writing, voice transcription, selection translation, and pronunciation.
 - Provides English and Chinese app UI localization.
 

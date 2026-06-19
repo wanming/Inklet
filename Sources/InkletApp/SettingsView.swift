@@ -27,12 +27,14 @@ final class SettingsViewModel: ObservableObject {
     @Published var isRefreshingModelCatalog: Bool
     @Published var isEditingCustomModel: Bool
     @Published var isEditingCustomSpeechEndpoint: Bool
+    @Published var microphoneOptions: [MicrophoneDeviceOption]
     @Published fileprivate var pronunciationPreviewState: PronunciationPreviewState?
     @Published var permissionRefreshID: UUID
 
     private let configStore: UserDefaultsConfigStore
     private let apiKeyStore: LocalAPIKeyStore
     private let modelCatalogService: ModelCatalogService
+    private let microphoneDeviceCatalog: MicrophoneDeviceCatalog
     private let pronunciationPreviewPlaybackService: SpeechPlaybackService
     private var cancellables = Set<AnyCancellable>()
     private var pronunciationPreviewTask: Task<Void, Never>?
@@ -43,13 +45,15 @@ final class SettingsViewModel: ObservableObject {
     init(
         configStore: UserDefaultsConfigStore = UserDefaultsConfigStore(),
         apiKeyStore: LocalAPIKeyStore = LocalAPIKeyStore(),
-        modelCatalogService: ModelCatalogService = ModelCatalogService()
+        modelCatalogService: ModelCatalogService = ModelCatalogService(),
+        microphoneDeviceCatalog: MicrophoneDeviceCatalog = MicrophoneDeviceCatalog()
     ) {
         var loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         loadedConfig.temperature = min(max(loadedConfig.temperature, 0), 1)
         self.configStore = configStore
         self.apiKeyStore = apiKeyStore
         self.modelCatalogService = modelCatalogService
+        self.microphoneDeviceCatalog = microphoneDeviceCatalog
         self.pronunciationPreviewPlaybackService = SpeechPlaybackService()
         loadedConfig.providerID = LLMProviderPreset.openAI.id
         self.config = loadedConfig
@@ -74,6 +78,7 @@ final class SettingsViewModel: ObservableObject {
             endpoint: loadedConfig.voiceInput.speechEndpoint,
             model: loadedConfig.voiceInput.speechModel
         ) == .custom
+        self.microphoneOptions = microphoneDeviceCatalog.options()
         self.pronunciationPreviewState = nil
         self.permissionRefreshID = UUID()
 
@@ -149,6 +154,14 @@ final class SettingsViewModel: ObservableObject {
         permissionRefreshID = UUID()
     }
 
+    func refreshMicrophoneOptions() {
+        microphoneOptions = microphoneDeviceCatalog.options()
+        if let microphoneDeviceID = config.voiceInput.microphoneDeviceID,
+           !microphoneOptions.contains(where: { $0.deviceID == microphoneDeviceID }) {
+            config.voiceInput.microphoneDeviceID = nil
+        }
+    }
+
     var selectedSpeechProfile: VoiceInputConfig.SpeechProfile {
         if isEditingCustomSpeechEndpoint {
             return .custom
@@ -162,6 +175,20 @@ final class SettingsViewModel: ObservableObject {
 
     var shouldShowCustomSpeechFields: Bool {
         isEditingCustomSpeechEndpoint || selectedSpeechProfile == .custom
+    }
+
+    var selectedMicrophoneMenuID: String {
+        get {
+            guard let microphoneDeviceID = config.voiceInput.microphoneDeviceID,
+                  microphoneOptions.contains(where: { $0.deviceID == microphoneDeviceID })
+            else {
+                return MicrophoneDeviceOption.systemDefaultID
+            }
+            return microphoneDeviceID
+        }
+        set {
+            config.voiceInput.microphoneDeviceID = newValue == MicrophoneDeviceOption.systemDefaultID ? nil : newValue
+        }
     }
 
     var voiceCleanupModes: [PromptMode] {
@@ -557,6 +584,7 @@ struct SettingsView: View {
         }
         .onAppear {
             model.refreshPermissions()
+            model.refreshMicrophoneOptions()
         }
         .onChange(of: model.config.appearance) {
             onAppearanceChange(model.config.appearance)
@@ -852,12 +880,26 @@ struct SettingsView: View {
             get: { model.selectedSpeechProfile },
             set: { model.selectSpeechProfile($0) }
         )
+        let selectedMicrophoneBinding = Binding(
+            get: { model.selectedMicrophoneMenuID },
+            set: { model.selectedMicrophoneMenuID = $0 }
+        )
 
         return settingsPanel {
             settingsRow(L10n.text("settings.row.voiceShortcut"), help: L10n.text("settings.help.voiceShortcut")) {
                 Picker("", selection: $model.config.voiceInput.shortcut) {
                     ForEach(VoiceInputConfig.Shortcut.allCases) { shortcut in
                         Text(shortcut.localizedName).tag(shortcut)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(L10n.text("settings.row.microphone"), help: L10n.text("settings.help.microphone")) {
+                Picker("", selection: selectedMicrophoneBinding) {
+                    ForEach(model.microphoneOptions) { option in
+                        Text(option.localizedName).tag(option.id)
                     }
                 }
                 .labelsHidden()

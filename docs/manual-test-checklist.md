@@ -32,6 +32,9 @@
 - Press Escape while Listening and confirm nothing is inserted.
 - Disable Auto Process in Voice settings and confirm raw transcription is inserted.
 - Enable Auto Process and select Voice Cleanup; confirm the inserted text preserves language and meaning without summarizing.
+- Select System Default in Voice settings and confirm dictation records from the current macOS default input.
+- Select a concrete microphone in Voice settings and confirm dictation records from that input.
+- Disconnect or disable the selected microphone and confirm dictation falls back to System Default, or shows the no-audio-input error if no input is available.
 - Remove the speech API key and confirm dictation shows a clear error without inserting.
 - Deny Microphone permission and confirm dictation shows a clear error without inserting.
 - Change the voice shortcut to Right Command, Left Option, Left Command, and Disabled, then confirm each setting applies.
@@ -41,7 +44,7 @@
 - `Command+,`: open Settings while Inklet is active.
 - General: change hotkey, timeout, temperature, language, and appearance.
 - Providers: configure one provider, API key, model, and custom OpenAI-compatible endpoint when needed.
-- Voice: configure shortcut, speech API key, speech endpoint, speech model, auto-processing, and cleanup prompt mode.
+- Voice: configure shortcut, microphone, speech API key, speech endpoint, speech model, auto-processing, and cleanup prompt mode.
 - Prompt Modes: add, edit, hide, delete with confirmation, and reorder prompt modes.
 - Permissions: verify Accessibility status and the button that opens System Settings. Inklet should not steal focus while System Settings is open; close System Settings and confirm the existing Inklet Settings window returns with the refreshed status.
 - First-time onboarding: with no provider API key configured, grant Accessibility permission, close System Settings, and confirm the existing Inklet Settings window returns on the Providers page.
