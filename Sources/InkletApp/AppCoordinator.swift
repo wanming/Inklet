@@ -712,6 +712,7 @@ final class AppCoordinator: NSObject {
                 let audioData = try await provider.speechAudio(OpenAITTSRequest(
                     input: sourceText,
                     voice: config.selectionActions.pronunciationVoice.rawValue,
+                    speed: config.selectionActions.pronunciationSpeed,
                     timeoutSeconds: config.timeoutSeconds
                 ))
                 await MainActor.run {

@@ -7,6 +7,7 @@ final class OpenAITTSProviderTests: XCTestCase {
             input: "hello",
             model: "gpt-4o-mini-tts",
             voice: "alloy",
+            speed: 1.25,
             timeoutSeconds: 8
         )
 
@@ -22,11 +23,12 @@ final class OpenAITTSProviderTests: XCTestCase {
         XCTAssertEqual(urlRequest.value(forHTTPHeaderField: "Content-Type"), "application/json")
 
         let body = try XCTUnwrap(urlRequest.httpBody)
-        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: String])
-        XCTAssertEqual(json["model"], "gpt-4o-mini-tts")
-        XCTAssertEqual(json["voice"], "alloy")
-        XCTAssertEqual(json["input"], "hello")
-        XCTAssertEqual(json["format"], "mp3")
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        XCTAssertEqual(json["model"] as? String, "gpt-4o-mini-tts")
+        XCTAssertEqual(json["voice"] as? String, "alloy")
+        XCTAssertEqual(json["input"] as? String, "hello")
+        XCTAssertEqual(json["format"] as? String, "mp3")
+        XCTAssertEqual(json["speed"] as? Double, 1.25)
     }
 
     func testRejectsEmptyInput() throws {
