@@ -40,6 +40,74 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertEqual(try store.load(), [first, second])
     }
 
+    func testAppendSkipsConsecutiveDuplicateRecordsIgnoringIdentityAndTimestamp() throws {
+        let url = temporaryHistoryURL()
+        let store = JSONLHistoryStore(fileURL: url)
+        let first = HistoryItem(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000011")!,
+            createdAt: Date(timeIntervalSince1970: 10),
+            source: .write,
+            inputText: "rough",
+            outputText: "polished",
+            modeName: "Polish",
+            model: "gpt-test",
+            metadata: ["modeID": "polish", "providerID": "openai"]
+        )
+        let duplicate = HistoryItem(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000012")!,
+            createdAt: Date(timeIntervalSince1970: 20),
+            source: .write,
+            inputText: "rough",
+            outputText: "polished",
+            modeName: "Polish",
+            model: "gpt-test",
+            metadata: ["modeID": "polish", "providerID": "openai"]
+        )
+
+        try store.append(first)
+        try store.append(duplicate)
+
+        XCTAssertEqual(try store.load(), [first])
+    }
+
+    func testAppendKeepsNonConsecutiveDuplicateRecords() throws {
+        let url = temporaryHistoryURL()
+        let store = JSONLHistoryStore(fileURL: url)
+        let first = HistoryItem(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000021")!,
+            createdAt: Date(timeIntervalSince1970: 10),
+            source: .selection,
+            inputText: "hello",
+            outputText: "ni hao",
+            targetLanguageName: "Simplified Chinese",
+            model: "gpt-test"
+        )
+        let middle = HistoryItem(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000022")!,
+            createdAt: Date(timeIntervalSince1970: 20),
+            source: .write,
+            inputText: "rough",
+            outputText: "polished",
+            modeName: "Polish",
+            model: "gpt-test"
+        )
+        let laterDuplicate = HistoryItem(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000023")!,
+            createdAt: Date(timeIntervalSince1970: 30),
+            source: .selection,
+            inputText: "hello",
+            outputText: "ni hao",
+            targetLanguageName: "Simplified Chinese",
+            model: "gpt-test"
+        )
+
+        try store.append(first)
+        try store.append(middle)
+        try store.append(laterDuplicate)
+
+        XCTAssertEqual(try store.load(), [first, middle, laterDuplicate])
+    }
+
     func testClearRemovesStoredRecords() throws {
         let url = temporaryHistoryURL()
         let store = JSONLHistoryStore(fileURL: url)

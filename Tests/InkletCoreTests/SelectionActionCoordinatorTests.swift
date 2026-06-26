@@ -39,7 +39,18 @@ final class SelectionActionCoordinatorTests: XCTestCase {
         XCTAssertEqual(actions, [.showPanel(text: "hello", location: SelectionPoint(x: 10, y: 20))])
     }
 
-    func testRepeatedTextDoesNotShowPanelAgain() {
+    func testRepeatedTextWithoutDismissalDoesNotShowPanelAgain() {
+        var coordinator = SelectionActionCoordinator(config: .defaultConfig())
+        _ = coordinator.handle(.candidateSelection(sourceAppBundleID: "com.apple.TextEdit", mouseLocation: .zero))
+        _ = coordinator.handle(.readCompleted(.success("hello")))
+        _ = coordinator.handle(.candidateSelection(sourceAppBundleID: "com.apple.TextEdit", mouseLocation: .zero))
+
+        let actions = coordinator.handle(.readCompleted(.success("hello")))
+
+        XCTAssertEqual(actions, [])
+    }
+
+    func testRepeatedTextAfterDismissalShowsPanelAgain() {
         var coordinator = SelectionActionCoordinator(config: .defaultConfig())
         _ = coordinator.handle(.candidateSelection(sourceAppBundleID: "com.apple.TextEdit", mouseLocation: .zero))
         _ = coordinator.handle(.readCompleted(.success("hello")))
@@ -48,7 +59,7 @@ final class SelectionActionCoordinatorTests: XCTestCase {
 
         let actions = coordinator.handle(.readCompleted(.success("hello")))
 
-        XCTAssertEqual(actions, [])
+        XCTAssertEqual(actions, [.showPanel(text: "hello", location: .zero)])
     }
 
     func testUnsupportedReadIsIgnoredForPassiveSelection() {

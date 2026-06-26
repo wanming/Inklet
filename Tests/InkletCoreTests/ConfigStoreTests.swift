@@ -137,6 +137,52 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.selectionActions, AppConfig.defaultConfig().selectionActions)
     }
 
+    func testConfigDecodeMigratesLegacyTapToToggleVoiceRecordingModeToPressAndHold() throws {
+        let data = """
+        {
+            "version": 1,
+            "voiceInput": {
+                "shortcut": "rightOption",
+                "speechProviderID": "openai",
+                "speechEndpoint": "https://api.openai.com/v1/audio/transcriptions",
+                "speechModel": "gpt-4o-mini-transcribe",
+                "autoProcessTranscription": true,
+                "postTranscriptionAction": "useDefaultPromptMode",
+                "recordingMode": "tapToToggle",
+                "voiceCleanupPromptModeID": "voice-cleanup"
+            }
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+
+        XCTAssertEqual(config.version, AppConfig.currentVersion)
+        XCTAssertEqual(config.voiceInput.recordingMode, .pressAndHold)
+    }
+
+    func testConfigDecodePreservesCurrentTapToToggleVoiceRecordingMode() throws {
+        let data = """
+        {
+            "version": \(AppConfig.currentVersion),
+            "voiceInput": {
+                "shortcut": "rightOption",
+                "speechProviderID": "openai",
+                "speechEndpoint": "https://api.openai.com/v1/audio/transcriptions",
+                "speechModel": "gpt-4o-mini-transcribe",
+                "autoProcessTranscription": true,
+                "postTranscriptionAction": "useDefaultPromptMode",
+                "recordingMode": "tapToToggle",
+                "voiceCleanupPromptModeID": "voice-cleanup"
+            }
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+
+        XCTAssertEqual(config.version, AppConfig.currentVersion)
+        XCTAssertEqual(config.voiceInput.recordingMode, .tapToToggle)
+    }
+
     func testConfigDecodeMigratesLegacyProvidersToOpenAI() throws {
         let data = """
         {

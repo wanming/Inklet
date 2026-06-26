@@ -5,21 +5,32 @@ final class VoiceShortcutMonitor {
     private var eventTap: CFMachPort?
     private var eventTapSource: CFRunLoopSource?
     private var shortcut: VoiceInputConfig.Shortcut = .disabled
-    private var onTrigger: (() -> Void)?
+    private var recordingMode: VoiceInputConfig.RecordingMode = .tapToToggle
+    private var modifierPressTracker = VoiceShortcutModifierPressTracker()
+    private var gestureRecognizer = VoiceShortcutGestureRecognizer()
+    private var onToggle: (() -> Void)?
+    private var onStart: (() -> Void)?
+    private var onStop: (() -> Void)?
     private var onCancel: (() -> Void)?
     private var isVoiceInputActive = false
     private var candidateKeyCode: UInt16?
-    private var triggerWorkItem: DispatchWorkItem?
-    private let triggerDelay: TimeInterval = 0.08
+    private var holdStartWorkItem: DispatchWorkItem?
+    private let holdActivationDelay: TimeInterval = 0.08
 
     func update(
         shortcut: VoiceInputConfig.Shortcut,
-        onTrigger: @escaping () -> Void,
+        recordingMode: VoiceInputConfig.RecordingMode,
+        onToggle: @escaping () -> Void,
+        onStart: @escaping () -> Void,
+        onStop: @escaping () -> Void,
         onCancel: @escaping () -> Void
     ) {
         stop()
         self.shortcut = shortcut
-        self.onTrigger = onTrigger
+        self.recordingMode = recordingMode
+        self.onToggle = onToggle
+        self.onStart = onStart
+        self.onStop = onStop
         self.onCancel = onCancel
         guard shortcut != .disabled else {
             return
@@ -62,8 +73,12 @@ final class VoiceShortcutMonitor {
         eventTapSource = nil
         eventTap = nil
         candidateKeyCode = nil
-        cancelPendingTrigger()
-        onTrigger = nil
+        cancelPendingHoldStart()
+        modifierPressTracker.reset()
+        gestureRecognizer = VoiceShortcutGestureRecognizer()
+        onToggle = nil
+        onStart = nil
+        onStop = nil
         onCancel = nil
         isVoiceInputActive = false
     }
@@ -86,7 +101,7 @@ final class VoiceShortcutMonitor {
         case .keyDown:
             monitor.handleKeyDown(keyCode: keyCode)
         case .leftMouseDown, .rightMouseDown, .otherMouseDown:
-            monitor.markCandidateInterrupted()
+            monitor.markGestureInterrupted()
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             if let eventTap = monitor.eventTap {
                 CGEvent.tapEnable(tap: eventTap, enable: true)
@@ -98,7 +113,7 @@ final class VoiceShortcutMonitor {
     }
 
     private func handleKeyDown(keyCode: UInt16) {
-        markCandidateInterrupted()
+        markGestureInterrupted()
         guard VoiceInputCancellationPolicy.shouldCancel(
             keyCode: keyCode,
             isVoiceInputActive: isVoiceInputActive
@@ -117,26 +132,37 @@ final class VoiceShortcutMonitor {
             return
         }
 
-        if isConfiguredModifierDown(in: flags) {
-            scheduleTrigger(for: keyCode)
-            return
+        switch modifierPressTracker.transition(
+            keyCode: keyCode,
+            expectedKeyCode: expectedKeyCode,
+            isConfiguredModifierDown: isConfiguredModifierDown(in: flags)
+        ) {
+        case .began:
+            handle(gestureRecognizer.pressBegan(at: currentTime, mode: recordingMode))
+            if recordingMode == .pressAndHold {
+                scheduleHoldStart(for: keyCode)
+            }
+        case .ended:
+            cancelPendingHoldStart()
+            handle(gestureRecognizer.pressEnded(at: currentTime, mode: recordingMode))
+        case .ignored:
+            break
         }
-
-        candidateKeyCode = nil
     }
 
-    private func markCandidateInterrupted() {
+    private func markGestureInterrupted() {
+        gestureRecognizer.interrupt()
         if candidateKeyCode != nil {
-            cancelPendingTrigger()
+            cancelPendingHoldStart()
         }
     }
 
-    private func scheduleTrigger(for keyCode: UInt16) {
+    private func scheduleHoldStart(for keyCode: UInt16) {
         guard candidateKeyCode == nil else {
             return
         }
 
-        cancelPendingTrigger()
+        cancelPendingHoldStart()
         candidateKeyCode = keyCode
         let workItem = DispatchWorkItem { [weak self] in
             guard let self, self.candidateKeyCode == keyCode else {
@@ -144,17 +170,34 @@ final class VoiceShortcutMonitor {
             }
 
             self.candidateKeyCode = nil
-            self.triggerWorkItem = nil
-            self.onTrigger?()
+            self.holdStartWorkItem = nil
+            self.handle(self.gestureRecognizer.holdDelayElapsed(at: self.currentTime, mode: self.recordingMode))
         }
-        triggerWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + triggerDelay, execute: workItem)
+        holdStartWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + holdActivationDelay, execute: workItem)
     }
 
-    private func cancelPendingTrigger() {
-        triggerWorkItem?.cancel()
-        triggerWorkItem = nil
+    private func cancelPendingHoldStart() {
+        holdStartWorkItem?.cancel()
+        holdStartWorkItem = nil
         candidateKeyCode = nil
+    }
+
+    private func handle(_ actions: [VoiceShortcutGestureAction]) {
+        for action in actions {
+            switch action {
+            case .start:
+                onStart?()
+            case .stop:
+                onStop?()
+            case .toggle:
+                onToggle?()
+            }
+        }
+    }
+
+    private var currentTime: TimeInterval {
+        ProcessInfo.processInfo.systemUptime
     }
 
     private func isConfiguredModifierDown(in flags: CGEventFlags) -> Bool {

@@ -12,6 +12,7 @@ final class VoiceInputConfigTests: XCTestCase {
         XCTAssertNil(config.microphoneDeviceID)
         XCTAssertTrue(config.autoProcessTranscription)
         XCTAssertEqual(config.postTranscriptionAction, .useDefaultPromptMode)
+        XCTAssertEqual(config.recordingMode, .pressAndHold)
         XCTAssertEqual(config.voiceCleanupPromptModeID, PromptMode.voiceCleanupID)
     }
 
@@ -75,6 +76,7 @@ final class VoiceInputConfigTests: XCTestCase {
             microphoneDeviceID: "BuiltInMicrophoneDeviceID",
             autoProcessTranscription: false,
             postTranscriptionAction: .askEachTime,
+            recordingMode: .pressAndHold,
             voiceCleanupPromptModeID: PromptMode.chineseSummaryID
         )
 
@@ -84,6 +86,40 @@ final class VoiceInputConfigTests: XCTestCase {
         XCTAssertEqual(decodedConfig.voiceInput, config.voiceInput)
         XCTAssertEqual(decodedConfig.voiceInput.microphoneDeviceID, "BuiltInMicrophoneDeviceID")
         XCTAssertEqual(decodedConfig.voiceInput.postTranscriptionAction, .askEachTime)
+        XCTAssertEqual(decodedConfig.voiceInput.recordingMode, .pressAndHold)
+    }
+
+    func testVoiceInputConfigUsesPressAndHoldWhenRecordingModeIsOmitted() {
+        let config = VoiceInputConfig(
+            shortcut: .rightOption,
+            speechProviderID: "openai",
+            speechEndpoint: "https://api.openai.com/v1/audio/transcriptions",
+            speechModel: "gpt-4o-mini-transcribe",
+            microphoneDeviceID: nil,
+            autoProcessTranscription: true,
+            postTranscriptionAction: .useDefaultPromptMode,
+            voiceCleanupPromptModeID: "voice-cleanup"
+        )
+
+        XCTAssertEqual(config.recordingMode, .pressAndHold)
+    }
+
+    func testVoiceInputConfigDecodesMissingRecordingModeAsPressAndHold() throws {
+        let data = """
+        {
+          "shortcut": "rightOption",
+          "speechProviderID": "openai",
+          "speechEndpoint": "https://api.openai.com/v1/audio/transcriptions",
+          "speechModel": "gpt-4o-mini-transcribe",
+          "autoProcessTranscription": true,
+          "postTranscriptionAction": "useDefaultPromptMode",
+          "voiceCleanupPromptModeID": "voice-cleanup"
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(VoiceInputConfig.self, from: data)
+
+        XCTAssertEqual(config.recordingMode, .pressAndHold)
     }
 
     func testVoiceInputConfigDecodesLegacyAutoProcessingAsDefaultMode() throws {

@@ -33,6 +33,25 @@ final class VoiceInputCoordinatorTests: XCTestCase {
         XCTAssertEqual(harness.statuses, [.listening])
     }
 
+    func testStopDuringStartupCancelsBeforeListening() async {
+        let harness = VoiceInputHarness()
+        harness.pauseStartRecording = true
+
+        let startTask = Task {
+            await harness.coordinator.start()
+        }
+        await Task.yield()
+        await harness.coordinator.stop()
+
+        XCTAssertEqual(harness.statuses, [.idle])
+
+        harness.resumeStartRecording()
+        await startTask.value
+
+        XCTAssertFalse(harness.statuses.contains(.listening))
+        XCTAssertEqual(harness.insertedTexts, [])
+    }
+
     func testCancelDuringListeningStopsRecordingAndShowsIdle() async {
         let harness = VoiceInputHarness()
 

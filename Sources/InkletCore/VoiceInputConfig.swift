@@ -15,6 +15,14 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
         public var id: String { rawValue }
     }
 
+    public enum RecordingMode: String, Codable, Equatable, Sendable, CaseIterable, Identifiable {
+        case tapToToggle
+        case pressAndHold
+        case doubleTap
+
+        public var id: String { rawValue }
+    }
+
     public enum SpeechProfile: String, Equatable, Sendable, CaseIterable, Identifiable {
         case openAIBalanced
         case openAIAccuracy
@@ -72,6 +80,7 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
     public var microphoneDeviceID: String?
     public var autoProcessTranscription: Bool
     public var postTranscriptionAction: PostTranscriptionAction
+    public var recordingMode: RecordingMode
     public var voiceCleanupPromptModeID: String
 
     public init(
@@ -82,6 +91,7 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
         microphoneDeviceID: String?,
         autoProcessTranscription: Bool,
         postTranscriptionAction: PostTranscriptionAction? = nil,
+        recordingMode: RecordingMode = .pressAndHold,
         voiceCleanupPromptModeID: String
     ) {
         self.shortcut = shortcut
@@ -93,6 +103,7 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
             ?? (autoProcessTranscription ? .useDefaultPromptMode : .insertRawTranscript)
         self.autoProcessTranscription = resolvedAction != .insertRawTranscript
         self.postTranscriptionAction = resolvedAction
+        self.recordingMode = recordingMode
         self.voiceCleanupPromptModeID = voiceCleanupPromptModeID
     }
 
@@ -105,6 +116,7 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
             microphoneDeviceID: nil,
             autoProcessTranscription: true,
             postTranscriptionAction: .useDefaultPromptMode,
+            recordingMode: .pressAndHold,
             voiceCleanupPromptModeID: PromptMode.voiceCleanupID
         )
     }
@@ -117,6 +129,7 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
         case microphoneDeviceID
         case autoProcessTranscription
         case postTranscriptionAction
+        case recordingMode
         case voiceCleanupPromptModeID
     }
 
@@ -145,6 +158,8 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
                 PostTranscriptionAction.self,
                 forKey: .postTranscriptionAction
             ),
+            recordingMode: try container.decodeIfPresent(RecordingMode.self, forKey: .recordingMode)
+                ?? defaults.recordingMode,
             voiceCleanupPromptModeID: try container.decodeIfPresent(
                 String.self,
                 forKey: .voiceCleanupPromptModeID

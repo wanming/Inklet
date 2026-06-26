@@ -39,6 +39,7 @@ final class AppCoordinator: NSObject {
     private let selectionActionMonitor: SelectionActionMonitor
     private let selectionActionWindowController: SelectionActionWindowController
     private let selectedTextReader: SelectedTextReader
+    private let selectionTranslationCache: JSONSelectionTranslationCache
     private let speechPlaybackService: SpeechPlaybackService
     private let historyStore: JSONLHistoryStore
     private var configObserver: NSObjectProtocol?
@@ -83,6 +84,7 @@ final class AppCoordinator: NSObject {
         self.selectionActionMonitor = SelectionActionMonitor()
         self.selectionActionWindowController = SelectionActionWindowController()
         self.selectedTextReader = SelectedTextReader()
+        self.selectionTranslationCache = JSONSelectionTranslationCache()
         self.speechPlaybackService = SpeechPlaybackService()
         self.selectionActionCoordinator = SelectionActionCoordinator(
             config: ((try? UserDefaultsConfigStore().load()) ?? AppConfig.defaultConfig()).selectionActions
@@ -426,9 +428,20 @@ final class AppCoordinator: NSObject {
             let config = try configStore.load()
             voiceShortcutMonitor.update(
                 shortcut: config.voiceInput.shortcut,
-                onTrigger: { [weak self] in
+                recordingMode: config.voiceInput.recordingMode,
+                onToggle: { [weak self] in
                     Task { @MainActor in
                         await self?.voiceCoordinator.toggle()
+                    }
+                },
+                onStart: { [weak self] in
+                    Task { @MainActor in
+                        await self?.voiceCoordinator.start()
+                    }
+                },
+                onStop: { [weak self] in
+                    Task { @MainActor in
+                        await self?.voiceCoordinator.stop()
                     }
                 },
                 onCancel: { [weak self] in
@@ -645,11 +658,16 @@ final class AppCoordinator: NSObject {
                 let systemPrompt = config.selectionActions.effectiveTranslationPrompt(
                     targetLanguageName: targetLanguageName
                 )
-                let service = SelectionTranslationService(provider: provider)
+                let service = CachedSelectionTranslationService(
+                    service: SelectionTranslationService(provider: provider),
+                    cache: selectionTranslationCache
+                )
                 let translated = try await service.translate(
                     sourceText: sourceText,
+                    targetLanguageName: targetLanguageName,
                     systemPrompt: systemPrompt,
                     model: config.model,
+                    providerID: providerID,
                     temperature: config.temperature,
                     timeoutSeconds: config.timeoutSeconds
                 )

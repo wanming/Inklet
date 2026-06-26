@@ -169,6 +169,11 @@ public final class VoiceInputCoordinator {
     }
 
     public func stop() async {
+        if case .starting = state {
+            await cancel()
+            return
+        }
+
         guard case .listening = state else {
             return
         }

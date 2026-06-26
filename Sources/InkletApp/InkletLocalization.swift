@@ -253,12 +253,21 @@ enum L10n {
         "settings.row.model": "Model",
         "settings.help.model.default": "Default: %@",
         "settings.row.voiceShortcut": "Voice Shortcut",
-        "settings.help.voiceShortcut": "Tap this modifier key alone to start or stop voice dictation.",
+        "settings.help.voiceShortcut": "Modifier key used for voice dictation.",
         "settings.voice.shortcut.rightOption": "Right Option",
         "settings.voice.shortcut.rightCommand": "Right Command",
         "settings.voice.shortcut.leftOption": "Left Option",
         "settings.voice.shortcut.leftCommand": "Left Command",
         "settings.voice.shortcut.disabled": "Disabled",
+        "settings.row.voiceRecordingMode": "Recording Mode",
+        "settings.help.voiceRecordingMode": "Choose whether the voice shortcut toggles recording, records while held, or requires a double tap.",
+        "settings.voiceRecordingMode.tapToToggle": "Tap once to start/stop",
+        "settings.voiceRecordingMode.pressAndHold": "Hold to record",
+        "settings.voiceRecordingMode.doubleTap": "Double-tap to start/stop",
+        "settings.voiceRecordingMode.holdKey": "Hold",
+        "settings.quickStart.voice.tapToToggle": "Start or stop voice input",
+        "settings.quickStart.voice.pressAndHold": "Hold for voice input",
+        "settings.quickStart.voice.doubleTap": "Double-tap for voice input",
         "settings.row.microphone": "Microphone",
         "settings.help.microphone": "Choose the audio input used for voice dictation.",
         "settings.microphone.systemDefault": "System Default",
@@ -517,12 +526,21 @@ enum L10n {
         "settings.row.model": "模型",
         "settings.help.model.default": "默认：%@",
         "settings.row.voiceShortcut": "语音快捷键",
-        "settings.help.voiceShortcut": "单独按下这个修饰键即可开始或停止语音输入。",
+        "settings.help.voiceShortcut": "用于语音输入的修饰键。",
         "settings.voice.shortcut.rightOption": "右 Option",
         "settings.voice.shortcut.rightCommand": "右 Command",
         "settings.voice.shortcut.leftOption": "左 Option",
         "settings.voice.shortcut.leftCommand": "左 Command",
         "settings.voice.shortcut.disabled": "关闭",
+        "settings.row.voiceRecordingMode": "录音方式",
+        "settings.help.voiceRecordingMode": "选择语音快捷键是单击切换、按住录音，还是双击切换录音。",
+        "settings.voiceRecordingMode.tapToToggle": "单击开始/停止",
+        "settings.voiceRecordingMode.pressAndHold": "按住录音",
+        "settings.voiceRecordingMode.doubleTap": "双击开始/停止",
+        "settings.voiceRecordingMode.holdKey": "按住",
+        "settings.quickStart.voice.tapToToggle": "开始或停止语音输入",
+        "settings.quickStart.voice.pressAndHold": "按住进行语音输入",
+        "settings.quickStart.voice.doubleTap": "双击进行语音输入",
         "settings.row.microphone": "麦克风",
         "settings.help.microphone": "选择语音输入使用的音频输入设备。",
         "settings.microphone.systemDefault": "系统默认",
@@ -701,6 +719,15 @@ enum L10n {
         "settings.history.error.loadFailed": "無法載入歷史。",
         "settings.history.error.clearFailed": "無法清空歷史。",
         "settings.privacy.history": "• 成功的寫作、語音和選區文字歷史會保存在本機，直到你清空",
+        "settings.row.voiceRecordingMode": "錄音方式",
+        "settings.help.voiceRecordingMode": "選擇語音快捷鍵是單擊切換、按住錄音，還是雙擊切換錄音。",
+        "settings.voiceRecordingMode.tapToToggle": "單擊開始/停止",
+        "settings.voiceRecordingMode.pressAndHold": "按住錄音",
+        "settings.voiceRecordingMode.doubleTap": "雙擊開始/停止",
+        "settings.voiceRecordingMode.holdKey": "按住",
+        "settings.quickStart.voice.tapToToggle": "開始或停止語音輸入",
+        "settings.quickStart.voice.pressAndHold": "按住進行語音輸入",
+        "settings.quickStart.voice.doubleTap": "雙擊進行語音輸入",
         "settings.row.microphone": "麥克風",
         "settings.help.microphone": "選擇語音輸入使用的音訊輸入裝置。",
         "settings.microphone.systemDefault": "系統預設",
@@ -845,6 +872,15 @@ enum L10n {
         "settings.history.error.loadFailed": "履歴を読み込めませんでした。",
         "settings.history.error.clearFailed": "履歴を消去できませんでした。",
         "settings.privacy.history": "• 成功した文章、音声、選択テキストの履歴は、消去するまでローカルに保存されます",
+        "settings.row.voiceRecordingMode": "録音方法",
+        "settings.help.voiceRecordingMode": "音声ショートカットを、1回押して切り替え、押している間だけ録音、またはダブルタップで切り替えにするかを選びます。",
+        "settings.voiceRecordingMode.tapToToggle": "1回押して開始/停止",
+        "settings.voiceRecordingMode.pressAndHold": "押している間だけ録音",
+        "settings.voiceRecordingMode.doubleTap": "ダブルタップで開始/停止",
+        "settings.voiceRecordingMode.holdKey": "長押し",
+        "settings.quickStart.voice.tapToToggle": "音声入力を開始または停止",
+        "settings.quickStart.voice.pressAndHold": "押している間だけ音声入力",
+        "settings.quickStart.voice.doubleTap": "ダブルタップで音声入力",
         "settings.row.microphone": "マイク",
         "settings.help.microphone": "音声入力に使用するオーディオ入力デバイスを選択します。",
         "settings.microphone.systemDefault": "システム既定",
@@ -989,6 +1025,15 @@ enum L10n {
         "settings.history.error.loadFailed": "기록을 불러올 수 없습니다.",
         "settings.history.error.clearFailed": "기록을 지울 수 없습니다.",
         "settings.privacy.history": "• 성공한 쓰기, 음성, 선택 텍스트 기록은 지울 때까지 로컬에 저장됩니다",
+        "settings.row.voiceRecordingMode": "녹음 방식",
+        "settings.help.voiceRecordingMode": "음성 단축키를 한 번 눌러 전환할지, 누르는 동안 녹음할지, 두 번 눌러 전환할지 선택합니다.",
+        "settings.voiceRecordingMode.tapToToggle": "한 번 눌러 시작/중지",
+        "settings.voiceRecordingMode.pressAndHold": "누르는 동안 녹음",
+        "settings.voiceRecordingMode.doubleTap": "두 번 눌러 시작/중지",
+        "settings.voiceRecordingMode.holdKey": "누르고 있기",
+        "settings.quickStart.voice.tapToToggle": "음성 입력 시작 또는 중지",
+        "settings.quickStart.voice.pressAndHold": "누르는 동안 음성 입력",
+        "settings.quickStart.voice.doubleTap": "두 번 눌러 음성 입력",
         "settings.row.microphone": "마이크",
         "settings.help.microphone": "음성 입력에 사용할 오디오 입력 장치를 선택합니다.",
         "settings.microphone.systemDefault": "시스템 기본값",
@@ -1133,6 +1178,15 @@ enum L10n {
         "settings.history.error.loadFailed": "No se pudo cargar el historial.",
         "settings.history.error.clearFailed": "No se pudo borrar el historial.",
         "settings.privacy.history": "• El historial correcto de escritura, voz y selección se guarda localmente hasta que lo borres",
+        "settings.row.voiceRecordingMode": "Modo de grabación",
+        "settings.help.voiceRecordingMode": "Elige si el atajo de voz alterna la grabación, graba mientras se mantiene pulsado o requiere doble pulsación.",
+        "settings.voiceRecordingMode.tapToToggle": "Pulsar una vez para iniciar/detener",
+        "settings.voiceRecordingMode.pressAndHold": "Mantener pulsado para grabar",
+        "settings.voiceRecordingMode.doubleTap": "Doble pulsación para iniciar/detener",
+        "settings.voiceRecordingMode.holdKey": "Mantener",
+        "settings.quickStart.voice.tapToToggle": "Iniciar o detener entrada de voz",
+        "settings.quickStart.voice.pressAndHold": "Mantener para entrada de voz",
+        "settings.quickStart.voice.doubleTap": "Doble pulsación para entrada de voz",
         "settings.row.microphone": "Micrófono",
         "settings.help.microphone": "Elige la entrada de audio usada para dictado por voz.",
         "settings.microphone.systemDefault": "Sistema predeterminado",
@@ -1277,6 +1331,15 @@ enum L10n {
         "settings.history.error.loadFailed": "Impossible de charger l’historique.",
         "settings.history.error.clearFailed": "Impossible d’effacer l’historique.",
         "settings.privacy.history": "• L’historique réussi d’écriture, de voix et de sélection est enregistré localement jusqu’à son effacement",
+        "settings.row.voiceRecordingMode": "Mode d’enregistrement",
+        "settings.help.voiceRecordingMode": "Choisissez si le raccourci vocal bascule l’enregistrement, enregistre tant qu’il est maintenu ou demande un double appui.",
+        "settings.voiceRecordingMode.tapToToggle": "Appuyer une fois pour démarrer/arrêter",
+        "settings.voiceRecordingMode.pressAndHold": "Maintenir pour enregistrer",
+        "settings.voiceRecordingMode.doubleTap": "Double appui pour démarrer/arrêter",
+        "settings.voiceRecordingMode.holdKey": "Maintenir",
+        "settings.quickStart.voice.tapToToggle": "Démarrer ou arrêter l’entrée vocale",
+        "settings.quickStart.voice.pressAndHold": "Maintenir pour l’entrée vocale",
+        "settings.quickStart.voice.doubleTap": "Double appui pour l’entrée vocale",
         "settings.row.microphone": "Micro",
         "settings.help.microphone": "Choisissez l'entrée audio utilisée pour la dictée vocale.",
         "settings.microphone.systemDefault": "Système par défaut",
@@ -1421,6 +1484,15 @@ enum L10n {
         "settings.history.error.loadFailed": "Verlauf konnte nicht geladen werden.",
         "settings.history.error.clearFailed": "Verlauf konnte nicht gelöscht werden.",
         "settings.privacy.history": "• Erfolgreicher Schreib-, Sprach- und Auswahltextverlauf wird lokal gespeichert, bis Sie ihn löschen",
+        "settings.row.voiceRecordingMode": "Aufnahmemodus",
+        "settings.help.voiceRecordingMode": "Wählen Sie, ob die Sprachtaste die Aufnahme umschaltet, beim Halten aufnimmt oder einen Doppeldruck erfordert.",
+        "settings.voiceRecordingMode.tapToToggle": "Einmal drücken zum Starten/Stoppen",
+        "settings.voiceRecordingMode.pressAndHold": "Zum Aufnehmen gedrückt halten",
+        "settings.voiceRecordingMode.doubleTap": "Doppelt drücken zum Starten/Stoppen",
+        "settings.voiceRecordingMode.holdKey": "Halten",
+        "settings.quickStart.voice.tapToToggle": "Spracheingabe starten oder stoppen",
+        "settings.quickStart.voice.pressAndHold": "Für Spracheingabe halten",
+        "settings.quickStart.voice.doubleTap": "Doppelt drücken für Spracheingabe",
         "settings.row.microphone": "Mikrofon",
         "settings.help.microphone": "Wählen Sie den Audioeingang für die Sprachdiktatfunktion.",
         "settings.microphone.systemDefault": "Systemstandard",
@@ -1565,6 +1637,15 @@ enum L10n {
         "settings.history.error.loadFailed": "Não foi possível carregar o histórico.",
         "settings.history.error.clearFailed": "Não foi possível limpar o histórico.",
         "settings.privacy.history": "• O histórico bem-sucedido de escrita, voz e seleção fica salvo localmente até você limpá-lo",
+        "settings.row.voiceRecordingMode": "Modo de gravação",
+        "settings.help.voiceRecordingMode": "Escolha se o atalho de voz alterna a gravação, grava enquanto é segurado ou exige toque duplo.",
+        "settings.voiceRecordingMode.tapToToggle": "Pressionar uma vez para iniciar/parar",
+        "settings.voiceRecordingMode.pressAndHold": "Segurar para gravar",
+        "settings.voiceRecordingMode.doubleTap": "Toque duplo para iniciar/parar",
+        "settings.voiceRecordingMode.holdKey": "Segurar",
+        "settings.quickStart.voice.tapToToggle": "Iniciar ou parar entrada de voz",
+        "settings.quickStart.voice.pressAndHold": "Segurar para entrada de voz",
+        "settings.quickStart.voice.doubleTap": "Toque duplo para entrada de voz",
         "settings.row.microphone": "Microfone",
         "settings.help.microphone": "Escolha a entrada de áudio usada para ditado por voz.",
         "settings.microphone.systemDefault": "Padrão do sistema",
@@ -1709,6 +1790,15 @@ enum L10n {
         "settings.history.error.loadFailed": "Impossibile caricare la cronologia.",
         "settings.history.error.clearFailed": "Impossibile cancellare la cronologia.",
         "settings.privacy.history": "• La cronologia riuscita di scrittura, voce e selezione viene salvata localmente finché non la cancelli",
+        "settings.row.voiceRecordingMode": "Modalità registrazione",
+        "settings.help.voiceRecordingMode": "Scegli se la scorciatoia vocale alterna la registrazione, registra mentre è premuta o richiede un doppio tocco.",
+        "settings.voiceRecordingMode.tapToToggle": "Premi una volta per avviare/interrompere",
+        "settings.voiceRecordingMode.pressAndHold": "Tieni premuto per registrare",
+        "settings.voiceRecordingMode.doubleTap": "Doppio tocco per avviare/interrompere",
+        "settings.voiceRecordingMode.holdKey": "Tieni premuto",
+        "settings.quickStart.voice.tapToToggle": "Avvia o interrompi input vocale",
+        "settings.quickStart.voice.pressAndHold": "Tieni premuto per input vocale",
+        "settings.quickStart.voice.doubleTap": "Doppio tocco per input vocale",
         "settings.row.microphone": "Microfono",
         "settings.help.microphone": "Scegli l'ingresso audio usato per la dettatura vocale.",
         "settings.microphone.systemDefault": "Predefinito di sistema",
@@ -1866,6 +1956,30 @@ extension VoiceInputConfig.Shortcut {
             L10n.text("settings.voice.shortcut.leftCommand")
         case .disabled:
             L10n.text("settings.voice.shortcut.disabled")
+        }
+    }
+}
+
+extension VoiceInputConfig.RecordingMode {
+    var localizedName: String {
+        switch self {
+        case .tapToToggle:
+            L10n.text("settings.voiceRecordingMode.tapToToggle")
+        case .pressAndHold:
+            L10n.text("settings.voiceRecordingMode.pressAndHold")
+        case .doubleTap:
+            L10n.text("settings.voiceRecordingMode.doubleTap")
+        }
+    }
+
+    var quickStartTitle: String {
+        switch self {
+        case .tapToToggle:
+            L10n.text("settings.quickStart.voice.tapToToggle")
+        case .pressAndHold:
+            L10n.text("settings.quickStart.voice.pressAndHold")
+        case .doubleTap:
+            L10n.text("settings.quickStart.voice.doubleTap")
         }
     }
 }

@@ -9,6 +9,8 @@ public enum AppAppearance: String, Codable, Equatable, Sendable, CaseIterable, I
 }
 
 public struct AppConfig: Codable, Equatable, Sendable {
+    public static let currentVersion = 2
+
     public var version: Int
     public var providerID: String
     public var model: String
@@ -22,7 +24,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
     public var selectionActions: SelectionActionsConfig
 
     public init(
-        version: Int = 1,
+        version: Int = AppConfig.currentVersion,
         providerID: String = LLMProviderPreset.openAI.id,
         model: String,
         temperature: Double,
@@ -102,7 +104,8 @@ public struct AppConfig: Codable, Equatable, Sendable {
         let defaults = AppConfig.defaultConfig()
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? defaults.version
+        let decodedVersion = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        version = max(decodedVersion, AppConfig.currentVersion)
         let decodedProviderID = try container.decodeIfPresent(String.self, forKey: .providerID) ?? defaults.providerID
         providerID = LLMProviderPreset.openAI.id
         if decodedProviderID == LLMProviderPreset.openAI.id {
@@ -121,7 +124,10 @@ public struct AppConfig: Codable, Equatable, Sendable {
             String.self,
             forKey: .customOpenAICompatibleEndpoint
         ) ?? defaults.customOpenAICompatibleEndpoint
-        voiceInput = try container.decodeIfPresent(VoiceInputConfig.self, forKey: .voiceInput) ?? defaults.voiceInput
+        voiceInput = AppConfig.migratedVoiceInput(
+            try container.decodeIfPresent(VoiceInputConfig.self, forKey: .voiceInput) ?? defaults.voiceInput,
+            fromVersion: decodedVersion
+        )
         selectionActions = try container.decodeIfPresent(
             SelectionActionsConfig.self,
             forKey: .selectionActions
@@ -182,6 +188,19 @@ public struct AppConfig: Codable, Equatable, Sendable {
                 migratedMode.sortOrder = index
                 return migratedMode
             }
+    }
+
+    private static func migratedVoiceInput(
+        _ voiceInput: VoiceInputConfig,
+        fromVersion version: Int
+    ) -> VoiceInputConfig {
+        guard version < 2, voiceInput.recordingMode == .tapToToggle else {
+            return voiceInput
+        }
+
+        var migratedVoiceInput = voiceInput
+        migratedVoiceInput.recordingMode = .pressAndHold
+        return migratedVoiceInput
     }
 
     private static var legacyVoiceCleanupSystemPrompt: String {

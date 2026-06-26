@@ -76,6 +76,7 @@ public struct SelectionActionCoordinator: Sendable {
 
         case .dismiss:
             pendingAppBundleID = nil
+            lastShownText = nil
             return [.cancelRead, .hidePanel, .cancelWork]
 
         case .updateConfig(let config):

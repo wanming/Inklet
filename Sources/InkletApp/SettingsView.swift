@@ -973,6 +973,20 @@ struct SettingsView: View {
                 .frame(maxWidth: 320, alignment: .leading)
             }
 
+            settingsRow(
+                L10n.text("settings.row.voiceRecordingMode"),
+                help: L10n.text("settings.help.voiceRecordingMode")
+            ) {
+                Picker("", selection: $model.config.voiceInput.recordingMode) {
+                    ForEach(VoiceInputConfig.RecordingMode.allCases) { mode in
+                        Text(mode.localizedName).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+                .disabled(model.config.voiceInput.shortcut == .disabled)
+            }
+
             settingsRow(L10n.text("settings.row.microphone"), help: L10n.text("settings.help.microphone")) {
                 Picker("", selection: selectedMicrophoneBinding) {
                     ForEach(model.microphoneOptions) { option in
@@ -1401,7 +1415,12 @@ struct SettingsView: View {
                 shortcutLine(keys: [model.config.hotkey], title: L10n.text("settings.quickStart.open"), keyWidth: 102, keyAlignment: .trailing)
                 shortcutLine(keys: ["⌘", "↵"], title: L10n.text("settings.quickStart.original"), keyWidth: 102, keyAlignment: .trailing)
                 if model.config.voiceInput.shortcut != .disabled {
-                    shortcutLine(keys: [model.config.voiceInput.shortcut.localizedName], title: L10n.text("settings.quickStart.voice"), keyWidth: 102, keyAlignment: .trailing)
+                    shortcutLine(
+                        keys: voiceShortcutKeys,
+                        title: model.config.voiceInput.recordingMode.quickStartTitle,
+                        keyWidth: 102,
+                        keyAlignment: .trailing
+                    )
                 }
             }
             .frame(width: 292, alignment: .leading)
@@ -1414,6 +1433,17 @@ struct SettingsView: View {
         }
         .frame(width: 560, alignment: .leading)
         .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var voiceShortcutKeys: [String] {
+        switch model.config.voiceInput.recordingMode {
+        case .tapToToggle:
+            [model.config.voiceInput.shortcut.localizedName]
+        case .pressAndHold:
+            [L10n.text("settings.voiceRecordingMode.holdKey"), model.config.voiceInput.shortcut.localizedName]
+        case .doubleTap:
+            [model.config.voiceInput.shortcut.localizedName, model.config.voiceInput.shortcut.localizedName]
+        }
     }
 
     private func permissionStatusColor(isTrusted: Bool) -> Color {
@@ -1544,11 +1574,6 @@ struct SettingsView: View {
 
                 Spacer()
 
-                historyCopyButton(
-                    title: L10n.text("settings.history.copyOriginal"),
-                    text: item.inputText,
-                    feedbackID: "\(item.id.uuidString)-input"
-                )
                 historyCopyButton(
                     title: L10n.text("settings.history.copyResult"),
                     text: item.outputText,

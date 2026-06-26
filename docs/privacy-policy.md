@@ -16,6 +16,7 @@ Inklet may process:
 - Text selected or copied by you for insertion workflows.
 - Text selected by you for Selection Actions.
 - Successful Write, Voice, and Selection source/result text saved in local History.
+- Successful Selection translation results cached locally for repeat use.
 - Temporary audio recorded when you start voice dictation.
 - API keys and provider settings you enter.
 - App settings such as prompt modes, model choices, shortcuts, and preferences.
@@ -28,6 +29,7 @@ Inklet uses this information to:
 - Transcribe voice dictation.
 - Insert text into the app you were using.
 - Show past successful results in local History.
+- Speed repeated Selection translation requests with a local cache.
 - Save your local settings.
 - Store provider API keys locally.
 
@@ -45,13 +47,15 @@ Inklet may fetch the public model catalog from `models.dev` periodically, curren
 
 When Selection Actions are enabled, Inklet watches for selection-related mouse and keyboard events and then uses macOS Accessibility to read the currently selected text after a short pause. Inklet does not use the clipboard as a fallback for this feature and does not store merely selected text unless a successful action is saved in local History.
 
-If you choose Translate, the selected text and your custom Translate instructions are sent to your configured LLM provider. If you choose Pronounce, the selected text is sent to OpenAI text-to-speech using your OpenAI API key. Some apps do not expose selected text through Accessibility; in those apps the floating menu may not appear.
+If you choose Translate, Inklet first checks for a local cached translation. When no cached translation is available, the selected text and your custom Translate instructions are sent to your configured LLM provider. If you choose Pronounce, the selected text is sent to OpenAI text-to-speech using your OpenAI API key. Some apps do not expose selected text through Accessibility; in those apps the floating menu may not appear.
 
 ## Local Storage
 
 Inklet stores API keys locally in macOS Keychain. Inklet stores app preferences locally on your Mac.
 
 Inklet stores successful Write, Voice, and Selection source/result text locally in History until you clear it in Settings.
+
+Inklet caches successful Selection translation results locally for 7 days using hashed cache keys, so repeated translations can return faster without another provider call.
 
 Inklet temporarily uses the clipboard to insert text into the active app and then attempts to restore the previous clipboard contents.
 
@@ -76,7 +80,7 @@ Inklet does not operate a server that stores your text, audio, API keys, or sett
 
 Data sent to your configured providers may be retained according to those providers' own policies.
 
-Local History stays on your Mac until you clear it in Settings or remove the local app data.
+Local History stays on your Mac until you clear it in Settings or remove the local app data. Local Selection translation cache entries expire after 7 days.
 
 ## Contact
 

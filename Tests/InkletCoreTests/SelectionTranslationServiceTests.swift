@@ -32,4 +32,86 @@ final class SelectionTranslationServiceTests: XCTestCase {
 
         XCTAssertEqual(result, "こんにちは")
     }
+
+    func testCachedTranslationReturnsWithoutCallingInjectedService() async throws {
+        let cacheURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SelectionTranslationServiceTests-\(UUID().uuidString)")
+            .appendingPathComponent("cache.json")
+        let cache = JSONSelectionTranslationCache(fileURL: cacheURL)
+        let key = SelectionTranslationCacheKey(
+            sourceText: "hello",
+            targetLanguageName: "Japanese",
+            systemPrompt: "Translate into Japanese.",
+            model: "test-model",
+            providerID: "openai",
+            temperature: 0.2
+        )
+        try cache.storeTranslation("こんにちは", for: key, now: Date(timeIntervalSince1970: 100))
+        let service = CachedSelectionTranslationService(
+            service: SelectionTranslationService { _, _, _, _, _ in
+                XCTFail("Provider should not be called for cached translations.")
+                return "network"
+            },
+            cache: cache
+        )
+
+        let result = try await service.translate(
+            sourceText: "hello",
+            targetLanguageName: "Japanese",
+            systemPrompt: "Translate into Japanese.",
+            model: "test-model",
+            providerID: "openai",
+            temperature: 0.2,
+            timeoutSeconds: 3,
+            now: Date(timeIntervalSince1970: 101)
+        )
+
+        XCTAssertEqual(result, "こんにちは")
+    }
+
+    func testCacheMissStoresInjectedServiceTranslation() async throws {
+        let cacheURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SelectionTranslationServiceTests-\(UUID().uuidString)")
+            .appendingPathComponent("cache.json")
+        let cache = JSONSelectionTranslationCache(fileURL: cacheURL)
+        let service = CachedSelectionTranslationService(
+            service: SelectionTranslationService { _, _, _, _, _ in
+                "こんにちは"
+            },
+            cache: cache
+        )
+
+        let result = try await service.translate(
+            sourceText: "hello",
+            targetLanguageName: "Japanese",
+            systemPrompt: "Translate into Japanese.",
+            model: "test-model",
+            providerID: "openai",
+            temperature: 0.2,
+            timeoutSeconds: 3,
+            now: Date(timeIntervalSince1970: 100)
+        )
+
+        XCTAssertEqual(result, "こんにちは")
+
+        let cachedOnlyService = CachedSelectionTranslationService(
+            service: SelectionTranslationService { _, _, _, _, _ in
+                XCTFail("Provider should not be called after the translation is cached.")
+                return "network"
+            },
+            cache: cache
+        )
+        let cachedResult = try await cachedOnlyService.translate(
+            sourceText: "hello",
+            targetLanguageName: "Japanese",
+            systemPrompt: "Translate into Japanese.",
+            model: "test-model",
+            providerID: "openai",
+            temperature: 0.2,
+            timeoutSeconds: 3,
+            now: Date(timeIntervalSince1970: 101)
+        )
+
+        XCTAssertEqual(cachedResult, "こんにちは")
+    }
 }

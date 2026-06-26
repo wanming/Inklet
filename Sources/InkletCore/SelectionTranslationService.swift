@@ -53,3 +53,50 @@ public struct SelectionTranslationService: Sendable {
         )
     }
 }
+
+public struct CachedSelectionTranslationService: Sendable {
+    private let service: SelectionTranslationService
+    private let cache: JSONSelectionTranslationCache
+
+    public init(
+        service: SelectionTranslationService,
+        cache: JSONSelectionTranslationCache = JSONSelectionTranslationCache()
+    ) {
+        self.service = service
+        self.cache = cache
+    }
+
+    public func translate(
+        sourceText: String,
+        targetLanguageName: String,
+        systemPrompt: String,
+        model: String,
+        providerID: String,
+        temperature: Double,
+        timeoutSeconds: TimeInterval,
+        now: Date = Date()
+    ) async throws -> String {
+        let cacheKey = SelectionTranslationCacheKey(
+            sourceText: sourceText,
+            targetLanguageName: targetLanguageName,
+            systemPrompt: systemPrompt,
+            model: model,
+            providerID: providerID,
+            temperature: temperature
+        )
+
+        if let cachedTranslation = try? cache.translation(for: cacheKey, now: now) {
+            return cachedTranslation
+        }
+
+        let translated = try await service.translate(
+            sourceText: sourceText,
+            systemPrompt: systemPrompt,
+            model: model,
+            temperature: temperature,
+            timeoutSeconds: timeoutSeconds
+        )
+        try? cache.storeTranslation(translated, for: cacheKey, now: now)
+        return translated
+    }
+}

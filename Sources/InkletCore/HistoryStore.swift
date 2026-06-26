@@ -40,6 +40,16 @@ public struct HistoryItem: Codable, Equatable, Identifiable, Sendable {
         self.model = model
         self.metadata = metadata
     }
+
+    func hasSameHistoryContent(as other: HistoryItem) -> Bool {
+        source == other.source
+            && inputText == other.inputText
+            && outputText == other.outputText
+            && modeName == other.modeName
+            && targetLanguageName == other.targetLanguageName
+            && model == other.model
+            && metadata == other.metadata
+    }
 }
 
 public protocol HistoryStore: Sendable {
@@ -79,6 +89,10 @@ public final class JSONLHistoryStore: HistoryStore, @unchecked Sendable {
     public func append(_ item: HistoryItem) throws {
         lock.lock()
         defer { lock.unlock() }
+
+        if try lastStoredItem()?.hasSameHistoryContent(as: item) == true {
+            return
+        }
 
         try FileManager.default.createDirectory(
             at: fileURL.deletingLastPathComponent(),
@@ -133,5 +147,26 @@ public final class JSONLHistoryStore: HistoryStore, @unchecked Sendable {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
+    }
+
+    private func lastStoredItem() throws -> HistoryItem? {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            return nil
+        }
+
+        let data = try Data(contentsOf: fileURL)
+        let lines = String(decoding: data, as: UTF8.self).split(
+            separator: "\n",
+            omittingEmptySubsequences: true
+        )
+        let decoder = Self.makeDecoder()
+
+        for line in lines.reversed() {
+            if let item = try? decoder.decode(HistoryItem.self, from: Data(line.utf8)) {
+                return item
+            }
+        }
+
+        return nil
     }
 }
