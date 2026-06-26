@@ -22,13 +22,17 @@ public struct SelectionDragPolicy: Equatable, Sendable {
         consumeMouseUpAction(at: point) == .candidateSelection
     }
 
-    public mutating func consumeMouseUpAction(at point: SelectionPoint) -> SelectionMouseUpAction {
+    public mutating func consumeMouseUpAction(at point: SelectionPoint, clickCount: Int = 1) -> SelectionMouseUpAction {
         defer {
             startPoint = nil
         }
 
         guard let startPoint else {
             return .ignore
+        }
+
+        if clickCount >= 2 {
+            return .candidateSelection
         }
 
         let dx = point.x - startPoint.x
