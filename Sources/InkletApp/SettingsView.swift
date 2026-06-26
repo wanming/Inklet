@@ -29,10 +29,13 @@ final class SettingsViewModel: ObservableObject {
     @Published var isEditingCustomSpeechEndpoint: Bool
     @Published fileprivate var pronunciationPreviewState: PronunciationPreviewState?
     @Published var permissionRefreshID: UUID
+    @Published var historyItems: [HistoryItem]
+    @Published var historyFilter: HistorySource?
 
     private let configStore: UserDefaultsConfigStore
     private let apiKeyStore: LocalAPIKeyStore
     private let modelCatalogService: ModelCatalogService
+    private let historyStore: any HistoryStore
     private let pronunciationPreviewPlaybackService: SpeechPlaybackService
     private var cancellables = Set<AnyCancellable>()
     private var pronunciationPreviewTask: Task<Void, Never>?
@@ -43,13 +46,15 @@ final class SettingsViewModel: ObservableObject {
     init(
         configStore: UserDefaultsConfigStore = UserDefaultsConfigStore(),
         apiKeyStore: LocalAPIKeyStore = LocalAPIKeyStore(),
-        modelCatalogService: ModelCatalogService = ModelCatalogService()
+        modelCatalogService: ModelCatalogService = ModelCatalogService(),
+        historyStore: any HistoryStore = JSONLHistoryStore()
     ) {
         var loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         loadedConfig.temperature = min(max(loadedConfig.temperature, 0), 1)
         self.configStore = configStore
         self.apiKeyStore = apiKeyStore
         self.modelCatalogService = modelCatalogService
+        self.historyStore = historyStore
         self.pronunciationPreviewPlaybackService = SpeechPlaybackService()
         loadedConfig.providerID = LLMProviderPreset.openAI.id
         self.config = loadedConfig
@@ -76,6 +81,8 @@ final class SettingsViewModel: ObservableObject {
         ) == .custom
         self.pronunciationPreviewState = nil
         self.permissionRefreshID = UUID()
+        self.historyItems = (try? historyStore.load()).map { Array($0.reversed()) } ?? []
+        self.historyFilter = nil
 
         self.pronunciationPreviewPlaybackService.onFinish = { [weak self] in
             self?.pronunciationPreviewState = nil
@@ -85,6 +92,13 @@ final class SettingsViewModel: ObservableObject {
 
     var selectedProvider: LLMProviderPreset {
         LLMProviderPreset.openAI
+    }
+
+    var filteredHistoryItems: [HistoryItem] {
+        guard let historyFilter else {
+            return historyItems
+        }
+        return historyItems.filter { $0.source == historyFilter }
     }
 
     var isCustomOpenAICompatibleProvider: Bool {
@@ -147,6 +161,25 @@ final class SettingsViewModel: ObservableObject {
 
     func refreshPermissions() {
         permissionRefreshID = UUID()
+    }
+
+    func reloadHistory() {
+        do {
+            historyItems = Array(try historyStore.load().reversed())
+        } catch {
+            historyItems = []
+            message = L10n.text("settings.history.error.loadFailed")
+        }
+    }
+
+    func clearHistory() {
+        do {
+            try historyStore.clear()
+            historyItems = []
+            message = L10n.text("settings.history.cleared")
+        } catch {
+            message = L10n.text("settings.history.error.clearFailed")
+        }
     }
 
     var selectedSpeechProfile: VoiceInputConfig.SpeechProfile {
@@ -493,6 +526,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case writeAssistant = "Write Assistant"
     case voiceWriteAssistant = "Voice Write Assistant"
     case selectionAssistant = "Selection Assistant"
+    case history = "History"
     case promptModes = "Prompt Modes"
     case about = "About"
 
@@ -504,6 +538,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .writeAssistant: L10n.text("settings.section.writeAssistant")
         case .voiceWriteAssistant: L10n.text("settings.section.voiceWriteAssistant")
         case .selectionAssistant: L10n.text("settings.section.selectionAssistant")
+        case .history: L10n.text("settings.section.history")
         case .promptModes: L10n.text("settings.section.promptModes")
         case .about: L10n.text("settings.section.about")
         }
@@ -515,6 +550,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .writeAssistant: "pencil.and.scribble"
         case .voiceWriteAssistant: "mic"
         case .selectionAssistant: "text.viewfinder"
+        case .history: "clock.arrow.circlepath"
         case .promptModes: "slider.horizontal.3"
         case .about: "info.circle"
         }
@@ -522,9 +558,12 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 }
 
 struct SettingsView: View {
-    @StateObject private var model = SettingsViewModel()
+    @StateObject private var model: SettingsViewModel
     @State private var selectedSection: SettingsSection
     @State private var promptModePendingDeletionID: String?
+    @State private var isConfirmingClearHistory = false
+    @State private var copiedHistoryControlID: String?
+    @State private var historyCopyFeedbackTask: Task<Void, Never>?
     private let onAppearanceChange: (AppAppearance) -> Void
 
     init(
@@ -532,13 +571,13 @@ struct SettingsView: View {
         historyStore: any HistoryStore = JSONLHistoryStore(),
         onAppearanceChange: @escaping (AppAppearance) -> Void = { _ in }
     ) {
-        _ = historyStore
+        _model = StateObject(wrappedValue: SettingsViewModel(historyStore: historyStore))
         _selectedSection = State(initialValue: initialSection)
         self.onAppearanceChange = onAppearanceChange
     }
 
-    private var isSavedMessage: Bool {
-        model.message == L10n.text("settings.saved")
+    private var isSuccessMessage: Bool {
+        model.message == L10n.text("settings.saved") || model.message == L10n.text("settings.history.cleared")
     }
 
     var body: some View {
@@ -588,6 +627,17 @@ struct SettingsView: View {
             }
         } message: {
             Text(L10n.format("settings.mode.deleteConfirmMessage", model.promptModeName(modeID: promptModePendingDeletionID ?? "")))
+        }
+        .alert(
+            L10n.text("settings.history.clearConfirmTitle"),
+            isPresented: $isConfirmingClearHistory
+        ) {
+            Button(L10n.text("settings.history.clear"), role: .destructive) {
+                model.clearHistory()
+            }
+            Button(L10n.text("settings.cancel"), role: .cancel) {}
+        } message: {
+            Text(L10n.text("settings.history.clearConfirmMessage"))
         }
     }
 
@@ -687,6 +737,8 @@ struct SettingsView: View {
                             .padding(.horizontal, 24)
                             .padding(.vertical, 20)
                     }
+                case .history:
+                    historyPanel
                 case .promptModes:
                     promptModesPanel
                 case .about:
@@ -736,6 +788,8 @@ struct SettingsView: View {
             L10n.text("settings.description.voice")
         case .selectionAssistant:
             L10n.text("settings.description.selectionAssistant")
+        case .history:
+            L10n.text("settings.description.history")
         case .promptModes:
             L10n.text("settings.description.promptModes")
         case .about:
@@ -972,6 +1026,70 @@ struct SettingsView: View {
         }
     }
 
+    private var historyPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Picker("", selection: $model.historyFilter) {
+                    Text(L10n.text("settings.history.filter.all")).tag(Optional<HistorySource>.none)
+                    ForEach(HistorySource.allCases) { source in
+                        Text(historySourceTitle(source)).tag(Optional(source))
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 360)
+                .labelsHidden()
+
+                Spacer()
+
+                Button {
+                    isConfirmingClearHistory = true
+                } label: {
+                    Label(L10n.text("settings.history.clear"), systemImage: "trash")
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(InkletTheme.warning)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 6)
+                .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
+                .disabled(model.historyItems.isEmpty)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
+
+            if model.filteredHistoryItems.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 24, weight: .regular))
+                        .foregroundStyle(InkletTheme.textFaint)
+                    Text(L10n.text("settings.history.empty"))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(InkletTheme.textSecondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        ForEach(model.filteredHistoryItems) { item in
+                            historyRow(item)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 20)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear {
+            model.reloadHistory()
+        }
+        .onDisappear {
+            historyCopyFeedbackTask?.cancel()
+            historyCopyFeedbackTask = nil
+            copiedHistoryControlID = nil
+        }
+    }
+
     private var promptModesPanel: some View {
         HStack(alignment: .top, spacing: 0) {
             VStack(spacing: 0) {
@@ -1096,6 +1214,7 @@ struct SettingsView: View {
                     privacyLine(L10n.text("settings.privacy.provider"))
                     privacyLine(L10n.text("settings.privacy.voice"))
                     privacyLine(L10n.text("settings.privacy.clipboard"))
+                    privacyLine(L10n.text("settings.privacy.history"))
                 }
             }
         }
@@ -1281,12 +1400,130 @@ struct SettingsView: View {
         }
     }
 
+    private func historyRow(_ item: HistoryItem) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 8) {
+                Label(historySourceTitle(item.source), systemImage: historySourceIcon(item.source))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(InkletTheme.textPrimary)
+
+                Text(item.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.system(size: 11))
+                    .foregroundStyle(InkletTheme.textTertiary)
+
+                if let label = historyMetadataLabel(item) {
+                    Text(label)
+                        .font(.system(size: 11))
+                        .foregroundStyle(InkletTheme.textTertiary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+
+                Spacer()
+
+                historyCopyButton(
+                    title: L10n.text("settings.history.copyOriginal"),
+                    text: item.inputText,
+                    feedbackID: "\(item.id.uuidString)-input"
+                )
+                historyCopyButton(
+                    title: L10n.text("settings.history.copyResult"),
+                    text: item.outputText,
+                    feedbackID: "\(item.id.uuidString)-output"
+                )
+            }
+
+            historyTextBlock(title: L10n.text("settings.history.original"), text: item.inputText)
+            historyTextBlock(title: L10n.text("settings.history.result"), text: item.outputText)
+        }
+        .padding(12)
+        .background(InkletTheme.controlFill.opacity(0.58), in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(InkletTheme.subtleBorder)
+        }
+    }
+
+    private func historyTextBlock(title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(InkletTheme.textTertiary)
+
+            ScrollView {
+                Text(text)
+                    .font(.system(size: 12))
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxHeight: 86)
+        }
+    }
+
+    private func historyCopyButton(title: String, text: String, feedbackID: String) -> some View {
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            copiedHistoryControlID = feedbackID
+            historyCopyFeedbackTask?.cancel()
+            historyCopyFeedbackTask = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(900))
+                guard copiedHistoryControlID == feedbackID else { return }
+                copiedHistoryControlID = nil
+                historyCopyFeedbackTask = nil
+            }
+        } label: {
+            Image(systemName: copiedHistoryControlID == feedbackID ? "checkmark" : "doc.on.doc")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(InkletTheme.textSecondary)
+                .frame(width: 26, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(title)
+        .accessibilityLabel(title)
+    }
+
+    private func historySourceTitle(_ source: HistorySource) -> String {
+        switch source {
+        case .write:
+            L10n.text("settings.history.source.write")
+        case .voice:
+            L10n.text("settings.history.source.voice")
+        case .selection:
+            L10n.text("settings.history.source.selection")
+        }
+    }
+
+    private func historySourceIcon(_ source: HistorySource) -> String {
+        switch source {
+        case .write:
+            "pencil.and.scribble"
+        case .voice:
+            "mic"
+        case .selection:
+            "text.viewfinder"
+        }
+    }
+
+    private func historyMetadataLabel(_ item: HistoryItem) -> String? {
+        if let targetLanguageName = item.targetLanguageName {
+            return targetLanguageName
+        }
+        if let modeName = item.modeName {
+            return modeName
+        }
+        return item.model
+    }
+
     private var footer: some View {
         HStack(spacing: 12) {
             if !model.message.isEmpty {
-                Label(model.message, systemImage: isSavedMessage ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                Label(model.message, systemImage: isSuccessMessage ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                     .font(.footnote)
-                    .foregroundStyle(isSavedMessage ? InkletTheme.success : .red)
+                    .foregroundStyle(isSuccessMessage ? InkletTheme.success : .red)
                     .lineLimit(2)
             } else {
                 Text(L10n.text("settings.footer.pending"))
