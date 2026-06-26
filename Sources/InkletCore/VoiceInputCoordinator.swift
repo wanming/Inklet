@@ -20,6 +20,28 @@ public enum VoiceInputStatus: Equatable, Sendable {
     }
 }
 
+public struct VoiceInputHistoryEvent: Equatable, Sendable {
+    public var transcript: String
+    public var finalText: String
+    public var cleanupPromptModeID: String?
+    public var speechModel: String
+    public var cleanupFallback: Bool
+
+    public init(
+        transcript: String,
+        finalText: String,
+        cleanupPromptModeID: String?,
+        speechModel: String,
+        cleanupFallback: Bool
+    ) {
+        self.transcript = transcript
+        self.finalText = finalText
+        self.cleanupPromptModeID = cleanupPromptModeID
+        self.speechModel = speechModel
+        self.cleanupFallback = cleanupFallback
+    }
+}
+
 @MainActor
 public final class VoiceInputCoordinator {
     public typealias ConfigProvider = @MainActor () -> VoiceInputConfig
@@ -30,6 +52,7 @@ public final class VoiceInputCoordinator {
     public typealias Transcribe = @MainActor (SpeechTranscriptionRequest) async throws -> SpeechTranscriptionResult
     public typealias Cleanup = @MainActor (String, String) async throws -> String
     public typealias Insert = @MainActor (String, NSRunningApplication) async throws -> Void
+    public typealias RecordHistory = @MainActor (VoiceInputHistoryEvent) async -> Void
     public typealias StatusHandler = @MainActor (VoiceInputStatus) -> Void
 
     private enum State {
@@ -50,6 +73,7 @@ public final class VoiceInputCoordinator {
     private let transcribeHandler: Transcribe
     private let cleanupHandler: Cleanup
     private let insertHandler: Insert
+    private let recordHistoryHandler: RecordHistory
     private let statusHandler: StatusHandler
     private var state: State = .idle
     private var sessionID = 0
@@ -63,6 +87,7 @@ public final class VoiceInputCoordinator {
         transcribe: @escaping Transcribe,
         cleanup: @escaping Cleanup,
         insert: @escaping Insert,
+        recordHistory: @escaping RecordHistory = { _ in },
         statusHandler: @escaping StatusHandler
     ) {
         self.configProvider = configProvider
@@ -73,6 +98,7 @@ public final class VoiceInputCoordinator {
         self.transcribeHandler = transcribe
         self.cleanupHandler = cleanup
         self.insertHandler = insert
+        self.recordHistoryHandler = recordHistory
         self.statusHandler = statusHandler
     }
 
@@ -160,6 +186,12 @@ public final class VoiceInputCoordinator {
                     guard activeSessionID == sessionID else {
                         return
                     }
+                    await recordVoiceHistory(
+                        transcript: transcript,
+                        finalText: transcript,
+                        config: config,
+                        cleanupFallback: true
+                    )
                     state = .idle
                     statusHandler(.fallbackInserted(cleanupFailureMessage(for: error)))
                     statusHandler(.idle)
@@ -173,6 +205,12 @@ public final class VoiceInputCoordinator {
             guard activeSessionID == sessionID else {
                 return
             }
+            await recordVoiceHistory(
+                transcript: transcript,
+                finalText: finalText,
+                config: config,
+                cleanupFallback: false
+            )
             state = .idle
             statusHandler(.idle)
         } catch {
@@ -197,6 +235,22 @@ public final class VoiceInputCoordinator {
             state = .idle
             statusHandler(.idle)
         }
+    }
+
+    private func recordVoiceHistory(
+        transcript: String,
+        finalText: String,
+        config: VoiceInputConfig,
+        cleanupFallback: Bool
+    ) async {
+        let cleanupPromptModeID = config.autoProcessTranscription ? config.voiceCleanupPromptModeID : nil
+        await recordHistoryHandler(VoiceInputHistoryEvent(
+            transcript: transcript,
+            finalText: finalText,
+            cleanupPromptModeID: cleanupPromptModeID,
+            speechModel: config.speechModel,
+            cleanupFallback: cleanupFallback
+        ))
     }
 
     private func insertText(_ text: String) async throws {

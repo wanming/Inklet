@@ -63,6 +63,31 @@ final class VoiceInputCoordinatorTests: XCTestCase {
         XCTAssertEqual(harness.statuses, [.listening, .transcribing, .inserting, .idle])
     }
 
+    func testRawTranscriptionSuccessRecordsHistory() async {
+        let harness = VoiceInputHarness(config: VoiceInputConfig(
+            shortcut: .rightOption,
+            speechProviderID: VoiceInputConfig.openAISpeechProviderID,
+            speechEndpoint: VoiceInputConfig.defaultSpeechEndpoint,
+            speechModel: "gpt-speech-test",
+            autoProcessTranscription: false,
+            voiceCleanupPromptModeID: PromptMode.voiceCleanupID
+        ))
+        harness.transcriptionText = "raw transcript"
+
+        await harness.coordinator.start()
+        await harness.coordinator.stop()
+
+        XCTAssertEqual(harness.recordedHistory, [
+            VoiceInputHistoryEvent(
+                transcript: "raw transcript",
+                finalText: "raw transcript",
+                cleanupPromptModeID: nil,
+                speechModel: "gpt-speech-test",
+                cleanupFallback: false
+            )
+        ])
+    }
+
     func testStopWithAutoProcessingEnabledInsertsCleanedText() async {
         let harness = VoiceInputHarness()
         harness.transcriptionText = "um hello there"
@@ -74,6 +99,25 @@ final class VoiceInputCoordinatorTests: XCTestCase {
         XCTAssertEqual(harness.cleanupInputs, ["um hello there"])
         XCTAssertEqual(harness.insertedTexts, ["Hello there."])
         XCTAssertEqual(harness.statuses, [.listening, .transcribing, .polishing, .inserting, .idle])
+    }
+
+    func testCleanedTranscriptionSuccessRecordsHistory() async {
+        let harness = VoiceInputHarness()
+        harness.transcriptionText = "um hello there"
+        harness.cleanedText = "Hello there."
+
+        await harness.coordinator.start()
+        await harness.coordinator.stop()
+
+        XCTAssertEqual(harness.recordedHistory, [
+            VoiceInputHistoryEvent(
+                transcript: "um hello there",
+                finalText: "Hello there.",
+                cleanupPromptModeID: PromptMode.voiceCleanupID,
+                speechModel: VoiceInputConfig.defaultSpeechModel,
+                cleanupFallback: false
+            )
+        ])
     }
 
     func testCleanupFailureFallsBackToRawTranscription() async {
@@ -92,6 +136,25 @@ final class VoiceInputCoordinatorTests: XCTestCase {
             .inserting,
             .fallbackInserted("Cleanup failed. Inserted transcription."),
             .idle
+        ])
+    }
+
+    func testCleanupFallbackRecordsRawHistory() async {
+        let harness = VoiceInputHarness()
+        harness.transcriptionText = "raw transcript"
+        harness.cleanupError = TransformationError.provider("cleanup failed")
+
+        await harness.coordinator.start()
+        await harness.coordinator.stop()
+
+        XCTAssertEqual(harness.recordedHistory, [
+            VoiceInputHistoryEvent(
+                transcript: "raw transcript",
+                finalText: "raw transcript",
+                cleanupPromptModeID: PromptMode.voiceCleanupID,
+                speechModel: VoiceInputConfig.defaultSpeechModel,
+                cleanupFallback: true
+            )
         ])
     }
 
@@ -149,6 +212,7 @@ private final class VoiceInputHarness {
     var cancelRecordingCount = 0
     var insertedTexts: [String] = []
     var cleanupInputs: [String] = []
+    var recordedHistory: [VoiceInputHistoryEvent] = []
     var statuses: [VoiceInputStatus] = []
     var transcriptionText = "hello"
     var cleanedText = "Hello."
@@ -200,6 +264,9 @@ private final class VoiceInputHarness {
             },
             insert: { [weak self] text, _ in
                 self?.insertedTexts.append(text)
+            },
+            recordHistory: { [weak self] event in
+                self?.recordedHistory.append(event)
             },
             statusHandler: { [weak self] status in
                 self?.statuses.append(status)
