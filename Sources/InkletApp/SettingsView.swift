@@ -529,8 +529,10 @@ struct SettingsView: View {
 
     init(
         initialSection: SettingsSection = .general,
+        historyStore: any HistoryStore = JSONLHistoryStore(),
         onAppearanceChange: @escaping (AppAppearance) -> Void = { _ in }
     ) {
+        _ = historyStore
         _selectedSection = State(initialValue: initialSection)
         self.onAppearanceChange = onAppearanceChange
     }

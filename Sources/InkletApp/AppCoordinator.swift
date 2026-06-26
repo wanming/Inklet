@@ -40,6 +40,7 @@ final class AppCoordinator: NSObject {
     private let selectionActionWindowController: SelectionActionWindowController
     private let selectedTextReader: SelectedTextReader
     private let speechPlaybackService: SpeechPlaybackService
+    private let historyStore: JSONLHistoryStore
     private var configObserver: NSObjectProtocol?
     private var accessibilityObserver: NSObjectProtocol?
     private var onboardingObserver: NSObjectProtocol?
@@ -64,9 +65,12 @@ final class AppCoordinator: NSObject {
     private lazy var voiceCoordinator = makeVoiceInputCoordinator()
 
     override init() {
+        let historyStore = JSONLHistoryStore()
+
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        self.windowController = InkletPopoverWindowController()
-        self.settingsController = SettingsWindowController()
+        self.historyStore = historyStore
+        self.windowController = InkletPopoverWindowController(historyStore: historyStore)
+        self.settingsController = SettingsWindowController(historyStore: historyStore)
         self.aboutController = AboutWindowController()
         self.hotkeyManager = GlobalHotkeyManager()
         self.configStore = UserDefaultsConfigStore()
@@ -646,6 +650,15 @@ final class AppCoordinator: NSObject {
                     temperature: config.temperature,
                     timeoutSeconds: config.timeoutSeconds
                 )
+                try? self.historyStore.append(HistoryItem(
+                    source: .selection,
+                    inputText: sourceText,
+                    outputText: translated,
+                    modeName: nil,
+                    targetLanguageName: targetLanguageName,
+                    model: config.model,
+                    metadata: ["providerID": providerID]
+                ))
                 await MainActor.run {
                     self.currentTranslationText = translated
                     self.selectionActionWindowController.showTranslation(translated)
@@ -858,6 +871,32 @@ final class AppCoordinator: NSObject {
                     throw CancellationError()
                 }
                 try await self.insertionService.insert(text: text, into: targetApplication)
+            },
+            recordHistory: { [weak self] event in
+                guard let self else { return }
+                let config = (try? self.configStore.load()) ?? AppConfig.defaultConfig()
+                let modeName: String?
+                if let cleanupPromptModeID = event.cleanupPromptModeID {
+                    modeName = config.promptModeStore.resolveForInternalUse(
+                        modeID: cleanupPromptModeID,
+                        sourceText: event.transcript
+                    ).localizedName
+                } else {
+                    modeName = nil
+                }
+
+                try? self.historyStore.append(HistoryItem(
+                    source: .voice,
+                    inputText: event.transcript,
+                    outputText: event.finalText,
+                    modeName: modeName,
+                    targetLanguageName: nil,
+                    model: event.cleanupPromptModeID == nil ? event.speechModel : config.model,
+                    metadata: [
+                        "speechModel": event.speechModel,
+                        "cleanupFallback": event.cleanupFallback ? "true" : "false"
+                    ]
+                ))
             },
             statusHandler: { [weak self] status in
                 self?.voiceShortcutMonitor.setVoiceInputActive(status.allowsCancellation)

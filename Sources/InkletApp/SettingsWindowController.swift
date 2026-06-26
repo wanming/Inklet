@@ -53,16 +53,18 @@ final class SettingsWindowController: NSWindowController {
     private let configStore: UserDefaultsConfigStore
     private let apiKeyStore: LocalAPIKeyStore
     private let userDefaults: UserDefaults
+    private let historyStore: any HistoryStore
     private var permissionSettingsObserver: NSObjectProtocol?
     private var settingsWindowCloseObserver: NSObjectProtocol?
     private var permissionMonitorTask: Task<Void, Never>?
     private var systemSettingsReturnTask: Task<Void, Never>?
     private var didOpenAccessibilitySettings = false
 
-    init() {
+    init(historyStore: any HistoryStore = JSONLHistoryStore()) {
         self.configStore = UserDefaultsConfigStore()
         self.apiKeyStore = LocalAPIKeyStore()
         self.userDefaults = .standard
+        self.historyStore = historyStore
         let window = SettingsWindow(
             contentRect: NSRect(x: 0, y: 0, width: 860, height: 560),
             styleMask: [.borderless],
@@ -119,7 +121,7 @@ final class SettingsWindowController: NSWindowController {
         let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
         window?.appearance = config.appearance.nsAppearance
         window?.contentView = RoundedSettingsHostingView(
-            rootView: SettingsView(initialSection: section) { [weak window] appearance in
+            rootView: SettingsView(initialSection: section, historyStore: historyStore) { [weak window] appearance in
                 window?.appearance = appearance.nsAppearance
             }
         )

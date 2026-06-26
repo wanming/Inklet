@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import InkletCore
 
 @MainActor
 private final class InkletPopoverPanel: NSPanel {
@@ -63,8 +64,8 @@ final class InkletPopoverWindowController: NSWindowController {
         }
     }
 
-    init() {
-        self.model = InkletPopoverViewModel()
+    init(historyStore: any HistoryStore = JSONLHistoryStore()) {
+        self.model = InkletPopoverViewModel(historyStore: historyStore)
 
         let panel = InkletPopoverPanel(
             contentRect: NSRect(x: 0, y: 0, width: popoverWidth, height: 168),
