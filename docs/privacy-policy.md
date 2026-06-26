@@ -43,7 +43,7 @@ Inklet may fetch the public model catalog from `models.dev` periodically, curren
 
 When Selection Actions are enabled, Inklet watches for selection-related mouse and keyboard events and then uses macOS Accessibility to read the currently selected text after a short pause. Inklet does not use the clipboard as a fallback for this feature and does not store selected text.
 
-If you choose Translate, the selected text is sent to your configured LLM provider. If you choose Pronounce, the selected text is sent to OpenAI text-to-speech using your OpenAI API key. Some apps do not expose selected text through Accessibility; in those apps the floating menu may not appear.
+If you choose Translate, the selected text and your custom Translate instructions are sent to your configured LLM provider. If you choose Pronounce, the selected text is sent to OpenAI text-to-speech using your OpenAI API key. Some apps do not expose selected text through Accessibility; in those apps the floating menu may not appear.
 
 ## Local Storage
 

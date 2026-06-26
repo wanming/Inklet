@@ -638,10 +638,13 @@ final class AppCoordinator: NSObject {
                 let targetLanguageName = config.selectionActions.translationLanguage.resolvedPromptTargetName(
                     interfaceLanguageCode: L10n.resolvedLanguage.localeIdentifier
                 )
+                let systemPrompt = config.selectionActions.effectiveTranslationPrompt(
+                    targetLanguageName: targetLanguageName
+                )
                 let service = SelectionTranslationService(provider: provider)
                 let translated = try await service.translate(
                     sourceText: sourceText,
-                    targetLanguageName: targetLanguageName,
+                    systemPrompt: systemPrompt,
                     model: config.model,
                     temperature: config.temperature,
                     timeoutSeconds: config.timeoutSeconds

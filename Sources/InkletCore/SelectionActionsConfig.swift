@@ -4,21 +4,42 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
     public var isEnabled: Bool
     public var translationLanguage: SelectionTranslationLanguage
     public var pronunciationVoice: SelectionPronunciationVoice
+    public var translationPrompt: String
+
+    static let legacyDefaultTranslationPrompt = """
+    Translate the user's selected text into {targetLanguage}.
+    Preserve the original meaning, names, numbers, formatting, and tone.
+    Do not add explanations, alternatives, quotes, markdown, or commentary.
+    Return only the translated text.
+    """
+
+    public static let defaultTranslationPrompt = """
+    If the user's selected text is a single word, return a compact dictionary entry in {targetLanguage}.
+    Include the word, phonetic pronunciation, concise translation, one natural example sentence, and the example sentence translation.
+    If the word has multiple common meanings, include only the most useful meanings for the selected context when context is available.
+
+    If the selected text is not a single word, translate it into {targetLanguage}.
+    Preserve the original meaning, names, numbers, formatting, and tone.
+    Do not add explanations, alternatives, quotes, markdown, or commentary beyond the dictionary entry fields for a single word.
+    """
 
     public init(
         isEnabled: Bool = true,
         translationLanguage: SelectionTranslationLanguage = .followInterfaceLanguage,
-        pronunciationVoice: SelectionPronunciationVoice = .alloy
+        pronunciationVoice: SelectionPronunciationVoice = .alloy,
+        translationPrompt: String = Self.defaultTranslationPrompt
     ) {
         self.isEnabled = isEnabled
         self.translationLanguage = translationLanguage
         self.pronunciationVoice = pronunciationVoice
+        self.translationPrompt = translationPrompt
     }
 
     private enum CodingKeys: String, CodingKey {
         case isEnabled
         case translationLanguage
         case pronunciationVoice
+        case translationPrompt
     }
 
     public init(from decoder: Decoder) throws {
@@ -33,10 +54,22 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
             SelectionPronunciationVoice.self,
             forKey: .pronunciationVoice
         ) ?? defaults.pronunciationVoice
+        let decodedTranslationPrompt = try container.decodeIfPresent(String.self, forKey: .translationPrompt)
+            ?? defaults.translationPrompt
+        translationPrompt = decodedTranslationPrompt == Self.legacyDefaultTranslationPrompt
+            ? defaults.translationPrompt
+            : decodedTranslationPrompt
     }
 
     public static func defaultConfig() -> SelectionActionsConfig {
         SelectionActionsConfig()
+    }
+
+    public func effectiveTranslationPrompt(targetLanguageName: String) -> String {
+        let template = translationPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? Self.defaultTranslationPrompt
+            : translationPrompt
+        return template.replacingOccurrences(of: "{targetLanguage}", with: targetLanguageName)
     }
 }
 
