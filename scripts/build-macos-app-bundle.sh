@@ -51,7 +51,7 @@ ditto "${support_dir}/InfoPlistStrings" "$resources_dir"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${build_number}" "${contents_dir}/Info.plist"
 plutil -lint "${contents_dir}/Info.plist" >/dev/null
 
-echo "Signing ${app_path} with identity '${sign_identity}'..."
+echo "Signing ${app_path}..."
 if [[ -n "$entitlements_path" ]]; then
   codesign --force --sign "$sign_identity" --entitlements "$entitlements_path" "$app_path"
 else
@@ -61,4 +61,4 @@ fi
 echo "Built ${app_path}"
 echo
 echo "Entitlements:"
-codesign -dvvv --entitlements - "$app_path" 2>&1
+codesign -d --entitlements - "$app_path" 2>&1

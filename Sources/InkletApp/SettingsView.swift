@@ -230,6 +230,7 @@ final class SettingsViewModel: ObservableObject {
 
     func previewPronunciationVoice() {
         let voice = config.selectionActions.pronunciationVoice
+        let speed = config.selectionActions.pronunciationSpeed
         pronunciationPreviewTask?.cancel()
         pronunciationPreviewPlaybackService.stop()
         pronunciationPreviewState = .loading(voice)
@@ -250,6 +251,7 @@ final class SettingsViewModel: ObservableObject {
                         interfaceLanguageCode: L10n.resolvedLanguage.localeIdentifier
                     ),
                     voice: voice.rawValue,
+                    speed: speed,
                     timeoutSeconds: config.timeoutSeconds
                 ))
                 await MainActor.run {
@@ -432,6 +434,7 @@ final class SettingsViewModel: ObservableObject {
             }
 
             _ = try Hotkey.parse(config.hotkey)
+            config.voiceInput.autoProcessTranscription = config.voiceInput.postTranscriptionAction != .insertRawTranscript
             InkletLanguageStore.selectedLanguage = interfaceLanguage
             try configStore.save(config)
             let trimmedKey = providerAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -564,6 +567,19 @@ struct SettingsView: View {
 
     private var isSavedMessage: Bool {
         model.message == L10n.text("settings.saved")
+    }
+
+    private var pronunciationSpeedBinding: Binding<Double> {
+        Binding(
+            get: { model.config.selectionActions.pronunciationSpeed },
+            set: {
+                model.config.selectionActions.pronunciationSpeed = SelectionActionsConfig.clampedPronunciationSpeed($0)
+            }
+        )
+    }
+
+    private var pronunciationSpeedText: String {
+        L10n.format("settings.aiPronunciation.speedValue", model.config.selectionActions.pronunciationSpeed)
     }
 
     var body: some View {
@@ -931,9 +947,17 @@ struct SettingsView: View {
                 }
             }
 
-            settingsRow(L10n.text("settings.row.voiceAutoProcess"), help: L10n.text("settings.help.voiceAutoProcess")) {
-                Toggle("", isOn: $model.config.voiceInput.autoProcessTranscription)
-                    .labelsHidden()
+            settingsRow(
+                L10n.text("settings.row.voicePostTranscriptionAction"),
+                help: L10n.text("settings.help.voicePostTranscriptionAction")
+            ) {
+                Picker("", selection: $model.config.voiceInput.postTranscriptionAction) {
+                    ForEach(VoiceInputConfig.PostTranscriptionAction.allCases) { action in
+                        Text(action.localizedName).tag(action)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
             }
 
             settingsRow(L10n.text("settings.row.voiceCleanupMode"), help: L10n.text("settings.help.voiceCleanupMode")) {
@@ -944,7 +968,7 @@ struct SettingsView: View {
                 }
                 .labelsHidden()
                 .frame(maxWidth: 320, alignment: .leading)
-                .disabled(!model.config.voiceInput.autoProcessTranscription)
+                .disabled(model.config.voiceInput.postTranscriptionAction == .insertRawTranscript)
             }
         }
     }
@@ -1006,6 +1030,26 @@ struct SettingsView: View {
                     .help(L10n.text("settings.aiPronunciation.preview"))
                     .accessibilityLabel(L10n.text("settings.aiPronunciation.preview"))
                     .disabled(model.pronunciationPreviewState?.matches(model.config.selectionActions.pronunciationVoice) == true)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(
+                L10n.text("settings.row.aiPronunciationSpeed"),
+                help: L10n.text("settings.help.aiPronunciationSpeed")
+            ) {
+                HStack(spacing: 12) {
+                    Slider(
+                        value: pronunciationSpeedBinding,
+                        in: SelectionActionsConfig.minimumPronunciationSpeed...SelectionActionsConfig.maximumPronunciationSpeed,
+                        step: 0.05
+                    )
+                    .frame(maxWidth: 220)
+
+                    Text(pronunciationSpeedText)
+                        .font(.body.monospacedDigit())
+                        .frame(width: 52, alignment: .trailing)
                 }
                 .frame(maxWidth: 320, alignment: .leading)
             }

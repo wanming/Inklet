@@ -414,6 +414,18 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(client.calls, [.update, .delete])
     }
 
+    func testLocalAPIKeyStoreUsesProductionKeychainServiceForProductionBundle() {
+        let service = LocalAPIKeyStore.resolvedKeychainService(bundleIdentifier: "com.tomwan.inklet")
+
+        XCTAssertEqual(service, LocalAPIKeyStore.defaultKeychainService)
+    }
+
+    func testLocalAPIKeyStoreUsesLocalKeychainServiceForLocalBundle() {
+        let service = LocalAPIKeyStore.resolvedKeychainService(bundleIdentifier: "com.tomwan.inklet.local")
+
+        XCTAssertEqual(service, LocalAPIKeyStore.localKeychainService)
+    }
+
     func testLocalAPIKeyStoreDoesNotSavePlaintextFallbackWhenKeychainSaveFails() throws {
         let suiteName = "LocalAPIKeyStoreSaveFailureTests-\(UUID().uuidString)"
         let userDefaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

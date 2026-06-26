@@ -1,24 +1,32 @@
 import Foundation
 
 public struct SelectionActionsConfig: Codable, Equatable, Sendable {
+    public static let minimumPronunciationSpeed = 0.75
+    public static let maximumPronunciationSpeed = 1.5
+    public static let defaultPronunciationSpeed = 1.0
+
     public var isEnabled: Bool
     public var translationLanguage: SelectionTranslationLanguage
     public var pronunciationVoice: SelectionPronunciationVoice
+    public var pronunciationSpeed: Double
 
     public init(
         isEnabled: Bool = true,
         translationLanguage: SelectionTranslationLanguage = .followInterfaceLanguage,
-        pronunciationVoice: SelectionPronunciationVoice = .alloy
+        pronunciationVoice: SelectionPronunciationVoice = .alloy,
+        pronunciationSpeed: Double = Self.defaultPronunciationSpeed
     ) {
         self.isEnabled = isEnabled
         self.translationLanguage = translationLanguage
         self.pronunciationVoice = pronunciationVoice
+        self.pronunciationSpeed = Self.clampedPronunciationSpeed(pronunciationSpeed)
     }
 
     private enum CodingKeys: String, CodingKey {
         case isEnabled
         case translationLanguage
         case pronunciationVoice
+        case pronunciationSpeed
     }
 
     public init(from decoder: Decoder) throws {
@@ -33,10 +41,17 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
             SelectionPronunciationVoice.self,
             forKey: .pronunciationVoice
         ) ?? defaults.pronunciationVoice
+        pronunciationSpeed = Self.clampedPronunciationSpeed(
+            try container.decodeIfPresent(Double.self, forKey: .pronunciationSpeed) ?? defaults.pronunciationSpeed
+        )
     }
 
     public static func defaultConfig() -> SelectionActionsConfig {
         SelectionActionsConfig()
+    }
+
+    public static func clampedPronunciationSpeed(_ speed: Double) -> Double {
+        min(max(speed, minimumPronunciationSpeed), maximumPronunciationSpeed)
     }
 }
 

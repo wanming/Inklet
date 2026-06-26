@@ -77,6 +77,76 @@ final class VoiceInputCoordinatorTests: XCTestCase {
         XCTAssertEqual(harness.statuses, [.listening, .transcribing, .polishing, .inserting, .idle])
     }
 
+    func testStopWithAskEachTimeUsesSelectedPromptMode() async {
+        let harness = VoiceInputHarness(config: VoiceInputConfig(
+            shortcut: .rightOption,
+            speechProviderID: VoiceInputConfig.openAISpeechProviderID,
+            speechEndpoint: VoiceInputConfig.defaultSpeechEndpoint,
+            speechModel: VoiceInputConfig.defaultSpeechModel,
+            microphoneDeviceID: nil,
+            autoProcessTranscription: true,
+            postTranscriptionAction: .askEachTime,
+            voiceCleanupPromptModeID: PromptMode.voiceCleanupID
+        ))
+        harness.transcriptionText = "summarize this"
+        harness.cleanedText = "Summary."
+        harness.promptModeSelection = .promptMode(PromptMode.chineseSummaryID)
+
+        await harness.coordinator.start()
+        await harness.coordinator.stop()
+
+        XCTAssertEqual(harness.promptModeSelectionRequests.map(\.transcript), ["summarize this"])
+        XCTAssertEqual(harness.cleanupInputs, ["summarize this"])
+        XCTAssertEqual(harness.cleanupModeIDs, [PromptMode.chineseSummaryID])
+        XCTAssertEqual(harness.insertedTexts, ["Summary."])
+        XCTAssertEqual(harness.statuses, [.listening, .transcribing, .choosingPromptMode, .polishing, .inserting, .idle])
+    }
+
+    func testStopWithAskEachTimeCanInsertRawTranscription() async {
+        let harness = VoiceInputHarness(config: VoiceInputConfig(
+            shortcut: .rightOption,
+            speechProviderID: VoiceInputConfig.openAISpeechProviderID,
+            speechEndpoint: VoiceInputConfig.defaultSpeechEndpoint,
+            speechModel: VoiceInputConfig.defaultSpeechModel,
+            microphoneDeviceID: nil,
+            autoProcessTranscription: true,
+            postTranscriptionAction: .askEachTime,
+            voiceCleanupPromptModeID: PromptMode.voiceCleanupID
+        ))
+        harness.transcriptionText = "raw words"
+        harness.promptModeSelection = .rawTranscript
+
+        await harness.coordinator.start()
+        await harness.coordinator.stop()
+
+        XCTAssertEqual(harness.promptModeSelectionRequests.map(\.transcript), ["raw words"])
+        XCTAssertEqual(harness.cleanupInputs, [])
+        XCTAssertEqual(harness.insertedTexts, ["raw words"])
+        XCTAssertEqual(harness.statuses, [.listening, .transcribing, .choosingPromptMode, .inserting, .idle])
+    }
+
+    func testStopWithAskEachTimeCancellationInsertsNothing() async {
+        let harness = VoiceInputHarness(config: VoiceInputConfig(
+            shortcut: .rightOption,
+            speechProviderID: VoiceInputConfig.openAISpeechProviderID,
+            speechEndpoint: VoiceInputConfig.defaultSpeechEndpoint,
+            speechModel: VoiceInputConfig.defaultSpeechModel,
+            microphoneDeviceID: nil,
+            autoProcessTranscription: true,
+            postTranscriptionAction: .askEachTime,
+            voiceCleanupPromptModeID: PromptMode.voiceCleanupID
+        ))
+        harness.transcriptionText = "ignore this"
+        harness.promptModeSelection = .cancelled
+
+        await harness.coordinator.start()
+        await harness.coordinator.stop()
+
+        XCTAssertEqual(harness.cleanupInputs, [])
+        XCTAssertEqual(harness.insertedTexts, [])
+        XCTAssertEqual(harness.statuses, [.listening, .transcribing, .choosingPromptMode, .idle])
+    }
+
     func testCleanupFailureFallsBackToRawTranscription() async {
         let harness = VoiceInputHarness()
         harness.transcriptionText = "raw transcript"
@@ -94,6 +164,18 @@ final class VoiceInputCoordinatorTests: XCTestCase {
             .fallbackInserted("Cleanup failed. Inserted transcription."),
             .idle
         ])
+    }
+
+    func testCleanupCancellationReturnsIdleWithoutInserting() async {
+        let harness = VoiceInputHarness()
+        harness.transcriptionText = "raw transcript"
+        harness.cleanupError = CancellationError()
+
+        await harness.coordinator.start()
+        await harness.coordinator.stop()
+
+        XCTAssertEqual(harness.insertedTexts, [])
+        XCTAssertEqual(harness.statuses, [.listening, .transcribing, .polishing, .idle])
     }
 
     func testTranscriptionProviderFailureShowsShortError() async {
@@ -150,11 +232,14 @@ private final class VoiceInputHarness {
     var cancelRecordingCount = 0
     var insertedTexts: [String] = []
     var cleanupInputs: [String] = []
+    var cleanupModeIDs: [String] = []
+    var promptModeSelectionRequests: [VoicePromptModeSelectionRequest] = []
     var statuses: [VoiceInputStatus] = []
     var transcriptionText = "hello"
     var cleanedText = "Hello."
     var transcriptionError: Error?
     var cleanupError: Error?
+    var promptModeSelection = VoicePromptModeSelection.promptMode(PromptMode.voiceCleanupID)
     var pauseStartRecording = false
     private var startRecordingContinuation: CheckedContinuation<Void, Never>?
 
@@ -192,8 +277,13 @@ private final class VoiceInputHarness {
                 }
                 return SpeechTranscriptionResult(text: self?.transcriptionText ?? "")
             },
-            cleanup: { [weak self] source, _ in
+            selectPromptMode: { [weak self] request in
+                self?.promptModeSelectionRequests.append(request)
+                return self?.promptModeSelection ?? .cancelled
+            },
+            cleanup: { [weak self] source, modeID in
                 self?.cleanupInputs.append(source)
+                self?.cleanupModeIDs.append(modeID)
                 if let cleanupError = self?.cleanupError {
                     throw cleanupError
                 }

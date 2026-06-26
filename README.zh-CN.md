@@ -31,8 +31,8 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 3. 按 macOS 提示授予 Accessibility 权限。Inklet 需要这个权限来回到上一个应用并粘贴结果。系统设置打开期间 Inklet 会留在后台；关闭系统设置后 Inklet 会返回 General 设置页。
 4. 在 General 中填写 OpenAI API key。Inklet 会用这一把 key 处理写作、语音转写、选区翻译和发音。
 5. 在 Write Assistant 中配置模型、写作快捷键、生成参数和 prompt modes。
-6. 可选：在 Voice Write Assistant 中配置麦克风、speech preset、语音快捷键和 cleanup mode。
-7. 可选：在 Selection Assistant 中配置翻译语言和 AI 发音声音，并在设置中试听该声音。
+6. 可选：在 Voice Write Assistant 中配置麦克风、speech preset、语音快捷键和转写后的处理方式。
+7. 可选：在 Selection Assistant 中配置翻译语言、AI 发音声音和发音速度，并在设置中试听该声音。
 8. 第一次使用语音输入时，请授予 Microphone 权限。
 
 ## 日常使用
@@ -51,7 +51,7 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 2. 轻按一次 Right Option，用选中的麦克风开始录音。
 3. 说一小段话。
 4. 再轻按一次 Right Option 停止录音。
-5. Inklet 会转写音频，可选地用所选 prompt mode 清理转写内容，然后插入最终文本。
+5. Inklet 会转写音频，然后根据 Voice 设置使用整理模式、每次询问 prompt mode，或直接插入原始转写。
 
 默认语音快捷键是 Right Option。你可以在 Settings 中改成 Right Command、Left Option、Left Command，或直接关闭。
 
@@ -68,7 +68,7 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
   - Voice Cleanup
 - 把生成结果插回之前聚焦的应用。
 - 插入后恢复你的剪贴板内容。
-- 可以编辑 prompt modes、OpenAI 模型、timeout、temperature、写作快捷键、语音快捷键、麦克风、speech preset、speech endpoint、speech model、选区翻译语言和 AI 发音声音。
+- 可以编辑 prompt modes、OpenAI 模型、timeout、temperature、写作快捷键、语音快捷键、麦克风、speech preset、speech endpoint、speech model、转写后处理方式、选区翻译语言、AI 发音声音和 AI 发音速度。
 - 使用一把共享的 OpenAI API key 处理写作、语音转写、选区翻译和发音。
 - 提供英文和中文应用界面。
 
@@ -97,8 +97,10 @@ Inklet 是早期 MVP。当前仓库包含：
 
 ```bash
 swift build
-swift run Inklet
+scripts/run-local-app.sh
 ```
+
+日常手动测试请从任意 worktree 使用 `scripts/run-local-app.sh`。它会安装并打开稳定的 `/Applications/Inklet Local.app` 身份，让 macOS 的 Accessibility 和 Keychain 授权可以跨 rebuild 复用。
 
 运行测试：
 
@@ -134,6 +136,7 @@ docs/                    手动测试说明和隐私政策
 
 - Provider 行为应保持有聚焦的单元测试覆盖。
 - 发布用户可见的 app 改动前，请使用 [docs/manual-test-checklist.md](docs/manual-test-checklist.md)。
+- 日常手动测试 app 时使用 `scripts/run-local-app.sh`，不要用 `swift run Inklet` 或 `open dist/...`，这样本机 Accessibility 和 Keychain 授权会绑定到同一个稳定 app 身份。
 - 剪贴板和 Accessibility 流程是核心体验，需要谨慎处理。
 - 项目仍处于 MVP 阶段，README 应描述当前代码已经支持的能力，而不是未来计划。
 

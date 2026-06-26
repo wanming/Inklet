@@ -4,17 +4,20 @@ public struct OpenAITTSRequest: Equatable, Sendable {
     public var input: String
     public var model: String
     public var voice: String
+    public var speed: Double
     public var timeoutSeconds: TimeInterval
 
     public init(
         input: String,
         model: String = "gpt-4o-mini-tts",
         voice: String = "alloy",
+        speed: Double = 1.0,
         timeoutSeconds: TimeInterval
     ) {
         self.input = input
         self.model = model
         self.voice = voice
+        self.speed = speed
         self.timeoutSeconds = timeoutSeconds
     }
 }
@@ -94,7 +97,8 @@ public struct OpenAITTSProvider: Sendable {
             "model": request.model,
             "voice": request.voice,
             "input": trimmedInput,
-            "format": "mp3"
+            "format": "mp3",
+            "speed": request.speed
         ])
         return urlRequest
     }

@@ -712,6 +712,7 @@ final class AppCoordinator: NSObject {
                 let audioData = try await provider.speechAudio(OpenAITTSRequest(
                     input: sourceText,
                     voice: config.selectionActions.pronunciationVoice.rawValue,
+                    speed: config.selectionActions.pronunciationSpeed,
                     timeoutSeconds: config.timeoutSeconds
                 ))
                 await MainActor.run {
@@ -828,6 +829,20 @@ final class AppCoordinator: NSObject {
                 )
                 return try await provider.transcribe(request)
             },
+            selectPromptMode: { [weak self] request in
+                guard let self else {
+                    return .cancelled
+                }
+                let config = (try? self.configStore.load()) ?? AppConfig.defaultConfig()
+                return await self.voiceStatusController.selectPromptMode(
+                    transcript: request.transcript,
+                    modes: self.voicePromptModeSelectionModes(
+                        for: config,
+                        defaultModeID: request.defaultPromptModeID
+                    ),
+                    defaultModeID: request.defaultPromptModeID
+                )
+            },
             cleanup: { [weak self] source, modeID in
                 guard let self else {
                     throw CancellationError()
@@ -865,6 +880,20 @@ final class AppCoordinator: NSObject {
                 self?.voiceStatusController.apply(status)
             }
         )
+    }
+
+    private func voicePromptModeSelectionModes(for config: AppConfig, defaultModeID: String) -> [PromptMode] {
+        var modes = config.visiblePromptModes
+        let fallbackCleanupMode = PromptModeStore.defaultStore().mode(id: PromptMode.voiceCleanupID)
+        if let defaultMode = config.promptModeStore.mode(id: defaultModeID) ?? fallbackCleanupMode,
+           !modes.contains(where: { $0.id == defaultMode.id }) {
+            modes.append(defaultMode)
+        }
+
+        if modes.isEmpty, let fallbackCleanupMode {
+            modes.append(fallbackCleanupMode)
+        }
+        return modes
     }
 
     private func setHotkeyRecording(_ isRecording: Bool) {

@@ -57,8 +57,17 @@ final class AudioRecorder {
         recordingURL = url
 
         captureSession.startRunning()
+        guard captureSession.isRunning else {
+            stopCaptureSession()
+            recordingURL = nil
+            try? FileManager.default.removeItem(at: url)
+            throw AudioRecorderError.recordingUnavailable
+        }
+
         fileOutput.startRecording(to: url, outputFileType: .m4a, recordingDelegate: recordingDelegate)
-        guard captureSession.isRunning, fileOutput.isRecording else {
+        do {
+            try await recordingDelegate.waitUntilStarted()
+        } catch {
             stopCaptureSession()
             recordingURL = nil
             try? FileManager.default.removeItem(at: url)
@@ -141,20 +150,43 @@ final class AudioRecorder {
 
 private final class AudioRecordingDelegate: NSObject, AVCaptureFileOutputRecordingDelegate, @unchecked Sendable {
     private let lock = NSLock()
-    private var continuation: CheckedContinuation<Void, Error>?
-    private var result: Result<Void, Error>?
+    private var startContinuation: CheckedContinuation<Void, Error>?
+    private var finishContinuation: CheckedContinuation<Void, Error>?
+    private var startResult: Result<Void, Error>?
+    private var finishResult: Result<Void, Error>?
+
+    func waitUntilStarted() async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            lock.lock()
+            if let startResult {
+                lock.unlock()
+                continuation.resume(with: startResult)
+            } else {
+                startContinuation = continuation
+                lock.unlock()
+            }
+        }
+    }
 
     func waitUntilFinished() async throws {
         try await withCheckedThrowingContinuation { continuation in
             lock.lock()
-            if let result {
+            if let finishResult {
                 lock.unlock()
-                continuation.resume(with: result)
+                continuation.resume(with: finishResult)
             } else {
-                self.continuation = continuation
+                finishContinuation = continuation
                 lock.unlock()
             }
         }
+    }
+
+    func fileOutput(
+        _ output: AVCaptureFileOutput,
+        didStartRecordingTo fileURL: URL,
+        from connections: [AVCaptureConnection]
+    ) {
+        completeStart(with: .success(()))
     }
 
     func fileOutput(
@@ -164,14 +196,40 @@ private final class AudioRecordingDelegate: NSObject, AVCaptureFileOutputRecordi
         error: Error?
     ) {
         let result: Result<Void, Error> = error.map(Result.failure) ?? .success(())
+        if case .failure = result {
+            completeStart(with: result)
+        }
+        completeFinish(with: result)
+    }
 
+    private func completeStart(with result: Result<Void, Error>) {
         lock.lock()
-        if let continuation {
-            self.continuation = nil
+        guard startResult == nil else {
             lock.unlock()
-            continuation.resume(with: result)
+            return
+        }
+        startResult = result
+        if let startContinuation {
+            self.startContinuation = nil
+            lock.unlock()
+            startContinuation.resume(with: result)
         } else {
-            self.result = result
+            lock.unlock()
+        }
+    }
+
+    private func completeFinish(with result: Result<Void, Error>) {
+        lock.lock()
+        guard finishResult == nil else {
+            lock.unlock()
+            return
+        }
+        finishResult = result
+        if let finishContinuation {
+            self.finishContinuation = nil
+            lock.unlock()
+            finishContinuation.resume(with: result)
+        } else {
             lock.unlock()
         }
     }
