@@ -41,6 +41,9 @@ Before any response or action, use the relevant `superpowers` skill.
 
 - Define verification before editing, then run the narrowest relevant checks.
 - Run `swift test` for code changes. Use targeted app launches and the manual checklist for user-facing workflows.
+- For routine local app hand-testing from any worktree, run `scripts/rebuild-local-app.sh`. Do not launch worktree-local `dist/...` apps or ad-hoc signed bundles, because macOS treats each path, bundle identifier, and signing requirement as a different app for Accessibility and Keychain trust.
+- Keep local hand-test builds on the stable identity `/Applications/Inklet Local.app` with bundle identifier `com.tomwan.inklet.local` and a real `INKLET_SIGN_IDENTITY` from `.env.local` or the environment. After the first Accessibility and Keychain approval, reuse this path so future worktrees do not prompt again.
+- Use `scripts/reset-rebuild-install.sh` only for intentional first-launch or permission-reset QA, because it clears local permissions and Keychain state by design.
 - For release-sensitive changes, also run strict builds, signature checks, or script checks as applicable.
 - Before finishing, inspect `git diff --check` and `git status`. Report any unverified area or remaining risk.
 

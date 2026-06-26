@@ -9,10 +9,10 @@ usage() {
 Usage: scripts/reset-local-state.sh [--remove-installed-app] [--dry-run]
 
 Reset Inklet preferences, permissions, Keychain API keys, and temporary
-voice recordings. By default, the installed /Applications/Inklet.app is kept.
+voice recordings. By default, installed app bundles are kept.
 
 Options:
-  --remove-installed-app  Also delete /Applications/Inklet.app.
+  --remove-installed-app  Also delete /Applications/Inklet.app and /Applications/Inklet Local.app.
   --dry-run               Print commands without running them.
   -h, --help              Show this help.
 EOF
@@ -56,6 +56,7 @@ done
 
 bundle_ids=(
   "com.tomwan.inklet"
+  "com.tomwan.inklet.local"
   "com.inklet.app"
 )
 
@@ -87,7 +88,9 @@ keychain_services=(
 echo "Resetting Inklet local state..."
 
 run osascript -e 'tell application "Inklet" to quit' || true
+run osascript -e 'tell application "Inklet Local" to quit' || true
 run pkill -x Inklet || true
+run pkill -x "Inklet Local" || true
 
 for bundle_id in "${bundle_ids[@]}"; do
   run defaults delete "$bundle_id" || true
@@ -108,6 +111,10 @@ fi
 
 if [[ "$remove_installed_app" == "1" && -d "/Applications/Inklet.app" ]]; then
   run sudo rm -rf "/Applications/Inklet.app"
+fi
+
+if [[ "$remove_installed_app" == "1" && -d "/Applications/Inklet Local.app" ]]; then
+  run sudo rm -rf "/Applications/Inklet Local.app"
 fi
 
 echo "Inklet local state reset."
