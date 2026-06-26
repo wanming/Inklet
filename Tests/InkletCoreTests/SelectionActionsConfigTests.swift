@@ -10,6 +10,16 @@ final class SelectionActionsConfigTests: XCTestCase {
         XCTAssertEqual(config.pronunciationVoice, .alloy)
     }
 
+    func testDefaultConfigIncludesDefaultTranslationPrompt() {
+        let config = SelectionActionsConfig.defaultConfig()
+
+        XCTAssertEqual(config.translationPrompt, SelectionActionsConfig.defaultTranslationPrompt)
+        XCTAssertTrue(config.translationPrompt.contains("{targetLanguage}"))
+        XCTAssertTrue(config.translationPrompt.contains("single word"))
+        XCTAssertTrue(config.translationPrompt.contains("phonetic"))
+        XCTAssertTrue(config.translationPrompt.contains("example sentence"))
+    }
+
     func testTranslationLanguagePromptNames() {
         XCTAssertEqual(SelectionTranslationLanguage.english.promptTargetName, "English")
         XCTAssertEqual(SelectionTranslationLanguage.simplifiedChinese.promptTargetName, "Simplified Chinese")
@@ -57,6 +67,59 @@ final class SelectionActionsConfigTests: XCTestCase {
         XCTAssertFalse(config.isEnabled)
         XCTAssertEqual(config.translationLanguage, .japanese)
         XCTAssertEqual(config.pronunciationVoice, .alloy)
+    }
+
+    func testDecodingOldConfigDefaultsTranslationPrompt() throws {
+        let data = #"{"isEnabled":false,"translationLanguage":"japanese","pronunciationVoice":"cedar"}"#.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(SelectionActionsConfig.self, from: data)
+
+        XCTAssertEqual(config.translationPrompt, SelectionActionsConfig.defaultTranslationPrompt)
+    }
+
+    func testDecodingLegacyDefaultTranslationPromptMigratesToCurrentDefault() throws {
+        let legacyPrompt = """
+        Translate the user's selected text into {targetLanguage}.
+        Preserve the original meaning, names, numbers, formatting, and tone.
+        Do not add explanations, alternatives, quotes, markdown, or commentary.
+        Return only the translated text.
+        """
+        let data = try JSONEncoder().encode(["translationPrompt": legacyPrompt])
+
+        let config = try JSONDecoder().decode(SelectionActionsConfig.self, from: data)
+
+        XCTAssertEqual(config.translationPrompt, SelectionActionsConfig.defaultTranslationPrompt)
+        XCTAssertNotEqual(config.translationPrompt, legacyPrompt)
+    }
+
+    func testDecodingCustomTranslationPromptPreservesCustomization() throws {
+        let customPrompt = "Explain {targetLanguage} nuance in one paragraph."
+        let data = try JSONEncoder().encode(["translationPrompt": customPrompt])
+
+        let config = try JSONDecoder().decode(SelectionActionsConfig.self, from: data)
+
+        XCTAssertEqual(config.translationPrompt, customPrompt)
+    }
+
+    func testEffectiveTranslationPromptReplacesTargetLanguage() {
+        let config = SelectionActionsConfig(
+            translationPrompt: "Rewrite into {targetLanguage}. Return only text."
+        )
+
+        XCTAssertEqual(
+            config.effectiveTranslationPrompt(targetLanguageName: "Japanese"),
+            "Rewrite into Japanese. Return only text."
+        )
+    }
+
+    func testEffectiveTranslationPromptFallsBackWhenBlank() {
+        let config = SelectionActionsConfig(translationPrompt: "  \n  ")
+
+        let prompt = config.effectiveTranslationPrompt(targetLanguageName: "German")
+
+        XCTAssertTrue(prompt.contains("German"))
+        XCTAssertTrue(prompt.contains("single word"))
+        XCTAssertTrue(prompt.contains("phonetic pronunciation"))
     }
 
     func testFollowInterfaceLanguageResolvesSupportedLanguages() {

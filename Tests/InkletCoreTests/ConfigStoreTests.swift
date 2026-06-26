@@ -94,7 +94,8 @@ final class ConfigStoreTests: XCTestCase {
         config.selectionActions = SelectionActionsConfig(
             isEnabled: false,
             translationLanguage: .japanese,
-            pronunciationVoice: .cedar
+            pronunciationVoice: .cedar,
+            translationPrompt: "Translate into {targetLanguage} with short wording."
         )
         config.promptModes = [
             PromptMode(

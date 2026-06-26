@@ -39,7 +39,7 @@ final class SelectionActionMonitor {
                 guard let self else { return }
                 let point = SelectionPoint(x: NSEvent.mouseLocation.x, y: NSEvent.mouseLocation.y)
                 if event.type == .leftMouseUp {
-                    switch self.dragPolicy.consumeMouseUpAction(at: point) {
+                    switch self.dragPolicy.consumeMouseUpAction(at: point, clickCount: event.clickCount) {
                     case .candidateSelection:
                         break
                     case .dismiss:

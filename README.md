@@ -59,7 +59,7 @@ The default voice shortcut is Right Option. You can change it to Right Command, 
 
 - Opens from a global macOS hotkey. The default is `Option+Space`.
 - Starts short voice dictation from a single modifier-key tap. The default voice shortcut is Right Option.
-- Shows Selection Actions after you select text in another Mac app and pause briefly, with quick translation and AI pronunciation.
+- Shows Selection Actions after you select text in another Mac app and pause briefly, with quick translation, a customizable Translate prompt, and AI pronunciation.
 - Ignores selected text longer than 1,500 characters to avoid accidental long-page triggers.
 - Plays selected text directly, and can play both the original text and translated text from the translation result.
 - Transforms text with built-in prompt modes:
@@ -69,6 +69,8 @@ The default voice shortcut is Right Option. You can change it to Right Command, 
 - Inserts generated text back into the previously focused app.
 - Restores your clipboard after insertion.
 - Lets you edit prompt modes, OpenAI model, timeout, temperature, writing shortcut, voice shortcut, speech preset, speech endpoint, speech model, selection translation language, and AI pronunciation voice.
+- Shows local History for successful Write, Voice, and Selection results, with source/result copy controls and a clear-all action.
+- Lets you edit prompt modes, OpenAI model, timeout, temperature, writing shortcut, voice shortcut, speech preset, speech endpoint, speech model, selection translation language, selection Translate prompt, and AI pronunciation voice.
 - Shows local History for successful Write, Voice, and Selection results, with source/result copy controls and a clear-all action.
 - Uses one shared OpenAI API key for writing, voice transcription, selection translation, and pronunciation.
 - Provides English and Chinese app UI localization.
@@ -149,6 +151,9 @@ docs/                           manual QA and privacy policy
 - Inklet saves successful Write, Voice, and Selection source/result text locally in History until you clear it in Settings.
 - Selection Actions use Accessibility to read the current selection after you select text in another app. Inklet does not use the clipboard as a fallback for Selection Actions and does not save merely selected text unless a successful action is recorded in local History.
 - Selection Assistant translation and AI pronunciation send selected text to OpenAI.
+- Inklet saves successful Write, Voice, and Selection source/result text locally in History until you clear it in Settings.
+- Selection Actions use Accessibility to read the current selection after you select text in another app. Inklet does not use the clipboard as a fallback for Selection Actions and does not save merely selected text unless a successful action is recorded in local History.
+- Selection Assistant translation sends selected text and your custom Translate instructions to OpenAI; AI pronunciation sends selected text to OpenAI.
 - Inklet fetches the public model catalog from `models.dev` at most once per day. This request does not include your text, audio, API keys, or app settings.
 - Do not send private text or audio to OpenAI unless you trust OpenAI's data handling policies.
 

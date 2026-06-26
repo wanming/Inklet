@@ -59,7 +59,7 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 
 - 使用全局 macOS 快捷键打开。默认是 `Option+Space`。
 - 用单个 modifier key 轻按开始短语音输入。默认语音快捷键是 Right Option。
-- 选中文本并短暂停顿后显示选区动作，可快速翻译或使用 AI 发音。
+- 选中文本并短暂停顿后显示选区动作，可快速翻译、自定义 Translate prompt，或使用 AI 发音。
 - 超过 1,500 个字符的选中文本会被忽略，避免误选整页时触发。
 - 可直接播放选中文本，也可在翻译结果里分别播放原文和译文。
 - 内置文本处理模式：
@@ -69,6 +69,8 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 - 把生成结果插回之前聚焦的应用。
 - 插入后恢复你的剪贴板内容。
 - 可以编辑 prompt modes、OpenAI 模型、timeout、temperature、写作快捷键、语音快捷键、speech preset、speech endpoint、speech model、选区翻译语言和 AI 发音声音。
+- 在本地 History 中查看成功的写作、语音和选区结果，并可复制原文/结果或清空全部历史。
+- 可以编辑 prompt modes、OpenAI 模型、timeout、temperature、写作快捷键、语音快捷键、speech preset、speech endpoint、speech model、选区翻译语言、选区 Translate prompt 和 AI 发音声音。
 - 在本地 History 中查看成功的写作、语音和选区结果，并可复制原文/结果或清空全部历史。
 - 使用一把共享的 OpenAI API key 处理写作、语音转写、选区翻译和发音。
 - 提供英文和中文应用界面。
@@ -149,6 +151,9 @@ docs/                    手动测试说明和隐私政策
 - Inklet 会把成功的写作、语音和选区原文/结果作为本地 History 保存，直到你在 Settings 中清空。
 - 选区动作会在你选中其他 App 中的文字后，通过 Accessibility 读取当前选区。Inklet 不会为选区动作使用剪贴板 fallback，也不会保存仅被选中的文本；只有成功完成的动作会进入本地 History。
 - Selection Assistant 的翻译和 AI 发音会把选中文本发送到 OpenAI。
+- Inklet 会把成功的写作、语音和选区原文/结果作为本地 History 保存，直到你在 Settings 中清空。
+- 选区动作会在你选中其他 App 中的文字后，通过 Accessibility 读取当前选区。Inklet 不会为选区动作使用剪贴板 fallback，也不会保存仅被选中的文本；只有成功完成的动作会进入本地 History。
+- Selection Assistant 的翻译会把选中文本和自定义 Translate 指令发送到 OpenAI；AI 发音会把选中文本发送到 OpenAI。
 - Inklet 最多每天从 `models.dev` 获取一次公开模型目录。该请求不包含你的文本、音频、API keys 或应用设置。
 - 除非你信任 OpenAI 的数据处理政策，否则不要发送私密文本或音频。
 

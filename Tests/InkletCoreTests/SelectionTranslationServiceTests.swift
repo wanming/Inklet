@@ -3,19 +3,18 @@ import XCTest
 
 final class SelectionTranslationServiceTests: XCTestCase {
     func testBuildsTranslationPromptMode() {
-        let mode = SelectionTranslationService.promptMode(targetLanguageName: "Simplified Chinese")
+        let mode = SelectionTranslationService.promptMode(systemPrompt: "Custom selection prompt.")
 
         XCTAssertEqual(mode.id, "selection-action-translate")
         XCTAssertFalse(mode.isVisible)
-        XCTAssertTrue(mode.systemPrompt.contains("Simplified Chinese"))
-        XCTAssertTrue(mode.systemPrompt.contains("Return only the translated text."))
+        XCTAssertEqual(mode.systemPrompt, "Custom selection prompt.")
     }
 
     func testTranslatesWithInjectedService() async throws {
         let service = SelectionTranslationService(
-            transform: { source, targetLanguageName, model, temperature, timeoutSeconds in
+            transform: { source, systemPrompt, model, temperature, timeoutSeconds in
                 XCTAssertEqual(source, "hello")
-                XCTAssertEqual(targetLanguageName, "Japanese")
+                XCTAssertEqual(systemPrompt, "Translate into Japanese.")
                 XCTAssertEqual(model, "test-model")
                 XCTAssertEqual(temperature, 0.2)
                 XCTAssertEqual(timeoutSeconds, 3)
@@ -25,7 +24,7 @@ final class SelectionTranslationServiceTests: XCTestCase {
 
         let result = try await service.translate(
             sourceText: "hello",
-            targetLanguageName: "Japanese",
+            systemPrompt: "Translate into Japanese.",
             model: "test-model",
             temperature: 0.2,
             timeoutSeconds: 3

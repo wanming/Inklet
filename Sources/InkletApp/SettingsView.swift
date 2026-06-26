@@ -277,6 +277,11 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
+    func resetSelectionTranslationPrompt() {
+        config.selectionActions.translationPrompt = SelectionActionsConfig.defaultTranslationPrompt
+        save()
+    }
+
     func refreshModelCatalogIfNeeded() async {
         isRefreshingModelCatalog = true
         defer {
@@ -984,6 +989,38 @@ struct SettingsView: View {
                 }
                 .labelsHidden()
                 .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(
+                L10n.text("settings.row.translationPrompt"),
+                help: L10n.text("settings.help.translationPrompt")
+            ) {
+                VStack(alignment: .leading, spacing: 8) {
+                    SettingsPromptTextView(text: $model.config.selectionActions.translationPrompt)
+                        .frame(height: 118)
+                        .padding(10)
+                        .modifier(InkletFieldModifier())
+                        .accessibilityLabel(L10n.text("settings.row.translationPrompt"))
+
+                    Button {
+                        model.resetSelectionTranslationPrompt()
+                    } label: {
+                        Label(
+                            L10n.text("settings.translationPrompt.restoreDefault"),
+                            systemImage: "arrow.counterclockwise"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
+                    .fixedSize()
+                    .help(L10n.text("settings.translationPrompt.restoreDefault"))
+                    .accessibilityLabel(L10n.text("settings.translationPrompt.restoreDefault"))
+                }
+                .frame(maxWidth: 420, alignment: .leading)
             }
 
             settingsRow(
