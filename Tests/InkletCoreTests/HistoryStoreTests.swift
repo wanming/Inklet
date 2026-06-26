@@ -1,0 +1,76 @@
+import XCTest
+@testable import InkletCore
+
+final class HistoryStoreTests: XCTestCase {
+    private func temporaryHistoryURL() -> URL {
+        FileManager.default.temporaryDirectory
+            .appendingPathComponent("HistoryStoreTests-\(UUID().uuidString)")
+            .appendingPathComponent("history.jsonl")
+    }
+
+    func testAppendAndLoadKeepsInsertionOrder() throws {
+        let url = temporaryHistoryURL()
+        let store = JSONLHistoryStore(fileURL: url)
+        let first = HistoryItem(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            createdAt: Date(timeIntervalSince1970: 10),
+            source: .write,
+            inputText: "rough",
+            outputText: "polished",
+            modeName: "Polish",
+            targetLanguageName: nil,
+            model: "gpt-test",
+            metadata: ["modeID": "polish"]
+        )
+        let second = HistoryItem(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+            createdAt: Date(timeIntervalSince1970: 20),
+            source: .selection,
+            inputText: "hello",
+            outputText: "ni hao",
+            modeName: nil,
+            targetLanguageName: "Simplified Chinese",
+            model: "gpt-test",
+            metadata: [:]
+        )
+
+        try store.append(first)
+        try store.append(second)
+
+        XCTAssertEqual(try store.load(), [first, second])
+    }
+
+    func testClearRemovesStoredRecords() throws {
+        let url = temporaryHistoryURL()
+        let store = JSONLHistoryStore(fileURL: url)
+        try store.append(HistoryItem(source: .voice, inputText: "um hi", outputText: "Hi."))
+
+        try store.clear()
+
+        XCTAssertEqual(try store.load(), [])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+    }
+
+    func testLoadSkipsMalformedLines() throws {
+        let url = temporaryHistoryURL()
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        let valid = HistoryItem(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
+            createdAt: Date(timeIntervalSince1970: 30),
+            source: .write,
+            inputText: "a",
+            outputText: "b"
+        )
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let validLine = String(decoding: try encoder.encode(valid), as: UTF8.self)
+        try "not-json\n\(validLine)\n".write(to: url, atomically: true, encoding: .utf8)
+
+        let store = JSONLHistoryStore(fileURL: url)
+
+        XCTAssertEqual(try store.load(), [valid])
+    }
+}

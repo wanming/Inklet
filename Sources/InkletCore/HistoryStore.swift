@@ -1,0 +1,127 @@
+import Foundation
+
+public enum HistorySource: String, Codable, Equatable, Sendable, CaseIterable, Identifiable {
+    case write
+    case voice
+    case selection
+
+    public var id: String { rawValue }
+}
+
+public struct HistoryItem: Codable, Equatable, Identifiable, Sendable {
+    public var id: UUID
+    public var createdAt: Date
+    public var source: HistorySource
+    public var inputText: String
+    public var outputText: String
+    public var modeName: String?
+    public var targetLanguageName: String?
+    public var model: String?
+    public var metadata: [String: String]
+
+    public init(
+        id: UUID = UUID(),
+        createdAt: Date = Date(),
+        source: HistorySource,
+        inputText: String,
+        outputText: String,
+        modeName: String? = nil,
+        targetLanguageName: String? = nil,
+        model: String? = nil,
+        metadata: [String: String] = [:]
+    ) {
+        self.id = id
+        self.createdAt = createdAt
+        self.source = source
+        self.inputText = inputText
+        self.outputText = outputText
+        self.modeName = modeName
+        self.targetLanguageName = targetLanguageName
+        self.model = model
+        self.metadata = metadata
+    }
+}
+
+public protocol HistoryStore: Sendable {
+    func load() throws -> [HistoryItem]
+    func append(_ item: HistoryItem) throws
+    func clear() throws
+}
+
+public struct JSONLHistoryStore: HistoryStore {
+    private let fileURL: URL
+
+    public init(fileURL: URL = JSONLHistoryStore.defaultFileURL()) {
+        self.fileURL = fileURL
+    }
+
+    public func load() throws -> [HistoryItem] {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            return []
+        }
+
+        let data = try Data(contentsOf: fileURL)
+        let lines = String(decoding: data, as: UTF8.self).split(
+            separator: "\n",
+            omittingEmptySubsequences: true
+        )
+        let decoder = Self.makeDecoder()
+
+        return lines.compactMap { line in
+            try? decoder.decode(HistoryItem.self, from: Data(line.utf8))
+        }
+    }
+
+    public func append(_ item: HistoryItem) throws {
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+
+        let encoder = Self.makeEncoder()
+        var data = try encoder.encode(item)
+        data.append(0x0A)
+
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            let handle = try FileHandle(forWritingTo: fileURL)
+            try handle.seekToEnd()
+            try handle.write(contentsOf: data)
+            try? handle.close()
+        } else {
+            try data.write(to: fileURL, options: .atomic)
+        }
+    }
+
+    public func clear() throws {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            return
+        }
+
+        try FileManager.default.removeItem(at: fileURL)
+    }
+
+    public static func defaultFileURL() -> URL {
+        let applicationSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first ?? FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Application Support")
+
+        return applicationSupport
+            .appendingPathComponent("Inklet", isDirectory: true)
+            .appendingPathComponent("history.jsonl")
+    }
+
+    private static func makeEncoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+
+    private static func makeDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }
+}
