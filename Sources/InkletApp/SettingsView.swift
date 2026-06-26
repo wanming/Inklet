@@ -4,43 +4,69 @@ import Combine
 import SwiftUI
 import InkletCore
 
+private enum PronunciationPreviewState: Equatable {
+    case loading(SelectionPronunciationVoice)
+    case playing(SelectionPronunciationVoice)
+
+    func matches(_ voice: SelectionPronunciationVoice) -> Bool {
+        switch self {
+        case .loading(let activeVoice), .playing(let activeVoice):
+            activeVoice == voice
+        }
+    }
+}
+
 @MainActor
 final class SettingsViewModel: ObservableObject {
     @Published var config: AppConfig
     @Published var message: String
     @Published var providerAPIKey: String
-    @Published var voiceAPIKey: String
     @Published var selectedPromptModeID: String
     @Published var interfaceLanguage: InterfaceLanguage
     @Published var cachedProviderModels: [String: [String]]
     @Published var isRefreshingModelCatalog: Bool
     @Published var isEditingCustomModel: Bool
     @Published var isEditingCustomSpeechEndpoint: Bool
+    @Published var microphoneOptions: [MicrophoneDeviceOption]
+    @Published fileprivate var pronunciationPreviewState: PronunciationPreviewState?
     @Published var permissionRefreshID: UUID
+    @Published var historyItems: [HistoryItem]
+    @Published var historyFilter: HistorySource?
 
     private let configStore: UserDefaultsConfigStore
     private let apiKeyStore: LocalAPIKeyStore
     private let modelCatalogService: ModelCatalogService
+    private let historyStore: any HistoryStore
+    private let microphoneDeviceCatalog: MicrophoneDeviceCatalog
+    private let pronunciationPreviewPlaybackService: SpeechPlaybackService
     private var cancellables = Set<AnyCancellable>()
-    private var isLoadingProviderKey = false
+    private var pronunciationPreviewTask: Task<Void, Never>?
+    private var savedProviderAPIKey: String
 
     static let customModelMenuID = "__custom_model__"
 
     init(
         configStore: UserDefaultsConfigStore = UserDefaultsConfigStore(),
         apiKeyStore: LocalAPIKeyStore = LocalAPIKeyStore(),
-        modelCatalogService: ModelCatalogService = ModelCatalogService()
+        modelCatalogService: ModelCatalogService = ModelCatalogService(),
+        historyStore: any HistoryStore = JSONLHistoryStore(),
+        microphoneDeviceCatalog: MicrophoneDeviceCatalog = MicrophoneDeviceCatalog()
     ) {
         var loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         loadedConfig.temperature = min(max(loadedConfig.temperature, 0), 1)
         self.configStore = configStore
         self.apiKeyStore = apiKeyStore
         self.modelCatalogService = modelCatalogService
+        self.historyStore = historyStore
+        self.microphoneDeviceCatalog = microphoneDeviceCatalog
+        self.pronunciationPreviewPlaybackService = SpeechPlaybackService()
+        loadedConfig.providerID = LLMProviderPreset.openAI.id
         self.config = loadedConfig
         self.message = ""
         self.interfaceLanguage = InkletLanguageStore.selectedLanguage
-        self.providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: loadedConfig.providerID) ?? ""
-        self.voiceAPIKey = apiKeyStore.loadAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID) ?? ""
+        let loadedProviderAPIKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id) ?? ""
+        self.providerAPIKey = loadedProviderAPIKey
+        self.savedProviderAPIKey = loadedProviderAPIKey
         self.selectedPromptModeID = loadedConfig.promptModes.sorted { $0.sortOrder < $1.sortOrder }.first?.id
             ?? PromptMode.translateToEnglishID
         self.cachedProviderModels = Dictionary(
@@ -57,17 +83,31 @@ final class SettingsViewModel: ObservableObject {
             endpoint: loadedConfig.voiceInput.speechEndpoint,
             model: loadedConfig.voiceInput.speechModel
         ) == .custom
+        self.microphoneOptions = microphoneDeviceCatalog.options()
+        self.pronunciationPreviewState = nil
         self.permissionRefreshID = UUID()
+        self.historyItems = (try? historyStore.load()).map { Array($0.reversed()) } ?? []
+        self.historyFilter = nil
 
+        self.pronunciationPreviewPlaybackService.onFinish = { [weak self] in
+            self?.pronunciationPreviewState = nil
+        }
         installAutoSave()
     }
 
     var selectedProvider: LLMProviderPreset {
-        config.resolvedProviderPreset
+        LLMProviderPreset.openAI
+    }
+
+    var filteredHistoryItems: [HistoryItem] {
+        guard let historyFilter else {
+            return historyItems
+        }
+        return historyItems.filter { $0.source == historyFilter }
     }
 
     var isCustomOpenAICompatibleProvider: Bool {
-        config.providerID == LLMProviderPreset.customOpenAICompatible.id
+        false
     }
 
     var selectedProviderModelOptions: [String] {
@@ -78,7 +118,7 @@ final class SettingsViewModel: ObservableObject {
         var seen = Set<String>()
         var options: [String] = []
 
-        for modelID in cachedProviderModels[config.providerID] ?? [] {
+        for modelID in cachedProviderModels[LLMProviderPreset.openAI.id] ?? [] {
             if seen.insert(modelID).inserted {
                 options.append(modelID)
             }
@@ -128,6 +168,33 @@ final class SettingsViewModel: ObservableObject {
         permissionRefreshID = UUID()
     }
 
+    func reloadHistory() {
+        do {
+            historyItems = Array(try historyStore.load().reversed())
+        } catch {
+            historyItems = []
+            message = L10n.text("settings.history.error.loadFailed")
+        }
+    }
+
+    func clearHistory() {
+        do {
+            try historyStore.clear()
+            historyItems = []
+            message = L10n.text("settings.history.cleared")
+        } catch {
+            message = L10n.text("settings.history.error.clearFailed")
+        }
+    }
+
+    func refreshMicrophoneOptions() {
+        microphoneOptions = microphoneDeviceCatalog.options()
+        if let microphoneDeviceID = config.voiceInput.microphoneDeviceID,
+           !microphoneOptions.contains(where: { $0.deviceID == microphoneDeviceID }) {
+            config.voiceInput.microphoneDeviceID = nil
+        }
+    }
+
     var selectedSpeechProfile: VoiceInputConfig.SpeechProfile {
         if isEditingCustomSpeechEndpoint {
             return .custom
@@ -143,6 +210,20 @@ final class SettingsViewModel: ObservableObject {
         isEditingCustomSpeechEndpoint || selectedSpeechProfile == .custom
     }
 
+    var selectedMicrophoneMenuID: String {
+        get {
+            guard let microphoneDeviceID = config.voiceInput.microphoneDeviceID,
+                  microphoneOptions.contains(where: { $0.deviceID == microphoneDeviceID })
+            else {
+                return MicrophoneDeviceOption.systemDefaultID
+            }
+            return microphoneDeviceID
+        }
+        set {
+            config.voiceInput.microphoneDeviceID = newValue == MicrophoneDeviceOption.systemDefaultID ? nil : newValue
+        }
+    }
+
     var voiceCleanupModes: [PromptMode] {
         orderedPromptModes
     }
@@ -152,16 +233,6 @@ final class SettingsViewModel: ObservableObject {
             return "\(modelID) *"
         }
         return modelID
-    }
-
-    func selectProvider(_ providerID: String) {
-        config.providerID = providerID
-        config.model = LLMProviderPreset.preset(id: providerID).defaultModel
-        isLoadingProviderKey = true
-        providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: providerID) ?? ""
-        isLoadingProviderKey = false
-        isEditingCustomModel = false
-        save()
     }
 
     func selectModelMenuValue(_ value: String) {
@@ -187,6 +258,56 @@ final class SettingsViewModel: ObservableObject {
         isEditingCustomSpeechEndpoint = false
         config.voiceInput.speechEndpoint = endpoint
         config.voiceInput.speechModel = model
+        save()
+    }
+
+    func previewPronunciationVoice() {
+        let voice = config.selectionActions.pronunciationVoice
+        let speed = config.selectionActions.pronunciationSpeed
+        pronunciationPreviewTask?.cancel()
+        pronunciationPreviewPlaybackService.stop()
+        pronunciationPreviewState = .loading(voice)
+
+        pronunciationPreviewTask = Task { [weak self] in
+            do {
+                guard let self else { return }
+                let provider = OpenAITTSProvider(apiKeyProvider: { [apiKeyStore] in
+                    guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id),
+                          !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    else {
+                        throw OpenAITTSError.provider(L10n.text("selection.action.missingOpenAIKey"))
+                    }
+                    return apiKey
+                })
+                let audioData = try await provider.speechAudio(OpenAITTSRequest(
+                    input: SelectionPronunciationVoice.previewText(
+                        interfaceLanguageCode: L10n.resolvedLanguage.localeIdentifier
+                    ),
+                    voice: voice.rawValue,
+                    speed: speed,
+                    timeoutSeconds: config.timeoutSeconds
+                ))
+                await MainActor.run {
+                    do {
+                        try self.pronunciationPreviewPlaybackService.play(audioData: audioData)
+                        self.pronunciationPreviewState = .playing(voice)
+                    } catch {
+                        self.pronunciationPreviewState = nil
+                        self.message = L10n.text("selection.action.pronunciationFailed")
+                    }
+                }
+            } catch is CancellationError {
+            } catch {
+                await MainActor.run {
+                    self?.pronunciationPreviewState = nil
+                    self?.message = L10n.text("selection.action.pronunciationFailed")
+                }
+            }
+        }
+    }
+
+    func resetSelectionTranslationPrompt() {
+        config.selectionActions.translationPrompt = SelectionActionsConfig.defaultTranslationPrompt
         save()
     }
 
@@ -341,16 +462,7 @@ final class SettingsViewModel: ObservableObject {
                 return
             }
             config.temperature = min(max(config.temperature, 0), 1)
-
-            if isCustomOpenAICompatibleProvider {
-                guard let endpoint = URL(string: config.customOpenAICompatibleEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)),
-                      endpoint.scheme?.hasPrefix("http") == true,
-                      endpoint.host != nil
-                else {
-                    message = L10n.text("settings.error.endpointInvalid")
-                    return
-                }
-            }
+            config.providerID = LLMProviderPreset.openAI.id
             guard let speechEndpoint = URL(string: config.voiceInput.speechEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)),
                   speechEndpoint.scheme?.hasPrefix("http") == true,
                   speechEndpoint.host != nil
@@ -360,24 +472,17 @@ final class SettingsViewModel: ObservableObject {
             }
 
             _ = try Hotkey.parse(config.hotkey)
+            config.voiceInput.autoProcessTranscription = config.voiceInput.postTranscriptionAction != .insertRawTranscript
             InkletLanguageStore.selectedLanguage = interfaceLanguage
             try configStore.save(config)
-            for provider in LLMProviderPreset.all {
-                try apiKeyStore.deleteAPIKey(forProviderID: provider.id)
-            }
             let trimmedKey = providerAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmedKey.isEmpty {
-                try apiKeyStore.saveAPIKey(trimmedKey, forProviderID: config.providerID)
-            }
-            try apiKeyStore.deleteAPIKey(forProviderID: VoiceInputConfig.openAISpeechProviderID)
-            let trimmedVoiceKey = OnboardingPolicy.voiceAPIKey(
-                providerID: config.providerID,
-                providerAPIKey: trimmedKey,
-                existingVoiceAPIKey: voiceAPIKey
-            )
-            voiceAPIKey = trimmedVoiceKey
-            if !trimmedVoiceKey.isEmpty {
-                try apiKeyStore.saveAPIKey(trimmedVoiceKey, forProviderID: VoiceInputConfig.openAISpeechProviderID)
+            if trimmedKey != savedProviderAPIKey {
+                if trimmedKey.isEmpty {
+                    try apiKeyStore.deleteAPIKey(forProviderID: LLMProviderPreset.openAI.id)
+                } else {
+                    try apiKeyStore.saveAPIKey(trimmedKey, forProviderID: LLMProviderPreset.openAI.id)
+                }
+                savedProviderAPIKey = trimmedKey
             }
             message = L10n.text("settings.saved")
             NotificationCenter.default.post(name: .appConfigDidSave, object: nil)
@@ -389,13 +494,11 @@ final class SettingsViewModel: ObservableObject {
     }
 
     private func installAutoSave() {
-        Publishers.CombineLatest4($config, $providerAPIKey, $voiceAPIKey, $interfaceLanguage)
+        Publishers.CombineLatest3($config, $providerAPIKey, $interfaceLanguage)
             .dropFirst()
             .debounce(for: .milliseconds(450), scheduler: RunLoop.main)
-            .sink { [weak self] _, _, _, _ in
-                guard let self, !self.isLoadingProviderKey else {
-                    return
-                }
+            .sink { [weak self] _, _, _ in
+                guard let self else { return }
                 self.save()
             }
             .store(in: &cancellables)
@@ -435,52 +538,94 @@ private extension PromptMode {
     ]
 }
 
+private extension SelectionTranslationLanguage {
+    var localizedDisplayName: String {
+        switch self {
+        case .followInterfaceLanguage: L10n.text("selection.language.followInterface")
+        case .english: "English"
+        case .simplifiedChinese: "简体中文"
+        case .traditionalChinese: "繁體中文"
+        case .japanese: "日本語"
+        case .korean: "한국어"
+        case .spanish: "Español"
+        case .french: "Français"
+        case .german: "Deutsch"
+        case .portuguese: "Português"
+        case .italian: "Italiano"
+        }
+    }
+}
+
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general = "General"
-    case providers = "Providers"
-    case voice = "Voice"
+    case writeAssistant = "Write Assistant"
+    case voiceWriteAssistant = "Voice Write Assistant"
+    case selectionAssistant = "Selection Assistant"
+    case history = "History"
     case promptModes = "Prompt Modes"
-    case permissions = "Permissions"
+    case about = "About"
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .general: L10n.text("settings.section.general")
-        case .providers: L10n.text("settings.section.providers")
-        case .voice: L10n.text("settings.section.voice")
+        case .writeAssistant: L10n.text("settings.section.writeAssistant")
+        case .voiceWriteAssistant: L10n.text("settings.section.voiceWriteAssistant")
+        case .selectionAssistant: L10n.text("settings.section.selectionAssistant")
+        case .history: L10n.text("settings.section.history")
         case .promptModes: L10n.text("settings.section.promptModes")
-        case .permissions: L10n.text("settings.section.permissions")
+        case .about: L10n.text("settings.section.about")
         }
     }
 
     var icon: String {
         switch self {
         case .general: "gearshape"
-        case .providers: "sparkles"
-        case .voice: "mic"
+        case .writeAssistant: "pencil.and.scribble"
+        case .voiceWriteAssistant: "mic"
+        case .selectionAssistant: "text.viewfinder"
+        case .history: "clock.arrow.circlepath"
         case .promptModes: "slider.horizontal.3"
-        case .permissions: "lock.shield"
+        case .about: "info.circle"
         }
     }
 }
 
 struct SettingsView: View {
-    @StateObject private var model = SettingsViewModel()
+    @StateObject private var model: SettingsViewModel
     @State private var selectedSection: SettingsSection
     @State private var promptModePendingDeletionID: String?
+    @State private var isConfirmingClearHistory = false
+    @State private var copiedHistoryControlID: String?
+    @State private var historyCopyFeedbackTask: Task<Void, Never>?
     private let onAppearanceChange: (AppAppearance) -> Void
 
     init(
         initialSection: SettingsSection = .general,
+        historyStore: any HistoryStore = JSONLHistoryStore(),
         onAppearanceChange: @escaping (AppAppearance) -> Void = { _ in }
     ) {
+        _model = StateObject(wrappedValue: SettingsViewModel(historyStore: historyStore))
         _selectedSection = State(initialValue: initialSection)
         self.onAppearanceChange = onAppearanceChange
     }
 
-    private var isSavedMessage: Bool {
-        model.message == L10n.text("settings.saved")
+    private var isSuccessMessage: Bool {
+        model.message == L10n.text("settings.saved") || model.message == L10n.text("settings.history.cleared")
+    }
+
+    private var pronunciationSpeedBinding: Binding<Double> {
+        Binding(
+            get: { model.config.selectionActions.pronunciationSpeed },
+            set: {
+                model.config.selectionActions.pronunciationSpeed = SelectionActionsConfig.clampedPronunciationSpeed($0)
+            }
+        )
+    }
+
+    private var pronunciationSpeedText: String {
+        L10n.format("settings.aiPronunciation.speedValue", model.config.selectionActions.pronunciationSpeed)
     }
 
     var body: some View {
@@ -501,6 +646,7 @@ struct SettingsView: View {
         }
         .onAppear {
             model.refreshPermissions()
+            model.refreshMicrophoneOptions()
         }
         .onChange(of: model.config.appearance) {
             onAppearanceChange(model.config.appearance)
@@ -530,6 +676,17 @@ struct SettingsView: View {
             }
         } message: {
             Text(L10n.format("settings.mode.deleteConfirmMessage", model.promptModeName(modeID: promptModePendingDeletionID ?? "")))
+        }
+        .alert(
+            L10n.text("settings.history.clearConfirmTitle"),
+            isPresented: $isConfirmingClearHistory
+        ) {
+            Button(L10n.text("settings.history.clear"), role: .destructive) {
+                model.clearHistory()
+            }
+            Button(L10n.text("settings.cancel"), role: .cancel) {}
+        } message: {
+            Text(L10n.text("settings.history.clearConfirmMessage"))
         }
     }
 
@@ -615,21 +772,30 @@ struct SettingsView: View {
                             .padding(.horizontal, 24)
                             .padding(.vertical, 20)
                     }
-                case .providers:
-                    providersPanel
-                case .voice:
+                case .writeAssistant:
+                    writeAssistantPanel
+                case .voiceWriteAssistant:
                     ScrollView {
                         voicePanel
                             .padding(.horizontal, 24)
                             .padding(.vertical, 20)
                     }
+                case .selectionAssistant:
+                    ScrollView {
+                        selectionActionsPanel
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 20)
+                    }
+                case .history:
+                    historyPanel
                 case .promptModes:
                     promptModesPanel
-                case .permissions:
-                    permissionsPanel
-                        .padding(.horizontal, 24)
-                        .padding(.top, 8)
-                        .padding(.bottom, 10)
+                case .about:
+                    ScrollView {
+                        aboutPanel
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 20)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -665,42 +831,98 @@ struct SettingsView: View {
         switch selectedSection {
         case .general:
             L10n.text("settings.description.general")
-        case .providers:
-            L10n.text("settings.description.providers")
-        case .voice:
+        case .writeAssistant:
+            L10n.text("settings.description.writeAssistant")
+        case .voiceWriteAssistant:
             L10n.text("settings.description.voice")
+        case .selectionAssistant:
+            L10n.text("settings.description.selectionAssistant")
+        case .history:
+            L10n.text("settings.description.history")
         case .promptModes:
             L10n.text("settings.description.promptModes")
-        case .permissions:
-            L10n.text("settings.description.permissions")
+        case .about:
+            L10n.text("settings.description.about")
         }
     }
 
     private var generalPanel: some View {
-        settingsPanel {
-            settingsRow(L10n.text("settings.row.language"), help: L10n.text("settings.help.language")) {
-                Picker("", selection: $model.interfaceLanguage) {
-                    ForEach(InterfaceLanguage.allCases) { language in
-                        Text(language.localizedDisplayName).tag(language)
-                    }
+        VStack(alignment: .leading, spacing: 22) {
+            settingsPanel {
+                settingsRow(L10n.text("settings.row.openAIAPIKey"), help: L10n.text("settings.help.openAIAPIKey")) {
+                    SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $model.providerAPIKey)
+                        .textFieldStyle(.roundedBorder)
                 }
-                .labelsHidden()
-                .frame(maxWidth: 320, alignment: .leading)
+
+                settingsRow(L10n.text("settings.row.language"), help: L10n.text("settings.help.language")) {
+                    Picker("", selection: $model.interfaceLanguage) {
+                        ForEach(InterfaceLanguage.allCases) { language in
+                            Text(language.localizedDisplayName).tag(language)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: 320, alignment: .leading)
+                }
+
+                settingsRow(L10n.text("settings.row.appearance"), help: L10n.text("settings.help.appearance")) {
+                    Picker("", selection: $model.config.appearance) {
+                        ForEach(AppAppearance.allCases) { appearance in
+                            Text(appearance.localizedDisplayName).tag(appearance)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: 320, alignment: .leading)
+                }
             }
 
-            settingsRow(L10n.text("settings.row.appearance"), help: L10n.text("settings.help.appearance")) {
-                Picker("", selection: $model.config.appearance) {
-                    ForEach(AppAppearance.allCases) { appearance in
-                        Text(appearance.localizedDisplayName).tag(appearance)
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: 320, alignment: .leading)
-            }
+            systemPermissionsPanel
+        }
+    }
 
+    private var writeAssistantControls: some View {
+        let selectedModelBinding = Binding(
+            get: { model.selectedModelMenuValue },
+            set: { model.selectModelMenuValue($0) }
+        )
+
+        return settingsPanel {
             settingsRow(L10n.text("settings.row.hotkey"), help: L10n.text("settings.help.hotkey")) {
                 HotkeyRecorderField(hotkey: $model.config.hotkey)
                     .frame(width: 220, height: 34)
+            }
+
+            settingsRow(L10n.text("settings.row.model"), help: L10n.format("settings.help.model.default", model.selectedProvider.defaultModel)) {
+                VStack(alignment: .leading, spacing: 8) {
+                    if !model.selectedProviderModelOptions.isEmpty {
+                        Picker("", selection: selectedModelBinding) {
+                            ForEach(model.selectedProviderModelOptions, id: \.self) { modelID in
+                                Text(model.modelMenuTitle(for: modelID)).tag(modelID)
+                            }
+                            Divider()
+                            Text(L10n.text("settings.model.custom")).tag(SettingsViewModel.customModelMenuID)
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: 320, alignment: .leading)
+                    }
+
+                    if model.shouldShowCustomModelField {
+                        VStack(alignment: .leading, spacing: 6) {
+                            TextField(model.selectedProvider.defaultModel, text: $model.config.model)
+                                .textFieldStyle(.roundedBorder)
+                            if !model.selectedModelIsDefault {
+                                Text(L10n.text("settings.model.customized"))
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(InkletTheme.primary)
+                            }
+                        }
+                    }
+
+                    if model.isRefreshingModelCatalog {
+                        Text(L10n.text("settings.model.refreshing"))
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
 
             settingsRow(L10n.text("settings.row.temperature"), help: L10n.text("settings.help.temperature")) {
@@ -722,87 +944,22 @@ struct SettingsView: View {
         }
     }
 
-    private var providersPanel: some View {
-        let selectedModelBinding = Binding(
-            get: { model.selectedModelMenuValue },
-            set: { model.selectModelMenuValue($0) }
-        )
-        let selectedProviderBinding = Binding(
-            get: { model.config.providerID },
-            set: { model.selectProvider($0) }
-        )
-
-        return
-            ScrollView {
-                settingsPanel {
-                    settingsRow("Provider", help: "Choose the single provider Inklet will use for every transform.") {
-                        Picker("", selection: selectedProviderBinding) {
-                            ForEach(LLMProviderPreset.all) { provider in
-                                Text(provider.name).tag(provider.id)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(maxWidth: 320, alignment: .leading)
-                    }
-
-                    settingsRow(L10n.text("settings.row.apiKey"), help: L10n.text("settings.help.apiKey")) {
-                        SecureField(model.selectedProvider.apiKeyPlaceholder, text: $model.providerAPIKey)
-                            .textFieldStyle(.roundedBorder)
-                    }
-
-                    if model.isCustomOpenAICompatibleProvider {
-                        settingsRow(L10n.text("settings.row.endpoint"), help: L10n.text("settings.help.endpoint")) {
-                            TextField(
-                                LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString,
-                                text: $model.config.customOpenAICompatibleEndpoint
-                            )
-                            .textFieldStyle(.roundedBorder)
-                        }
-                    }
-
-                    settingsRow(L10n.text("settings.row.model"), help: L10n.format("settings.help.model.default", model.selectedProvider.defaultModel)) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            if !model.selectedProviderModelOptions.isEmpty {
-                                Picker("", selection: selectedModelBinding) {
-                                    ForEach(model.selectedProviderModelOptions, id: \.self) { modelID in
-                                        Text(model.modelMenuTitle(for: modelID)).tag(modelID)
-                                    }
-                                    Divider()
-                                    Text(L10n.text("settings.model.custom")).tag(SettingsViewModel.customModelMenuID)
-                                }
-                                .labelsHidden()
-                                .frame(maxWidth: 320, alignment: .leading)
-                            }
-
-                            if model.shouldShowCustomModelField {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    TextField(model.selectedProvider.defaultModel, text: $model.config.model)
-                                        .textFieldStyle(.roundedBorder)
-                                    if !model.selectedModelIsDefault {
-                                        Text(L10n.text("settings.model.customized"))
-                                            .font(.system(size: 11, weight: .medium))
-                                            .foregroundStyle(InkletTheme.primary)
-                                    }
-                                }
-                            }
-
-                            if model.isRefreshingModelCatalog {
-                                Text(L10n.text("settings.model.refreshing"))
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
+    private var writeAssistantPanel: some View {
+        ScrollView {
+            writeAssistantControls
                 .padding(.horizontal, 24)
                 .padding(.vertical, 20)
-            }
+        }
     }
 
     private var voicePanel: some View {
         let selectedSpeechProfileBinding = Binding(
             get: { model.selectedSpeechProfile },
             set: { model.selectSpeechProfile($0) }
+        )
+        let selectedMicrophoneBinding = Binding(
+            get: { model.selectedMicrophoneMenuID },
+            set: { model.selectedMicrophoneMenuID = $0 }
         )
 
         return settingsPanel {
@@ -816,9 +973,28 @@ struct SettingsView: View {
                 .frame(maxWidth: 320, alignment: .leading)
             }
 
-            settingsRow(L10n.text("settings.row.speechAPIKey"), help: L10n.text("settings.help.speechAPIKey")) {
-                SecureField("sk-...", text: $model.voiceAPIKey)
-                    .textFieldStyle(.roundedBorder)
+            settingsRow(
+                L10n.text("settings.row.voiceRecordingMode"),
+                help: L10n.text("settings.help.voiceRecordingMode")
+            ) {
+                Picker("", selection: $model.config.voiceInput.recordingMode) {
+                    ForEach(VoiceInputConfig.RecordingMode.allCases) { mode in
+                        Text(mode.localizedName).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+                .disabled(model.config.voiceInput.shortcut == .disabled)
+            }
+
+            settingsRow(L10n.text("settings.row.microphone"), help: L10n.text("settings.help.microphone")) {
+                Picker("", selection: selectedMicrophoneBinding) {
+                    ForEach(model.microphoneOptions) { option in
+                        Text(option.localizedName).tag(option.id)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
             }
 
             settingsRow(L10n.text("settings.row.speechProfile"), help: L10n.text("settings.help.speechProfile")) {
@@ -846,9 +1022,17 @@ struct SettingsView: View {
                 }
             }
 
-            settingsRow(L10n.text("settings.row.voiceAutoProcess"), help: L10n.text("settings.help.voiceAutoProcess")) {
-                Toggle("", isOn: $model.config.voiceInput.autoProcessTranscription)
-                    .labelsHidden()
+            settingsRow(
+                L10n.text("settings.row.voicePostTranscriptionAction"),
+                help: L10n.text("settings.help.voicePostTranscriptionAction")
+            ) {
+                Picker("", selection: $model.config.voiceInput.postTranscriptionAction) {
+                    ForEach(VoiceInputConfig.PostTranscriptionAction.allCases) { action in
+                        Text(action.localizedName).tag(action)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
             }
 
             settingsRow(L10n.text("settings.row.voiceCleanupMode"), help: L10n.text("settings.help.voiceCleanupMode")) {
@@ -859,8 +1043,187 @@ struct SettingsView: View {
                 }
                 .labelsHidden()
                 .frame(maxWidth: 320, alignment: .leading)
-                .disabled(!model.config.voiceInput.autoProcessTranscription)
+                .disabled(model.config.voiceInput.postTranscriptionAction == .insertRawTranscript)
             }
+        }
+    }
+
+    private var selectionActionsPanel: some View {
+        settingsPanel {
+            settingsRow(
+                L10n.text("settings.row.selectionActionsEnabled"),
+                help: L10n.text("settings.help.selectionActionsEnabled")
+            ) {
+                Toggle("", isOn: $model.config.selectionActions.isEnabled)
+                    .labelsHidden()
+            }
+
+            settingsRow(
+                L10n.text("settings.row.translationLanguage"),
+                help: L10n.text("settings.help.translationLanguage")
+            ) {
+                Picker("", selection: $model.config.selectionActions.translationLanguage) {
+                    ForEach(SelectionTranslationLanguage.allCases) { language in
+                        Text(language.localizedDisplayName).tag(language)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(
+                L10n.text("settings.row.translationPrompt"),
+                help: L10n.text("settings.help.translationPrompt")
+            ) {
+                VStack(alignment: .leading, spacing: 8) {
+                    SettingsPromptTextView(text: $model.config.selectionActions.translationPrompt)
+                        .frame(height: 118)
+                        .padding(10)
+                        .modifier(InkletFieldModifier())
+                        .accessibilityLabel(L10n.text("settings.row.translationPrompt"))
+
+                    Button {
+                        model.resetSelectionTranslationPrompt()
+                    } label: {
+                        Label(
+                            L10n.text("settings.translationPrompt.restoreDefault"),
+                            systemImage: "arrow.counterclockwise"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
+                    .fixedSize()
+                    .help(L10n.text("settings.translationPrompt.restoreDefault"))
+                    .accessibilityLabel(L10n.text("settings.translationPrompt.restoreDefault"))
+                }
+                .frame(maxWidth: 420, alignment: .leading)
+            }
+
+            settingsRow(
+                L10n.text("settings.row.aiPronunciation"),
+                help: L10n.text("settings.help.aiPronunciation")
+            ) {
+                HStack(spacing: 8) {
+                    Picker("", selection: $model.config.selectionActions.pronunciationVoice) {
+                        ForEach(SelectionPronunciationVoice.allCases) { voice in
+                            Text(voice.displayName).tag(voice)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: 220, alignment: .leading)
+
+                    Button {
+                        model.previewPronunciationVoice()
+                    } label: {
+                        switch model.pronunciationPreviewState {
+                        case .loading(let voice) where voice == model.config.selectionActions.pronunciationVoice:
+                            ProgressView()
+                                .controlSize(.small)
+                                .frame(width: 18, height: 18)
+                        case .playing(let voice) where voice == model.config.selectionActions.pronunciationVoice:
+                            SpeakerWaveIcon(state: .playing, fontSize: 13, weight: .regular)
+                                .frame(width: 18, height: 18)
+                        default:
+                            SpeakerWaveIcon(state: .idle, fontSize: 13, weight: .regular)
+                                .frame(width: 18, height: 18)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help(L10n.text("settings.aiPronunciation.preview"))
+                    .accessibilityLabel(L10n.text("settings.aiPronunciation.preview"))
+                    .disabled(model.pronunciationPreviewState?.matches(model.config.selectionActions.pronunciationVoice) == true)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(
+                L10n.text("settings.row.aiPronunciationSpeed"),
+                help: L10n.text("settings.help.aiPronunciationSpeed")
+            ) {
+                HStack(spacing: 12) {
+                    Slider(
+                        value: pronunciationSpeedBinding,
+                        in: SelectionActionsConfig.minimumPronunciationSpeed...SelectionActionsConfig.maximumPronunciationSpeed,
+                        step: 0.05
+                    )
+                    .frame(maxWidth: 220)
+
+                    Text(pronunciationSpeedText)
+                        .font(.body.monospacedDigit())
+                        .frame(width: 52, alignment: .trailing)
+                }
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+        }
+    }
+
+    private var historyPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Picker("", selection: $model.historyFilter) {
+                    Text(L10n.text("settings.history.filter.all")).tag(Optional<HistorySource>.none)
+                    ForEach(HistorySource.allCases) { source in
+                        Text(historySourceTitle(source)).tag(Optional(source))
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 360)
+                .labelsHidden()
+
+                Spacer()
+
+                Button {
+                    isConfirmingClearHistory = true
+                } label: {
+                    Label(L10n.text("settings.history.clear"), systemImage: "trash")
+                }
+                .buttonStyle(.plain)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(InkletTheme.warning)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 6)
+                .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
+                .disabled(model.historyItems.isEmpty)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
+
+            if model.filteredHistoryItems.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 24, weight: .regular))
+                        .foregroundStyle(InkletTheme.textFaint)
+                    Text(L10n.text("settings.history.empty"))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(InkletTheme.textSecondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        ForEach(model.filteredHistoryItems) { item in
+                            historyRow(item)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 20)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear {
+            model.reloadHistory()
+        }
+        .onDisappear {
+            historyCopyFeedbackTask?.cancel()
+            historyCopyFeedbackTask = nil
+            copiedHistoryControlID = nil
         }
     }
 
@@ -958,12 +1321,8 @@ struct SettingsView: View {
         .padding(.vertical, 18)
     }
 
-    private var permissionsPanel: some View {
+    private var systemPermissionsPanel: some View {
         VStack(alignment: .leading, spacing: 22) {
-            permissionSection(title: L10n.text("settings.quickStart.title")) {
-                quickStartShortcuts
-            }
-
             permissionSection(title: L10n.text("settings.systemPermissions.title")) {
                 permissionLine(
                     title: L10n.text("settings.permission.accessibility"),
@@ -972,6 +1331,19 @@ struct SettingsView: View {
                     action: { model.openAccessibilitySettings() }
                 )
             }
+        }
+        .frame(maxWidth: 680, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .id(model.permissionRefreshID)
+    }
+
+    private var aboutPanel: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            settingsAboutSummary
+
+            permissionSection(title: L10n.text("settings.quickStart.title")) {
+                quickStartShortcuts
+            }
 
             permissionSection(title: L10n.text("settings.privacy.title")) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -979,6 +1351,7 @@ struct SettingsView: View {
                     privacyLine(L10n.text("settings.privacy.provider"))
                     privacyLine(L10n.text("settings.privacy.voice"))
                     privacyLine(L10n.text("settings.privacy.clipboard"))
+                    privacyLine(L10n.text("settings.privacy.history"))
                 }
             }
         }
@@ -987,13 +1360,67 @@ struct SettingsView: View {
         .id(model.permissionRefreshID)
     }
 
+    private var settingsAboutSummary: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .center, spacing: 14) {
+                PenNibShape()
+                    .stroke(style: StrokeStyle(lineWidth: 1.45, lineCap: .round, lineJoin: .round))
+                    .foregroundStyle(InkletTheme.primary)
+                    .padding(10)
+                    .frame(width: 48, height: 48)
+                    .background(InkletTheme.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(InkletTheme.primary.opacity(0.20))
+                    }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Inklet")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(InkletTheme.textPrimary)
+                    Text(L10n.format("settings.version", BuildInfo.displayVersion))
+                        .font(.system(size: 11))
+                        .foregroundStyle(InkletTheme.textTertiary)
+                }
+            }
+
+            Text(L10n.text("about.tagline"))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(InkletTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 16) {
+                Link(L10n.text("about.website"), destination: URL(string: "https://getinklet.app")!)
+                Link(L10n.text("about.privacyPolicy"), destination: URL(string: "https://getinklet.app/privacy")!)
+                Link(L10n.text("about.support"), destination: URL(string: "mailto:support@getinklet.app")!)
+            }
+            .font(.system(size: 12, weight: .medium))
+
+            Text("© 2026 Inklet")
+                .font(.system(size: 11))
+                .foregroundStyle(InkletTheme.textTertiary)
+        }
+        .padding(14)
+        .frame(maxWidth: 680, alignment: .leading)
+        .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 10))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(InkletTheme.subtleBorder)
+        }
+    }
+
     private var quickStartShortcuts: some View {
         HStack(alignment: .top, spacing: 48) {
             VStack(alignment: .leading, spacing: 8) {
                 shortcutLine(keys: [model.config.hotkey], title: L10n.text("settings.quickStart.open"), keyWidth: 102, keyAlignment: .trailing)
                 shortcutLine(keys: ["⌘", "↵"], title: L10n.text("settings.quickStart.original"), keyWidth: 102, keyAlignment: .trailing)
                 if model.config.voiceInput.shortcut != .disabled {
-                    shortcutLine(keys: [model.config.voiceInput.shortcut.localizedName], title: L10n.text("settings.quickStart.voice"), keyWidth: 102, keyAlignment: .trailing)
+                    shortcutLine(
+                        keys: voiceShortcutKeys,
+                        title: model.config.voiceInput.recordingMode.quickStartTitle,
+                        keyWidth: 102,
+                        keyAlignment: .trailing
+                    )
                 }
             }
             .frame(width: 292, alignment: .leading)
@@ -1006,6 +1433,17 @@ struct SettingsView: View {
         }
         .frame(width: 560, alignment: .leading)
         .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private var voiceShortcutKeys: [String] {
+        switch model.config.voiceInput.recordingMode {
+        case .tapToToggle:
+            [model.config.voiceInput.shortcut.localizedName]
+        case .pressAndHold:
+            [L10n.text("settings.voiceRecordingMode.holdKey"), model.config.voiceInput.shortcut.localizedName]
+        case .doubleTap:
+            [model.config.voiceInput.shortcut.localizedName, model.config.voiceInput.shortcut.localizedName]
+        }
     }
 
     private func permissionStatusColor(isTrusted: Bool) -> Color {
@@ -1115,12 +1553,125 @@ struct SettingsView: View {
         }
     }
 
+    private func historyRow(_ item: HistoryItem) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 8) {
+                Label(historySourceTitle(item.source), systemImage: historySourceIcon(item.source))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(InkletTheme.textPrimary)
+
+                Text(item.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.system(size: 11))
+                    .foregroundStyle(InkletTheme.textTertiary)
+
+                if let label = historyMetadataLabel(item) {
+                    Text(label)
+                        .font(.system(size: 11))
+                        .foregroundStyle(InkletTheme.textTertiary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+
+                Spacer()
+
+                historyCopyButton(
+                    title: L10n.text("settings.history.copyResult"),
+                    text: item.outputText,
+                    feedbackID: "\(item.id.uuidString)-output"
+                )
+            }
+
+            historyTextBlock(title: L10n.text("settings.history.original"), text: item.inputText)
+            historyTextBlock(title: L10n.text("settings.history.result"), text: item.outputText)
+        }
+        .padding(12)
+        .background(InkletTheme.controlFill.opacity(0.58), in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(InkletTheme.subtleBorder)
+        }
+    }
+
+    private func historyTextBlock(title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(InkletTheme.textTertiary)
+
+            ScrollView {
+                Text(text)
+                    .font(.system(size: 12))
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxHeight: 86)
+        }
+    }
+
+    private func historyCopyButton(title: String, text: String, feedbackID: String) -> some View {
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            copiedHistoryControlID = feedbackID
+            historyCopyFeedbackTask?.cancel()
+            historyCopyFeedbackTask = Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(900))
+                guard copiedHistoryControlID == feedbackID else { return }
+                copiedHistoryControlID = nil
+                historyCopyFeedbackTask = nil
+            }
+        } label: {
+            Image(systemName: copiedHistoryControlID == feedbackID ? "checkmark" : "doc.on.doc")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(InkletTheme.textSecondary)
+                .frame(width: 26, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(title)
+        .accessibilityLabel(title)
+    }
+
+    private func historySourceTitle(_ source: HistorySource) -> String {
+        switch source {
+        case .write:
+            L10n.text("settings.history.source.write")
+        case .voice:
+            L10n.text("settings.history.source.voice")
+        case .selection:
+            L10n.text("settings.history.source.selection")
+        }
+    }
+
+    private func historySourceIcon(_ source: HistorySource) -> String {
+        switch source {
+        case .write:
+            "pencil.and.scribble"
+        case .voice:
+            "mic"
+        case .selection:
+            "text.viewfinder"
+        }
+    }
+
+    private func historyMetadataLabel(_ item: HistoryItem) -> String? {
+        if let targetLanguageName = item.targetLanguageName {
+            return targetLanguageName
+        }
+        if let modeName = item.modeName {
+            return modeName
+        }
+        return item.model
+    }
+
     private var footer: some View {
         HStack(spacing: 12) {
             if !model.message.isEmpty {
-                Label(model.message, systemImage: isSavedMessage ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                Label(model.message, systemImage: isSuccessMessage ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                     .font(.footnote)
-                    .foregroundStyle(isSavedMessage ? InkletTheme.success : .red)
+                    .foregroundStyle(isSuccessMessage ? InkletTheme.success : .red)
                     .lineLimit(2)
             } else {
                 Text(L10n.text("settings.footer.pending"))

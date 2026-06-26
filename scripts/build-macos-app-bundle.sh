@@ -8,6 +8,11 @@ bundle_id="${INKLET_BUNDLE_ID:-com.tomwan.inklet}"
 version="${INKLET_VERSION:-0.1.0}"
 build_number="${INKLET_BUILD_NUMBER:-$(git -C "$repo_root" rev-list --count HEAD 2>/dev/null || echo 1)}"
 sign_identity="${INKLET_SIGN_IDENTITY:--}"
+if [[ ${INKLET_ENTITLEMENTS_PATH+x} ]]; then
+  entitlements_path="$INKLET_ENTITLEMENTS_PATH"
+else
+  entitlements_path="${support_dir}/Inklet.entitlements"
+fi
 output_dir="${INKLET_OUTPUT_DIR:-${repo_root}/dist/app-store-spike}"
 app_path="${output_dir}/${app_name}.app"
 contents_dir="${app_path}/Contents"
@@ -46,10 +51,14 @@ ditto "${support_dir}/InfoPlistStrings" "$resources_dir"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${build_number}" "${contents_dir}/Info.plist"
 plutil -lint "${contents_dir}/Info.plist" >/dev/null
 
-echo "Signing ${app_path} with identity '${sign_identity}'..."
-codesign --force --sign "$sign_identity" --entitlements "${support_dir}/Inklet.entitlements" "$app_path"
+echo "Signing ${app_path}..."
+if [[ -n "$entitlements_path" ]]; then
+  codesign --force --sign "$sign_identity" --entitlements "$entitlements_path" "$app_path"
+else
+  codesign --force --sign "$sign_identity" "$app_path"
+fi
 
 echo "Built ${app_path}"
 echo
 echo "Entitlements:"
-codesign -dvvv --entitlements - "$app_path" 2>&1
+codesign -d --entitlements - "$app_path" 2>&1

@@ -16,33 +16,6 @@ final class OnboardingPolicyTests: XCTestCase {
         )
     }
 
-    func testReusesOfficialOpenAIKeyOnlyWhenVoiceKeyIsEmpty() {
-        XCTAssertEqual(
-            OnboardingPolicy.voiceAPIKey(
-                providerID: LLMProviderPreset.openAI.id,
-                providerAPIKey: " sk-text ",
-                existingVoiceAPIKey: ""
-            ),
-            "sk-text"
-        )
-        XCTAssertEqual(
-            OnboardingPolicy.voiceAPIKey(
-                providerID: LLMProviderPreset.openAI.id,
-                providerAPIKey: "sk-text",
-                existingVoiceAPIKey: "sk-voice"
-            ),
-            "sk-voice"
-        )
-        XCTAssertEqual(
-            OnboardingPolicy.voiceAPIKey(
-                providerID: LLMProviderPreset.customOpenAICompatible.id,
-                providerAPIKey: "sk-custom",
-                existingVoiceAPIKey: ""
-            ),
-            ""
-        )
-    }
-
     func testConfiguresVoiceShortcutMonitoringOnlyAfterAccessibilityIsTrusted() {
         XCTAssertFalse(OnboardingPolicy.shouldConfigureVoiceShortcutMonitoring(isAccessibilityTrusted: false))
         XCTAssertTrue(OnboardingPolicy.shouldConfigureVoiceShortcutMonitoring(isAccessibilityTrusted: true))
@@ -50,15 +23,15 @@ final class OnboardingPolicyTests: XCTestCase {
 
     func testShowsVoiceShortcutHintOnlyWhenVoiceInputIsConfiguredAndEnabled() {
         XCTAssertTrue(OnboardingPolicy.shouldShowVoiceShortcutHint(
-            voiceAPIKey: "sk-voice",
+            openAIAPIKey: "sk-openai",
             shortcut: .rightOption
         ))
         XCTAssertFalse(OnboardingPolicy.shouldShowVoiceShortcutHint(
-            voiceAPIKey: "  ",
+            openAIAPIKey: "  ",
             shortcut: .rightOption
         ))
         XCTAssertFalse(OnboardingPolicy.shouldShowVoiceShortcutHint(
-            voiceAPIKey: "sk-voice",
+            openAIAPIKey: "sk-openai",
             shortcut: .disabled
         ))
     }

@@ -15,12 +15,14 @@ This directory is split by workflow. Prefer the smallest script that matches the
 ## Local QA
 
 - `rebuild-sandbox-app.sh` builds, verifies, installs to `/Applications/Inklet.app`, and opens the app. It preserves local Inklet preferences and Keychain data.
+- `run-local-app.sh` is the default routine hand-testing path for agents and worktrees. It builds, verifies, installs, and opens `/Applications/Inklet Local.app` with the `com.tomwan.inklet.local` bundle identifier. It requires a stable signing identity by default so macOS can preserve Accessibility permission across rebuilds.
 - `reset-local-state.sh` resets preferences, Accessibility and Microphone permissions, Keychain API keys, and temporary voice recordings.
 - `reset-rebuild-install.sh` runs the full destructive first-launch flow: reset local state, remove `/Applications/Inklet.app`, rebuild, reinstall, and open.
 
 ## Checks
 
 - `test-install-security.sh` checks safety invariants in `install.sh`.
+- `test-run-local-app.sh` checks that local app runs use stable signing, local bundle settings, and redacted signing logs.
 - `test-reset-local-state.sh` checks that local reset covers current Keychain API keys.
 
 ## Assets

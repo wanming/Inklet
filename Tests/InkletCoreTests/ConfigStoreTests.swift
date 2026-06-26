@@ -73,6 +73,7 @@ final class ConfigStoreTests: XCTestCase {
             config.customOpenAICompatibleEndpoint,
             LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString
         )
+        XCTAssertEqual(config.selectionActions, SelectionActionsConfig.defaultConfig())
     }
 
     func testConfigRoundTripsThroughUserDefaults() throws {
@@ -83,13 +84,19 @@ final class ConfigStoreTests: XCTestCase {
         }
         let store = UserDefaultsConfigStore(userDefaults: userDefaults)
         var config = AppConfig.defaultConfig()
-        config.providerID = "anthropic"
+        config.providerID = LLMProviderPreset.openAI.id
         config.model = "test-model"
         config.temperature = 0.7
         config.timeoutSeconds = 9
         config.hotkey = "⌘Space"
         config.appearance = .dark
         config.customOpenAICompatibleEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
+        config.selectionActions = SelectionActionsConfig(
+            isEnabled: false,
+            translationLanguage: .japanese,
+            pronunciationVoice: .cedar,
+            translationPrompt: "Translate into {targetLanguage} with short wording."
+        )
         config.promptModes = [
             PromptMode(
                 id: "custom-test-mode",
@@ -127,6 +134,69 @@ final class ConfigStoreTests: XCTestCase {
             config.customOpenAICompatibleEndpoint,
             AppConfig.defaultConfig().customOpenAICompatibleEndpoint
         )
+        XCTAssertEqual(config.selectionActions, AppConfig.defaultConfig().selectionActions)
+    }
+
+    func testConfigDecodeMigratesLegacyTapToToggleVoiceRecordingModeToPressAndHold() throws {
+        let data = """
+        {
+            "version": 1,
+            "voiceInput": {
+                "shortcut": "rightOption",
+                "speechProviderID": "openai",
+                "speechEndpoint": "https://api.openai.com/v1/audio/transcriptions",
+                "speechModel": "gpt-4o-mini-transcribe",
+                "autoProcessTranscription": true,
+                "postTranscriptionAction": "useDefaultPromptMode",
+                "recordingMode": "tapToToggle",
+                "voiceCleanupPromptModeID": "voice-cleanup"
+            }
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+
+        XCTAssertEqual(config.version, AppConfig.currentVersion)
+        XCTAssertEqual(config.voiceInput.recordingMode, .pressAndHold)
+    }
+
+    func testConfigDecodePreservesCurrentTapToToggleVoiceRecordingMode() throws {
+        let data = """
+        {
+            "version": \(AppConfig.currentVersion),
+            "voiceInput": {
+                "shortcut": "rightOption",
+                "speechProviderID": "openai",
+                "speechEndpoint": "https://api.openai.com/v1/audio/transcriptions",
+                "speechModel": "gpt-4o-mini-transcribe",
+                "autoProcessTranscription": true,
+                "postTranscriptionAction": "useDefaultPromptMode",
+                "recordingMode": "tapToToggle",
+                "voiceCleanupPromptModeID": "voice-cleanup"
+            }
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+
+        XCTAssertEqual(config.version, AppConfig.currentVersion)
+        XCTAssertEqual(config.voiceInput.recordingMode, .tapToToggle)
+    }
+
+    func testConfigDecodeMigratesLegacyProvidersToOpenAI() throws {
+        let data = """
+        {
+            "providerID": "anthropic",
+            "model": "claude-3-5-sonnet-latest",
+            "customOpenAICompatibleEndpoint": "http://127.0.0.1:1234/v1/chat/completions"
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+
+        XCTAssertEqual(config.providerID, LLMProviderPreset.openAI.id)
+        XCTAssertEqual(config.model, LLMProviderPreset.openAI.defaultModel)
+        XCTAssertEqual(config.resolvedProviderPreset.id, LLMProviderPreset.openAI.id)
     }
 
     func testConfigDecodeMigratesLegacyModesToFocusedDefaults() throws {
@@ -299,14 +369,14 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(mode.systemPrompt, "My custom cleanup prompt.")
     }
 
-    func testResolvedProviderPresetUsesCustomOpenAICompatibleEndpoint() {
+    func testResolvedProviderPresetAlwaysUsesOpenAI() {
         var config = AppConfig.defaultConfig()
         config.providerID = LLMProviderPreset.customOpenAICompatible.id
         config.customOpenAICompatibleEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
 
         XCTAssertEqual(
-            config.resolvedProviderPreset.endpoint.absoluteString,
-            "http://127.0.0.1:1234/v1/chat/completions"
+            config.resolvedProviderPreset,
+            LLMProviderPreset.openAI
         )
     }
 
@@ -389,6 +459,18 @@ final class ConfigStoreTests: XCTestCase {
         try store.deleteAPIKey(forProviderID: "openai")
 
         XCTAssertEqual(client.calls, [.update, .delete])
+    }
+
+    func testLocalAPIKeyStoreUsesProductionKeychainServiceForProductionBundle() {
+        let service = LocalAPIKeyStore.resolvedKeychainService(bundleIdentifier: "com.tomwan.inklet")
+
+        XCTAssertEqual(service, LocalAPIKeyStore.defaultKeychainService)
+    }
+
+    func testLocalAPIKeyStoreUsesLocalKeychainServiceForLocalBundle() {
+        let service = LocalAPIKeyStore.resolvedKeychainService(bundleIdentifier: "com.tomwan.inklet.local")
+
+        XCTAssertEqual(service, LocalAPIKeyStore.localKeychainService)
     }
 
     func testLocalAPIKeyStoreDoesNotSavePlaintextFallbackWhenKeychainSaveFails() throws {

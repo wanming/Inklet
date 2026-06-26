@@ -34,6 +34,7 @@ final class InkletPopoverViewModel: ObservableObject {
     private let apiKeyStore: LocalAPIKeyStore
     private let insertionService: InsertionService
     private let transformationServiceFactory: (any LLMProvider) -> TransformationService
+    private let historyStore: any HistoryStore
     private var config: AppConfig
     private var previousApplication: NSRunningApplication?
     private var transformationTask: Task<Void, Never>?
@@ -46,13 +47,15 @@ final class InkletPopoverViewModel: ObservableObject {
         configStore: UserDefaultsConfigStore = UserDefaultsConfigStore(),
         apiKeyStore: LocalAPIKeyStore = LocalAPIKeyStore(),
         transformationServiceFactory: @escaping (any LLMProvider) -> TransformationService = { TransformationService(provider: $0) },
-        insertionService: InsertionService = InsertionService()
+        insertionService: InsertionService = InsertionService(),
+        historyStore: any HistoryStore = JSONLHistoryStore()
     ) {
         self.stateMachine = stateMachine
         self.configStore = configStore
         self.apiKeyStore = apiKeyStore
         self.transformationServiceFactory = transformationServiceFactory
         self.insertionService = insertionService
+        self.historyStore = historyStore
 
         let loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         self.config = loadedConfig
@@ -60,7 +63,6 @@ final class InkletPopoverViewModel: ObservableObject {
         self.selectedModeID = loadedConfig.defaultVisibleModeID
         self.appearance = loadedConfig.appearance
         self.voiceShortcutHint = nil
-        refreshVoiceShortcutHint()
     }
 
     func resetForOpen(previousApplication: NSRunningApplication?) {
@@ -91,9 +93,9 @@ final class InkletPopoverViewModel: ObservableObject {
     }
 
     private func refreshVoiceShortcutHint() {
-        let voiceAPIKey = apiKeyStore.loadAPIKey(forProviderID: config.voiceInput.speechProviderID)
+        let openAIAPIKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id)
         voiceShortcutHint = OnboardingPolicy.shouldShowVoiceShortcutHint(
-            voiceAPIKey: voiceAPIKey,
+            openAIAPIKey: openAIAPIKey,
             shortcut: config.voiceInput.shortcut
         ) ? config.voiceInput.shortcut : nil
     }
@@ -290,6 +292,18 @@ final class InkletPopoverViewModel: ObservableObject {
                     timeoutSeconds: timeoutSeconds
                 )
                 guard !Task.isCancelled else { return }
+                try? historyStore.append(HistoryItem(
+                    source: .write,
+                    inputText: source,
+                    outputText: result.outputText,
+                    modeName: mode.localizedName,
+                    targetLanguageName: nil,
+                    model: model,
+                    metadata: [
+                        "modeID": mode.id,
+                        "providerID": providerID
+                    ]
+                ))
                 isTransforming = false
                 handle(actions: stateMachine.send(.transformationSucceeded(result: result.outputText)))
             } catch {

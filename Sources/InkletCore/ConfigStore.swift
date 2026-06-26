@@ -9,6 +9,8 @@ public enum AppAppearance: String, Codable, Equatable, Sendable, CaseIterable, I
 }
 
 public struct AppConfig: Codable, Equatable, Sendable {
+    public static let currentVersion = 2
+
     public var version: Int
     public var providerID: String
     public var model: String
@@ -19,9 +21,10 @@ public struct AppConfig: Codable, Equatable, Sendable {
     public var promptModes: [PromptMode]
     public var customOpenAICompatibleEndpoint: String
     public var voiceInput: VoiceInputConfig
+    public var selectionActions: SelectionActionsConfig
 
     public init(
-        version: Int = 1,
+        version: Int = AppConfig.currentVersion,
         providerID: String = LLMProviderPreset.openAI.id,
         model: String,
         temperature: Double,
@@ -30,7 +33,8 @@ public struct AppConfig: Codable, Equatable, Sendable {
         appearance: AppAppearance = .system,
         promptModes: [PromptMode],
         customOpenAICompatibleEndpoint: String = LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString,
-        voiceInput: VoiceInputConfig = VoiceInputConfig.defaultConfig()
+        voiceInput: VoiceInputConfig = VoiceInputConfig.defaultConfig(),
+        selectionActions: SelectionActionsConfig = SelectionActionsConfig.defaultConfig()
     ) {
         self.version = version
         self.providerID = providerID
@@ -42,6 +46,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         self.promptModes = promptModes
         self.customOpenAICompatibleEndpoint = customOpenAICompatibleEndpoint
         self.voiceInput = voiceInput
+        self.selectionActions = selectionActions
     }
 
     public static func defaultConfig() -> AppConfig {
@@ -57,12 +62,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
     }
 
     public var resolvedProviderPreset: LLMProviderPreset {
-        var preset = LLMProviderPreset.preset(id: providerID)
-        if providerID == LLMProviderPreset.customOpenAICompatible.id,
-           let endpoint = URL(string: customOpenAICompatibleEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)) {
-            preset.endpoint = endpoint
-        }
-        return preset
+        LLMProviderPreset.openAI
     }
 
     public var promptModeStore: PromptModeStore {
@@ -97,15 +97,22 @@ public struct AppConfig: Codable, Equatable, Sendable {
         case promptModes
         case customOpenAICompatibleEndpoint
         case voiceInput
+        case selectionActions
     }
 
     public init(from decoder: Decoder) throws {
         let defaults = AppConfig.defaultConfig()
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? defaults.version
-        providerID = try container.decodeIfPresent(String.self, forKey: .providerID) ?? defaults.providerID
-        model = try container.decodeIfPresent(String.self, forKey: .model) ?? defaults.model
+        let decodedVersion = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        version = max(decodedVersion, AppConfig.currentVersion)
+        let decodedProviderID = try container.decodeIfPresent(String.self, forKey: .providerID) ?? defaults.providerID
+        providerID = LLMProviderPreset.openAI.id
+        if decodedProviderID == LLMProviderPreset.openAI.id {
+            model = try container.decodeIfPresent(String.self, forKey: .model) ?? defaults.model
+        } else {
+            model = defaults.model
+        }
         temperature = try container.decodeIfPresent(Double.self, forKey: .temperature) ?? defaults.temperature
         timeoutSeconds = try container.decodeIfPresent(Double.self, forKey: .timeoutSeconds) ?? defaults.timeoutSeconds
         hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey) ?? defaults.hotkey
@@ -117,7 +124,14 @@ public struct AppConfig: Codable, Equatable, Sendable {
             String.self,
             forKey: .customOpenAICompatibleEndpoint
         ) ?? defaults.customOpenAICompatibleEndpoint
-        voiceInput = try container.decodeIfPresent(VoiceInputConfig.self, forKey: .voiceInput) ?? defaults.voiceInput
+        voiceInput = AppConfig.migratedVoiceInput(
+            try container.decodeIfPresent(VoiceInputConfig.self, forKey: .voiceInput) ?? defaults.voiceInput,
+            fromVersion: decodedVersion
+        )
+        selectionActions = try container.decodeIfPresent(
+            SelectionActionsConfig.self,
+            forKey: .selectionActions
+        ) ?? defaults.selectionActions
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -133,6 +147,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
         try container.encode(promptModes, forKey: .promptModes)
         try container.encode(customOpenAICompatibleEndpoint, forKey: .customOpenAICompatibleEndpoint)
         try container.encode(voiceInput, forKey: .voiceInput)
+        try container.encode(selectionActions, forKey: .selectionActions)
     }
 
     private static func migratedPromptModes(_ modes: [PromptMode]) -> [PromptMode] {
@@ -173,6 +188,19 @@ public struct AppConfig: Codable, Equatable, Sendable {
                 migratedMode.sortOrder = index
                 return migratedMode
             }
+    }
+
+    private static func migratedVoiceInput(
+        _ voiceInput: VoiceInputConfig,
+        fromVersion version: Int
+    ) -> VoiceInputConfig {
+        guard version < 2, voiceInput.recordingMode == .tapToToggle else {
+            return voiceInput
+        }
+
+        var migratedVoiceInput = voiceInput
+        migratedVoiceInput.recordingMode = .pressAndHold
+        return migratedVoiceInput
     }
 
     private static var legacyVoiceCleanupSystemPrompt: String {
@@ -259,6 +287,8 @@ public struct UserDefaultsConfigStore: ConfigStore {
 public struct LocalAPIKeyStore: @unchecked Sendable {
     public static let defaultKeyPrefix = "providerAPIKey"
     public static let defaultKeychainService = "Inklet.ProviderAPIKey"
+    public static let localBundleIdentifier = "com.tomwan.inklet.local"
+    public static let localKeychainService = "Inklet.Local.ProviderAPIKey"
 
     private let userDefaults: UserDefaults
     private let keyPrefix: String
@@ -268,12 +298,18 @@ public struct LocalAPIKeyStore: @unchecked Sendable {
         userDefaults: UserDefaults = .standard,
         keyPrefix: String = LocalAPIKeyStore.defaultKeyPrefix,
         keychainStore: @escaping (String) -> KeychainStore = { providerID in
-            KeychainStore(service: LocalAPIKeyStore.defaultKeychainService, account: providerID)
+            KeychainStore(service: LocalAPIKeyStore.resolvedKeychainService(), account: providerID)
         }
     ) {
         self.userDefaults = userDefaults
         self.keyPrefix = keyPrefix
         self.keychainStore = keychainStore
+    }
+
+    public static func resolvedKeychainService(
+        bundleIdentifier: String? = Bundle.main.bundleIdentifier
+    ) -> String {
+        bundleIdentifier == localBundleIdentifier ? localKeychainService : defaultKeychainService
     }
 
     public func loadAPIKey(forProviderID providerID: String) -> String? {

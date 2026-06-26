@@ -10,6 +10,14 @@ Before any response or action, use the relevant `superpowers` skill.
 - Match existing Swift, SwiftUI, naming, formatting, and file-organization patterns before introducing anything new.
 - Add or update focused tests for behavior changes when practical.
 
+## Running The App
+
+- When asked to run Inklet locally, prefer the `/Applications/Inklet Local.app` workflow instead of `swift run Inklet` or an ad-hoc `dist/dev-run` bundle.
+- Build, install, and launch the local bundle with `scripts/run-local-app.sh`.
+- The local runner must use a stable signing identity from `INKLET_LOCAL_SIGN_IDENTITY`, `INKLET_SIGN_IDENTITY`, or an automatically detected local code signing identity hash. Do not use ad-hoc signing for normal local runs because macOS may ask for Accessibility permission again after each rebuild.
+- The local bundle uses `com.tomwan.inklet.local` and the separate `Inklet.Local.ProviderAPIKey` Keychain service so local runs do not request the production `Inklet.ProviderAPIKey` item.
+- If `/Applications` is not writable, use `sudo` only for the `rm -rf` and `ditto` install steps. Do not print or commit signing identities or other local-only values.
+
 ## Product Quality
 
 - Treat localization as part of every user-facing copy change. Update all supported language tables, or explicitly document an intentional fallback.
@@ -17,6 +25,17 @@ Before any response or action, use the relevant `superpowers` skill.
 - Favor clarity over decoration. Do not add flashy effects, oversized cards, gradients, or new visual motifs unless the product already uses them.
 - For SwiftUI layout changes, verify text fits in Chinese and English, avoids overlap, and behaves at the app's actual window size.
 - Treat Accessibility, clipboard, text insertion, voice audio, and API key flows as sensitive surfaces.
+
+## Interaction Details
+
+- Fully think the interaction details for each features' each step before editing: idle, hover/focus, pressed, loading, playing, success, error, cancellation, dismissal, retry, and return-to-previous-state behavior.
+- Prefer compact icon-only controls for repeated utility actions inside small popovers. Keep visible text for primary command buttons only when it improves first-use clarity.
+- Every icon-only control must have a tooltip/help label and an accessibility label that names the action.
+- Loading feedback should replace the current icon in place with a spinner, keeping the button size stable and avoiding added text or layout shifts.
+- Playing feedback should replace the current audio icon in place with a playing-state icon, keeping the current content visible while audio plays.
+- Success feedback should replace the current icon in place for a short confirmation interval, such as showing a copied/checkmark icon after copy, then restore the idle icon automatically.
+- For Selection Actions, the first menu remains compact with Translate and Pronounce. Translation results keep the translated text visible while copy, original-audio, and translated-audio controls change only their own icons for loading, playing, copied, or error-adjacent states.
+- Settings preview controls follow the same icon-state model: speaker icon when idle, spinner while generating audio, playing icon while audio is playing, then restore the idle icon when playback finishes.
 
 ## Documentation And Privacy
 
@@ -30,6 +49,9 @@ Before any response or action, use the relevant `superpowers` skill.
 
 - Define verification before editing, then run the narrowest relevant checks.
 - Run `swift test` for code changes. Use targeted app launches and the manual checklist for user-facing workflows.
+- For routine local app hand-testing from any worktree, run `scripts/run-local-app.sh`. Do not launch worktree-local `dist/...` apps or ad-hoc signed bundles, because macOS treats each path, bundle identifier, and signing requirement as a different app for Accessibility and Keychain trust.
+- Keep local hand-test builds on the stable identity `/Applications/Inklet Local.app` with bundle identifier `com.tomwan.inklet.local` and a real signing identity from `.env.local`, the environment, or local signing identity auto-detection. After the first Accessibility and Keychain approval, reuse this path so future worktrees do not prompt again.
+- Use `scripts/reset-rebuild-install.sh` only for intentional first-launch or permission-reset QA, because it clears local permissions and Keychain state by design.
 - For release-sensitive changes, also run strict builds, signature checks, or script checks as applicable.
 - Before finishing, inspect `git diff --check` and `git status`. Report any unverified area or remaining risk.
 

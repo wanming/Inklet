@@ -6,10 +6,10 @@ public enum OnboardingPolicy {
     }
 
     public static func shouldShowVoiceShortcutHint(
-        voiceAPIKey: String?,
+        openAIAPIKey: String?,
         shortcut: VoiceInputConfig.Shortcut
     ) -> Bool {
-        voiceAPIKey?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        openAIAPIKey?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
             && shortcut != .disabled
     }
 
@@ -35,16 +35,4 @@ public enum OnboardingPolicy {
             && !didCompleteOnboarding
     }
 
-    public static func voiceAPIKey(
-        providerID: String,
-        providerAPIKey: String,
-        existingVoiceAPIKey: String
-    ) -> String {
-        let trimmedVoiceAPIKey = existingVoiceAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard providerID == LLMProviderPreset.openAI.id, trimmedVoiceAPIKey.isEmpty else {
-            return trimmedVoiceAPIKey
-        }
-
-        return providerAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
 }
