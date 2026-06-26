@@ -48,14 +48,18 @@ public protocol HistoryStore: Sendable {
     func clear() throws
 }
 
-public struct JSONLHistoryStore: HistoryStore {
+public final class JSONLHistoryStore: HistoryStore, @unchecked Sendable {
     private let fileURL: URL
+    private let lock = NSLock()
 
     public init(fileURL: URL = JSONLHistoryStore.defaultFileURL()) {
         self.fileURL = fileURL
     }
 
     public func load() throws -> [HistoryItem] {
+        lock.lock()
+        defer { lock.unlock() }
+
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             return []
         }
@@ -73,6 +77,9 @@ public struct JSONLHistoryStore: HistoryStore {
     }
 
     public func append(_ item: HistoryItem) throws {
+        lock.lock()
+        defer { lock.unlock() }
+
         try FileManager.default.createDirectory(
             at: fileURL.deletingLastPathComponent(),
             withIntermediateDirectories: true
@@ -93,6 +100,9 @@ public struct JSONLHistoryStore: HistoryStore {
     }
 
     public func clear() throws {
+        lock.lock()
+        defer { lock.unlock() }
+
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             return
         }

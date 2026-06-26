@@ -51,6 +51,31 @@ final class HistoryStoreTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
     }
 
+    func testConcurrentAppendsKeepAllRecords() async throws {
+        let url = temporaryHistoryURL()
+        let store = JSONLHistoryStore(fileURL: url)
+        let recordCount = 50
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for index in 0..<recordCount {
+                group.addTask {
+                    try store.append(HistoryItem(
+                        source: .write,
+                        inputText: "input-\(index)",
+                        outputText: "output-\(index)"
+                    ))
+                }
+            }
+            try await group.waitForAll()
+        }
+
+        let items = try store.load()
+
+        XCTAssertEqual(items.count, recordCount)
+        XCTAssertEqual(Set(items.map(\.inputText)).count, recordCount)
+        XCTAssertEqual(Set(items.map(\.outputText)).count, recordCount)
+    }
+
     func testLoadSkipsMalformedLines() throws {
         let url = temporaryHistoryURL()
         try FileManager.default.createDirectory(
