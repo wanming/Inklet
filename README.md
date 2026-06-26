@@ -69,6 +69,7 @@ The default voice shortcut is Right Option. You can change it to Right Command, 
 - Inserts generated text back into the previously focused app.
 - Restores your clipboard after insertion.
 - Lets you edit prompt modes, OpenAI model, timeout, temperature, writing shortcut, voice shortcut, speech preset, speech endpoint, speech model, selection translation language, and AI pronunciation voice.
+- Shows local History for successful Write, Voice, and Selection results, with source/result copy controls and a clear-all action.
 - Uses one shared OpenAI API key for writing, voice transcription, selection translation, and pronunciation.
 - Provides English and Chinese app UI localization.
 
@@ -145,7 +146,8 @@ docs/                           manual QA and privacy policy
 - Inklet uses Accessibility permission to return focus to the previous app and paste text.
 - Inklet uses Microphone permission only while recording voice dictation.
 - Inklet temporarily uses the clipboard for insertion and then restores the previous clipboard contents.
-- Selection Actions use Accessibility to read the current selection after you select text in another app. Inklet does not use the clipboard as a fallback for Selection Actions and does not save selected text.
+- Inklet saves successful Write, Voice, and Selection source/result text locally in History until you clear it in Settings.
+- Selection Actions use Accessibility to read the current selection after you select text in another app. Inklet does not use the clipboard as a fallback for Selection Actions and does not save merely selected text unless a successful action is recorded in local History.
 - Selection Assistant translation and AI pronunciation send selected text to OpenAI.
 - Inklet fetches the public model catalog from `models.dev` at most once per day. This request does not include your text, audio, API keys, or app settings.
 - Do not send private text or audio to OpenAI unless you trust OpenAI's data handling policies.
