@@ -57,11 +57,21 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
         }
     }
 
+    public enum PostTranscriptionAction: String, Codable, Equatable, Sendable, CaseIterable, Identifiable {
+        case useDefaultPromptMode
+        case askEachTime
+        case insertRawTranscript
+
+        public var id: String { rawValue }
+    }
+
     public var shortcut: Shortcut
     public var speechProviderID: String
     public var speechEndpoint: String
     public var speechModel: String
+    public var microphoneDeviceID: String?
     public var autoProcessTranscription: Bool
+    public var postTranscriptionAction: PostTranscriptionAction
     public var voiceCleanupPromptModeID: String
 
     public init(
@@ -69,14 +79,20 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
         speechProviderID: String,
         speechEndpoint: String,
         speechModel: String,
+        microphoneDeviceID: String?,
         autoProcessTranscription: Bool,
+        postTranscriptionAction: PostTranscriptionAction? = nil,
         voiceCleanupPromptModeID: String
     ) {
         self.shortcut = shortcut
         self.speechProviderID = speechProviderID
         self.speechEndpoint = speechEndpoint
         self.speechModel = speechModel
-        self.autoProcessTranscription = autoProcessTranscription
+        self.microphoneDeviceID = microphoneDeviceID
+        let resolvedAction = postTranscriptionAction
+            ?? (autoProcessTranscription ? .useDefaultPromptMode : .insertRawTranscript)
+        self.autoProcessTranscription = resolvedAction != .insertRawTranscript
+        self.postTranscriptionAction = resolvedAction
         self.voiceCleanupPromptModeID = voiceCleanupPromptModeID
     }
 
@@ -86,8 +102,53 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
             speechProviderID: openAISpeechProviderID,
             speechEndpoint: defaultSpeechEndpoint,
             speechModel: defaultSpeechModel,
+            microphoneDeviceID: nil,
             autoProcessTranscription: true,
+            postTranscriptionAction: .useDefaultPromptMode,
             voiceCleanupPromptModeID: PromptMode.voiceCleanupID
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case shortcut
+        case speechProviderID
+        case speechEndpoint
+        case speechModel
+        case microphoneDeviceID
+        case autoProcessTranscription
+        case postTranscriptionAction
+        case voiceCleanupPromptModeID
+    }
+
+    public init(from decoder: Decoder) throws {
+        let defaults = VoiceInputConfig.defaultConfig()
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let autoProcessTranscription = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .autoProcessTranscription
+        ) ?? defaults.autoProcessTranscription
+
+        self.init(
+            shortcut: try container.decodeIfPresent(Shortcut.self, forKey: .shortcut) ?? defaults.shortcut,
+            speechProviderID: try container.decodeIfPresent(
+                String.self,
+                forKey: .speechProviderID
+            ) ?? defaults.speechProviderID,
+            speechEndpoint: try container.decodeIfPresent(
+                String.self,
+                forKey: .speechEndpoint
+            ) ?? defaults.speechEndpoint,
+            speechModel: try container.decodeIfPresent(String.self, forKey: .speechModel) ?? defaults.speechModel,
+            microphoneDeviceID: try container.decodeIfPresent(String.self, forKey: .microphoneDeviceID),
+            autoProcessTranscription: autoProcessTranscription,
+            postTranscriptionAction: try container.decodeIfPresent(
+                PostTranscriptionAction.self,
+                forKey: .postTranscriptionAction
+            ),
+            voiceCleanupPromptModeID: try container.decodeIfPresent(
+                String.self,
+                forKey: .voiceCleanupPromptModeID
+            ) ?? defaults.voiceCleanupPromptModeID
         )
     }
 }

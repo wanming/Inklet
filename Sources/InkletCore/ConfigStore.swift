@@ -268,6 +268,8 @@ public struct UserDefaultsConfigStore: ConfigStore {
 public struct LocalAPIKeyStore: @unchecked Sendable {
     public static let defaultKeyPrefix = "providerAPIKey"
     public static let defaultKeychainService = "Inklet.ProviderAPIKey"
+    public static let localBundleIdentifier = "com.tomwan.inklet.local"
+    public static let localKeychainService = "Inklet.Local.ProviderAPIKey"
 
     private let userDefaults: UserDefaults
     private let keyPrefix: String
@@ -277,12 +279,18 @@ public struct LocalAPIKeyStore: @unchecked Sendable {
         userDefaults: UserDefaults = .standard,
         keyPrefix: String = LocalAPIKeyStore.defaultKeyPrefix,
         keychainStore: @escaping (String) -> KeychainStore = { providerID in
-            KeychainStore(service: LocalAPIKeyStore.defaultKeychainService, account: providerID)
+            KeychainStore(service: LocalAPIKeyStore.resolvedKeychainService(), account: providerID)
         }
     ) {
         self.userDefaults = userDefaults
         self.keyPrefix = keyPrefix
         self.keychainStore = keychainStore
+    }
+
+    public static func resolvedKeychainService(
+        bundleIdentifier: String? = Bundle.main.bundleIdentifier
+    ) -> String {
+        bundleIdentifier == localBundleIdentifier ? localKeychainService : defaultKeychainService
     }
 
     public func loadAPIKey(forProviderID providerID: String) -> String? {

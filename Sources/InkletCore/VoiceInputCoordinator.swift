@@ -5,6 +5,7 @@ public enum VoiceInputStatus: Equatable, Sendable {
     case idle
     case listening
     case transcribing
+    case choosingPromptMode
     case polishing
     case inserting
     case fallbackInserted(String)
@@ -12,7 +13,7 @@ public enum VoiceInputStatus: Equatable, Sendable {
 
     public var allowsCancellation: Bool {
         switch self {
-        case .listening, .transcribing, .polishing, .inserting:
+        case .listening, .transcribing, .choosingPromptMode, .polishing, .inserting:
             true
         case .idle, .fallbackInserted, .error:
             false
@@ -42,6 +43,22 @@ public struct VoiceInputHistoryEvent: Equatable, Sendable {
     }
 }
 
+public struct VoicePromptModeSelectionRequest: Equatable, Sendable {
+    public var transcript: String
+    public var defaultPromptModeID: String
+
+    public init(transcript: String, defaultPromptModeID: String) {
+        self.transcript = transcript
+        self.defaultPromptModeID = defaultPromptModeID
+    }
+}
+
+public enum VoicePromptModeSelection: Equatable, Sendable {
+    case promptMode(String)
+    case rawTranscript
+    case cancelled
+}
+
 @MainActor
 public final class VoiceInputCoordinator {
     public typealias ConfigProvider = @MainActor () -> VoiceInputConfig
@@ -50,6 +67,7 @@ public final class VoiceInputCoordinator {
     public typealias StopRecording = @MainActor () async throws -> URL
     public typealias CancelRecording = @MainActor () async -> Void
     public typealias Transcribe = @MainActor (SpeechTranscriptionRequest) async throws -> SpeechTranscriptionResult
+    public typealias SelectPromptMode = @MainActor (VoicePromptModeSelectionRequest) async -> VoicePromptModeSelection
     public typealias Cleanup = @MainActor (String, String) async throws -> String
     public typealias Insert = @MainActor (String, NSRunningApplication) async throws -> Void
     public typealias RecordHistory = @MainActor (VoiceInputHistoryEvent) async -> Void
@@ -60,6 +78,7 @@ public final class VoiceInputCoordinator {
         case starting
         case listening
         case transcribing
+        case choosingPromptMode
         case polishing
         case inserting
         case cancelling
@@ -71,6 +90,7 @@ public final class VoiceInputCoordinator {
     private let stopRecordingHandler: StopRecording
     private let cancelRecordingHandler: CancelRecording
     private let transcribeHandler: Transcribe
+    private let selectPromptModeHandler: SelectPromptMode
     private let cleanupHandler: Cleanup
     private let insertHandler: Insert
     private let recordHistoryHandler: RecordHistory
@@ -85,6 +105,9 @@ public final class VoiceInputCoordinator {
         stopRecording: @escaping StopRecording,
         cancelRecording: @escaping CancelRecording,
         transcribe: @escaping Transcribe,
+        selectPromptMode: @escaping SelectPromptMode = { request in
+            .promptMode(request.defaultPromptModeID)
+        },
         cleanup: @escaping Cleanup,
         insert: @escaping Insert,
         recordHistory: @escaping RecordHistory = { _ in },
@@ -96,6 +119,7 @@ public final class VoiceInputCoordinator {
         self.stopRecordingHandler = stopRecording
         self.cancelRecordingHandler = cancelRecording
         self.transcribeHandler = transcribe
+        self.selectPromptModeHandler = selectPromptMode
         self.cleanupHandler = cleanup
         self.insertHandler = insert
         self.recordHistoryHandler = recordHistory
@@ -108,7 +132,7 @@ public final class VoiceInputCoordinator {
             await start()
         case .listening:
             await stop()
-        case .starting, .transcribing, .polishing, .inserting, .cancelling:
+        case .starting, .transcribing, .choosingPromptMode, .polishing, .inserting, .cancelling:
             return
         }
     }
@@ -129,6 +153,12 @@ public final class VoiceInputCoordinator {
             }
             state = .listening
             statusHandler(.listening)
+        } catch is CancellationError {
+            guard activeSessionID == sessionID else {
+                return
+            }
+            state = .idle
+            statusHandler(.idle)
         } catch {
             guard activeSessionID == sessionID else {
                 return
@@ -176,29 +206,53 @@ public final class VoiceInputCoordinator {
             }
 
             let finalText: String
-            if config.autoProcessTranscription {
-                state = .polishing
-                statusHandler(.polishing)
-                do {
-                    finalText = try await cleanupHandler(transcript, config.voiceCleanupPromptModeID)
-                } catch {
-                    try await insertText(transcript)
-                    guard activeSessionID == sessionID else {
+            let cleanupPromptModeID: String?
+            switch config.postTranscriptionAction {
+            case .useDefaultPromptMode:
+                guard let processedText = try await processedText(
+                    from: transcript,
+                    promptModeID: config.voiceCleanupPromptModeID,
+                    speechModel: config.speechModel,
+                    activeSessionID: activeSessionID
+                ) else {
+                    return
+                }
+                finalText = processedText
+                cleanupPromptModeID = config.voiceCleanupPromptModeID
+            case .askEachTime:
+                state = .choosingPromptMode
+                statusHandler(.choosingPromptMode)
+                let selection = await selectPromptModeHandler(VoicePromptModeSelectionRequest(
+                    transcript: transcript,
+                    defaultPromptModeID: config.voiceCleanupPromptModeID
+                ))
+                guard activeSessionID == sessionID else {
+                    return
+                }
+
+                switch selection {
+                case .promptMode(let modeID):
+                    guard let processedText = try await processedText(
+                        from: transcript,
+                        promptModeID: modeID,
+                        speechModel: config.speechModel,
+                        activeSessionID: activeSessionID
+                    ) else {
                         return
                     }
-                    await recordVoiceHistory(
-                        transcript: transcript,
-                        finalText: transcript,
-                        config: config,
-                        cleanupFallback: true
-                    )
+                    finalText = processedText
+                    cleanupPromptModeID = modeID
+                case .rawTranscript:
+                    finalText = transcript
+                    cleanupPromptModeID = nil
+                case .cancelled:
                     state = .idle
-                    statusHandler(.fallbackInserted(cleanupFailureMessage(for: error)))
                     statusHandler(.idle)
                     return
                 }
-            } else {
+            case .insertRawTranscript:
                 finalText = transcript
+                cleanupPromptModeID = nil
             }
 
             try await insertText(finalText)
@@ -208,9 +262,16 @@ public final class VoiceInputCoordinator {
             await recordVoiceHistory(
                 transcript: transcript,
                 finalText: finalText,
-                config: config,
+                cleanupPromptModeID: cleanupPromptModeID,
+                speechModel: config.speechModel,
                 cleanupFallback: false
             )
+            state = .idle
+            statusHandler(.idle)
+        } catch is CancellationError {
+            guard activeSessionID == sessionID else {
+                return
+            }
             state = .idle
             statusHandler(.idle)
         } catch {
@@ -230,7 +291,7 @@ public final class VoiceInputCoordinator {
             await cancelRecordingHandler()
             state = .idle
             statusHandler(.idle)
-        case .idle, .transcribing, .polishing, .inserting, .cancelling:
+        case .idle, .transcribing, .choosingPromptMode, .polishing, .inserting, .cancelling:
             sessionID += 1
             state = .idle
             statusHandler(.idle)
@@ -240,17 +301,52 @@ public final class VoiceInputCoordinator {
     private func recordVoiceHistory(
         transcript: String,
         finalText: String,
-        config: VoiceInputConfig,
+        cleanupPromptModeID: String?,
+        speechModel: String,
         cleanupFallback: Bool
     ) async {
-        let cleanupPromptModeID = config.autoProcessTranscription ? config.voiceCleanupPromptModeID : nil
         await recordHistoryHandler(VoiceInputHistoryEvent(
             transcript: transcript,
             finalText: finalText,
             cleanupPromptModeID: cleanupPromptModeID,
-            speechModel: config.speechModel,
+            speechModel: speechModel,
             cleanupFallback: cleanupFallback
         ))
+    }
+
+    private func processedText(
+        from transcript: String,
+        promptModeID: String,
+        speechModel: String,
+        activeSessionID: Int
+    ) async throws -> String? {
+        do {
+            state = .polishing
+            statusHandler(.polishing)
+            let cleanedText = try await cleanupHandler(transcript, promptModeID)
+            guard activeSessionID == sessionID else {
+                throw CancellationError()
+            }
+            return cleanedText
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try await insertText(transcript)
+            guard activeSessionID == sessionID else {
+                return nil
+            }
+            await recordVoiceHistory(
+                transcript: transcript,
+                finalText: transcript,
+                cleanupPromptModeID: promptModeID,
+                speechModel: speechModel,
+                cleanupFallback: true
+            )
+            state = .idle
+            statusHandler(.fallbackInserted(cleanupFailureMessage(for: error)))
+            statusHandler(.idle)
+            return nil
+        }
     }
 
     private func insertText(_ text: String) async throws {

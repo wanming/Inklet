@@ -1,10 +1,15 @@
 import Foundation
 
 public struct SelectionActionsConfig: Codable, Equatable, Sendable {
+    public static let minimumPronunciationSpeed = 0.75
+    public static let maximumPronunciationSpeed = 1.5
+    public static let defaultPronunciationSpeed = 1.0
+
     public var isEnabled: Bool
     public var translationLanguage: SelectionTranslationLanguage
     public var pronunciationVoice: SelectionPronunciationVoice
     public var translationPrompt: String
+    public var pronunciationSpeed: Double
 
     static let legacyDefaultTranslationPrompt = """
     Translate the user's selected text into {targetLanguage}.
@@ -27,12 +32,14 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
         isEnabled: Bool = true,
         translationLanguage: SelectionTranslationLanguage = .followInterfaceLanguage,
         pronunciationVoice: SelectionPronunciationVoice = .alloy,
-        translationPrompt: String = Self.defaultTranslationPrompt
+        translationPrompt: String = Self.defaultTranslationPrompt,
+        pronunciationSpeed: Double = Self.defaultPronunciationSpeed
     ) {
         self.isEnabled = isEnabled
         self.translationLanguage = translationLanguage
         self.pronunciationVoice = pronunciationVoice
         self.translationPrompt = translationPrompt
+        self.pronunciationSpeed = Self.clampedPronunciationSpeed(pronunciationSpeed)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -40,6 +47,7 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
         case translationLanguage
         case pronunciationVoice
         case translationPrompt
+        case pronunciationSpeed
     }
 
     public init(from decoder: Decoder) throws {
@@ -59,6 +67,9 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
         translationPrompt = decodedTranslationPrompt == Self.legacyDefaultTranslationPrompt
             ? defaults.translationPrompt
             : decodedTranslationPrompt
+        pronunciationSpeed = Self.clampedPronunciationSpeed(
+            try container.decodeIfPresent(Double.self, forKey: .pronunciationSpeed) ?? defaults.pronunciationSpeed
+        )
     }
 
     public static func defaultConfig() -> SelectionActionsConfig {
@@ -70,6 +81,10 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
             ? Self.defaultTranslationPrompt
             : translationPrompt
         return template.replacingOccurrences(of: "{targetLanguage}", with: targetLanguageName)
+    }
+
+    public static func clampedPronunciationSpeed(_ speed: Double) -> Double {
+        min(max(speed, minimumPronunciationSpeed), maximumPronunciationSpeed)
     }
 }
 

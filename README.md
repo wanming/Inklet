@@ -31,8 +31,8 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 3. Grant Accessibility permission when macOS asks. Inklet needs this to return focus to the previous app and paste the result. Inklet stays in the background while System Settings is open and returns to General settings when you close it.
 4. Enter your OpenAI API key in General. Inklet uses this one key for writing, voice transcription, selection translation, and pronunciation.
 5. Configure Write Assistant with the model, writing shortcut, generation settings, and prompt modes you want to use.
-6. Optional: configure Voice Write Assistant with a speech preset, voice shortcut, and cleanup mode.
-7. Optional: configure Selection Assistant with a translation language and AI pronunciation voice, then preview the voice in Settings.
+6. Optional: configure Voice Write Assistant with a microphone, speech preset, voice shortcut, and what happens after transcription.
+7. Optional: configure Selection Assistant with a translation language, AI pronunciation voice, and pronunciation speed, then preview the voice in Settings.
 8. Grant Microphone permission the first time you use voice dictation.
 
 ## Everyday Use
@@ -48,10 +48,10 @@ Text workflow:
 Voice workflow:
 
 1. Focus any text field in another app.
-2. Tap Right Option once to start recording.
+2. Tap Right Option once to start recording with the selected microphone.
 3. Speak a short phrase.
 4. Tap Right Option again to stop recording.
-5. Inklet transcribes the audio, optionally cleans up the transcript with the selected prompt mode, and inserts the final text.
+5. Inklet transcribes the audio, then either uses your cleanup mode, asks you to choose a prompt mode, or inserts the raw transcript based on your Voice settings.
 
 The default voice shortcut is Right Option. You can change it to Right Command, Left Option, Left Command, or Disabled in Settings.
 
@@ -68,9 +68,7 @@ The default voice shortcut is Right Option. You can change it to Right Command, 
   - Voice Cleanup
 - Inserts generated text back into the previously focused app.
 - Restores your clipboard after insertion.
-- Lets you edit prompt modes, OpenAI model, timeout, temperature, writing shortcut, voice shortcut, speech preset, speech endpoint, speech model, selection translation language, and AI pronunciation voice.
-- Shows local History for successful Write, Voice, and Selection results, with source/result copy controls and a clear-all action.
-- Lets you edit prompt modes, OpenAI model, timeout, temperature, writing shortcut, voice shortcut, speech preset, speech endpoint, speech model, selection translation language, selection Translate prompt, and AI pronunciation voice.
+- Lets you edit prompt modes, OpenAI model, timeout, temperature, writing shortcut, voice shortcut, microphone, speech preset, speech endpoint, speech model, post-transcription handling, selection translation language, selection Translate prompt, AI pronunciation voice, and AI pronunciation speed.
 - Shows local History for successful Write, Voice, and Selection results, with source/result copy controls and a clear-all action.
 - Uses one shared OpenAI API key for writing, voice transcription, selection translation, and pronunciation.
 - Provides English and Chinese app UI localization.
@@ -100,8 +98,10 @@ From the repository root:
 
 ```bash
 swift build
-swift run Inklet
+scripts/run-local-app.sh
 ```
+
+Use `scripts/run-local-app.sh` for routine manual app testing from any worktree. It installs and opens the stable `/Applications/Inklet Local.app` identity so macOS Accessibility and Keychain trust can be reused across rebuilds.
 
 Run tests:
 
@@ -137,6 +137,7 @@ docs/                           manual QA and privacy policy
 
 - Keep provider behavior covered by focused unit tests.
 - Use [docs/manual-test-checklist.md](docs/manual-test-checklist.md) before shipping user-facing app changes.
+- Use `scripts/run-local-app.sh` instead of `swift run Inklet` or `open dist/...` for routine app hand-testing, so local Accessibility and Keychain approvals stay attached to one stable app identity.
 - Treat the clipboard and Accessibility flows carefully; they are central to the app experience.
 - The project is still MVP-stage, so README details should track the code rather than future plans.
 

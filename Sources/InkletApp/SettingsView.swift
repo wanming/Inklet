@@ -27,6 +27,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var isRefreshingModelCatalog: Bool
     @Published var isEditingCustomModel: Bool
     @Published var isEditingCustomSpeechEndpoint: Bool
+    @Published var microphoneOptions: [MicrophoneDeviceOption]
     @Published fileprivate var pronunciationPreviewState: PronunciationPreviewState?
     @Published var permissionRefreshID: UUID
     @Published var historyItems: [HistoryItem]
@@ -36,6 +37,7 @@ final class SettingsViewModel: ObservableObject {
     private let apiKeyStore: LocalAPIKeyStore
     private let modelCatalogService: ModelCatalogService
     private let historyStore: any HistoryStore
+    private let microphoneDeviceCatalog: MicrophoneDeviceCatalog
     private let pronunciationPreviewPlaybackService: SpeechPlaybackService
     private var cancellables = Set<AnyCancellable>()
     private var pronunciationPreviewTask: Task<Void, Never>?
@@ -47,7 +49,8 @@ final class SettingsViewModel: ObservableObject {
         configStore: UserDefaultsConfigStore = UserDefaultsConfigStore(),
         apiKeyStore: LocalAPIKeyStore = LocalAPIKeyStore(),
         modelCatalogService: ModelCatalogService = ModelCatalogService(),
-        historyStore: any HistoryStore = JSONLHistoryStore()
+        historyStore: any HistoryStore = JSONLHistoryStore(),
+        microphoneDeviceCatalog: MicrophoneDeviceCatalog = MicrophoneDeviceCatalog()
     ) {
         var loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         loadedConfig.temperature = min(max(loadedConfig.temperature, 0), 1)
@@ -55,6 +58,7 @@ final class SettingsViewModel: ObservableObject {
         self.apiKeyStore = apiKeyStore
         self.modelCatalogService = modelCatalogService
         self.historyStore = historyStore
+        self.microphoneDeviceCatalog = microphoneDeviceCatalog
         self.pronunciationPreviewPlaybackService = SpeechPlaybackService()
         loadedConfig.providerID = LLMProviderPreset.openAI.id
         self.config = loadedConfig
@@ -79,6 +83,7 @@ final class SettingsViewModel: ObservableObject {
             endpoint: loadedConfig.voiceInput.speechEndpoint,
             model: loadedConfig.voiceInput.speechModel
         ) == .custom
+        self.microphoneOptions = microphoneDeviceCatalog.options()
         self.pronunciationPreviewState = nil
         self.permissionRefreshID = UUID()
         self.historyItems = (try? historyStore.load()).map { Array($0.reversed()) } ?? []
@@ -182,6 +187,14 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
+    func refreshMicrophoneOptions() {
+        microphoneOptions = microphoneDeviceCatalog.options()
+        if let microphoneDeviceID = config.voiceInput.microphoneDeviceID,
+           !microphoneOptions.contains(where: { $0.deviceID == microphoneDeviceID }) {
+            config.voiceInput.microphoneDeviceID = nil
+        }
+    }
+
     var selectedSpeechProfile: VoiceInputConfig.SpeechProfile {
         if isEditingCustomSpeechEndpoint {
             return .custom
@@ -195,6 +208,20 @@ final class SettingsViewModel: ObservableObject {
 
     var shouldShowCustomSpeechFields: Bool {
         isEditingCustomSpeechEndpoint || selectedSpeechProfile == .custom
+    }
+
+    var selectedMicrophoneMenuID: String {
+        get {
+            guard let microphoneDeviceID = config.voiceInput.microphoneDeviceID,
+                  microphoneOptions.contains(where: { $0.deviceID == microphoneDeviceID })
+            else {
+                return MicrophoneDeviceOption.systemDefaultID
+            }
+            return microphoneDeviceID
+        }
+        set {
+            config.voiceInput.microphoneDeviceID = newValue == MicrophoneDeviceOption.systemDefaultID ? nil : newValue
+        }
     }
 
     var voiceCleanupModes: [PromptMode] {
@@ -236,6 +263,7 @@ final class SettingsViewModel: ObservableObject {
 
     func previewPronunciationVoice() {
         let voice = config.selectionActions.pronunciationVoice
+        let speed = config.selectionActions.pronunciationSpeed
         pronunciationPreviewTask?.cancel()
         pronunciationPreviewPlaybackService.stop()
         pronunciationPreviewState = .loading(voice)
@@ -256,6 +284,7 @@ final class SettingsViewModel: ObservableObject {
                         interfaceLanguageCode: L10n.resolvedLanguage.localeIdentifier
                     ),
                     voice: voice.rawValue,
+                    speed: speed,
                     timeoutSeconds: config.timeoutSeconds
                 ))
                 await MainActor.run {
@@ -443,6 +472,7 @@ final class SettingsViewModel: ObservableObject {
             }
 
             _ = try Hotkey.parse(config.hotkey)
+            config.voiceInput.autoProcessTranscription = config.voiceInput.postTranscriptionAction != .insertRawTranscript
             InkletLanguageStore.selectedLanguage = interfaceLanguage
             try configStore.save(config)
             let trimmedKey = providerAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -585,6 +615,19 @@ struct SettingsView: View {
         model.message == L10n.text("settings.saved") || model.message == L10n.text("settings.history.cleared")
     }
 
+    private var pronunciationSpeedBinding: Binding<Double> {
+        Binding(
+            get: { model.config.selectionActions.pronunciationSpeed },
+            set: {
+                model.config.selectionActions.pronunciationSpeed = SelectionActionsConfig.clampedPronunciationSpeed($0)
+            }
+        )
+    }
+
+    private var pronunciationSpeedText: String {
+        L10n.format("settings.aiPronunciation.speedValue", model.config.selectionActions.pronunciationSpeed)
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             sidebar
@@ -603,6 +646,7 @@ struct SettingsView: View {
         }
         .onAppear {
             model.refreshPermissions()
+            model.refreshMicrophoneOptions()
         }
         .onChange(of: model.config.appearance) {
             onAppearanceChange(model.config.appearance)
@@ -913,12 +957,26 @@ struct SettingsView: View {
             get: { model.selectedSpeechProfile },
             set: { model.selectSpeechProfile($0) }
         )
+        let selectedMicrophoneBinding = Binding(
+            get: { model.selectedMicrophoneMenuID },
+            set: { model.selectedMicrophoneMenuID = $0 }
+        )
 
         return settingsPanel {
             settingsRow(L10n.text("settings.row.voiceShortcut"), help: L10n.text("settings.help.voiceShortcut")) {
                 Picker("", selection: $model.config.voiceInput.shortcut) {
                     ForEach(VoiceInputConfig.Shortcut.allCases) { shortcut in
                         Text(shortcut.localizedName).tag(shortcut)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(L10n.text("settings.row.microphone"), help: L10n.text("settings.help.microphone")) {
+                Picker("", selection: selectedMicrophoneBinding) {
+                    ForEach(model.microphoneOptions) { option in
+                        Text(option.localizedName).tag(option.id)
                     }
                 }
                 .labelsHidden()
@@ -950,9 +1008,17 @@ struct SettingsView: View {
                 }
             }
 
-            settingsRow(L10n.text("settings.row.voiceAutoProcess"), help: L10n.text("settings.help.voiceAutoProcess")) {
-                Toggle("", isOn: $model.config.voiceInput.autoProcessTranscription)
-                    .labelsHidden()
+            settingsRow(
+                L10n.text("settings.row.voicePostTranscriptionAction"),
+                help: L10n.text("settings.help.voicePostTranscriptionAction")
+            ) {
+                Picker("", selection: $model.config.voiceInput.postTranscriptionAction) {
+                    ForEach(VoiceInputConfig.PostTranscriptionAction.allCases) { action in
+                        Text(action.localizedName).tag(action)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
             }
 
             settingsRow(L10n.text("settings.row.voiceCleanupMode"), help: L10n.text("settings.help.voiceCleanupMode")) {
@@ -963,7 +1029,7 @@ struct SettingsView: View {
                 }
                 .labelsHidden()
                 .frame(maxWidth: 320, alignment: .leading)
-                .disabled(!model.config.voiceInput.autoProcessTranscription)
+                .disabled(model.config.voiceInput.postTranscriptionAction == .insertRawTranscript)
             }
         }
     }
@@ -1057,6 +1123,26 @@ struct SettingsView: View {
                     .help(L10n.text("settings.aiPronunciation.preview"))
                     .accessibilityLabel(L10n.text("settings.aiPronunciation.preview"))
                     .disabled(model.pronunciationPreviewState?.matches(model.config.selectionActions.pronunciationVoice) == true)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(maxWidth: 320, alignment: .leading)
+            }
+
+            settingsRow(
+                L10n.text("settings.row.aiPronunciationSpeed"),
+                help: L10n.text("settings.help.aiPronunciationSpeed")
+            ) {
+                HStack(spacing: 12) {
+                    Slider(
+                        value: pronunciationSpeedBinding,
+                        in: SelectionActionsConfig.minimumPronunciationSpeed...SelectionActionsConfig.maximumPronunciationSpeed,
+                        step: 0.05
+                    )
+                    .frame(maxWidth: 220)
+
+                    Text(pronunciationSpeedText)
+                        .font(.body.monospacedDigit())
+                        .frame(width: 52, alignment: .trailing)
                 }
                 .frame(maxWidth: 320, alignment: .leading)
             }

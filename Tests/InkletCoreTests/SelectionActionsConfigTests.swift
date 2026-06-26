@@ -8,6 +8,24 @@ final class SelectionActionsConfigTests: XCTestCase {
         XCTAssertTrue(config.isEnabled)
         XCTAssertEqual(config.translationLanguage, .followInterfaceLanguage)
         XCTAssertEqual(config.pronunciationVoice, .alloy)
+        XCTAssertEqual(config.pronunciationSpeed, 1.0)
+    }
+
+    func testPronunciationSpeedUsesCompactSettingsRange() {
+        XCTAssertEqual(SelectionActionsConfig.minimumPronunciationSpeed, 0.75)
+        XCTAssertEqual(SelectionActionsConfig.maximumPronunciationSpeed, 1.5)
+        XCTAssertEqual(SelectionActionsConfig.defaultPronunciationSpeed, 1.0)
+    }
+
+    func testPronunciationSpeedIsClampedToSettingsRange() {
+        XCTAssertEqual(
+            SelectionActionsConfig(pronunciationSpeed: 0.25).pronunciationSpeed,
+            SelectionActionsConfig.minimumPronunciationSpeed
+        )
+        XCTAssertEqual(
+            SelectionActionsConfig(pronunciationSpeed: 4.0).pronunciationSpeed,
+            SelectionActionsConfig.maximumPronunciationSpeed
+        )
     }
 
     func testDefaultConfigIncludesDefaultTranslationPrompt() {
@@ -67,6 +85,18 @@ final class SelectionActionsConfigTests: XCTestCase {
         XCTAssertFalse(config.isEnabled)
         XCTAssertEqual(config.translationLanguage, .japanese)
         XCTAssertEqual(config.pronunciationVoice, .alloy)
+        XCTAssertEqual(config.pronunciationSpeed, 1.0)
+    }
+
+    func testDecodingClampsPronunciationSpeed() throws {
+        let slowData = #"{"pronunciationSpeed":0.25}"#.data(using: .utf8)!
+        let fastData = #"{"pronunciationSpeed":4.0}"#.data(using: .utf8)!
+
+        let slowConfig = try JSONDecoder().decode(SelectionActionsConfig.self, from: slowData)
+        let fastConfig = try JSONDecoder().decode(SelectionActionsConfig.self, from: fastData)
+
+        XCTAssertEqual(slowConfig.pronunciationSpeed, SelectionActionsConfig.minimumPronunciationSpeed)
+        XCTAssertEqual(fastConfig.pronunciationSpeed, SelectionActionsConfig.maximumPronunciationSpeed)
     }
 
     func testDecodingOldConfigDefaultsTranslationPrompt() throws {
