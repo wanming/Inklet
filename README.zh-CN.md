@@ -108,6 +108,8 @@ Inklet 是早期 MVP。当前仓库包含：
 
 每次构建 app bundle 前，都要递增根目录 `VERSION` 中的 `INKLET_VERSION` 和 `INKLET_BUILD_NUMBER`。通常递增补丁版本；较大变更使用次版本或主版本。构建号必须是大于所有已用构建号的正整数，不能因版本号变化而重置。选择构建号前，请检查最新 `main`、Git tags、所有 GitHub releases（包括草稿）以及正在使用的 worktrees。Inklet 仅通过构建号判断是否有更新。
 
+远端 GitHub DMG 构建只使用 `main` 分支。先将本次改动和更新后的 `VERSION` 合并并推送到 `main`，再以 `--ref main` 触发 `build-dmg.yml`。
+
 DMG 工作流会在构建前检查并拒绝重复或更小的构建号，但不会自动递增这两个值。手动验证方法见[发布版本检查](scripts/README.md#release-version-checks)。修改已打包 app 的版本需要重新构建、签名、公证并生成 checksum；只修改 release 标题或文件名不会更新 app 内的版本。
 
 在仓库根目录运行：

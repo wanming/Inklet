@@ -13,6 +13,7 @@ Before any response or action, use the relevant `superpowers` skill.
 
 ## Running The App
 
+- Trigger remote GitHub DMG builds only from `main`. Merge and push the intended changes and updated `VERSION` to `main` before dispatching `build-dmg.yml` with `--ref main`; never dispatch a remote DMG build from a feature or worktree branch.
 - When asked to run Inklet locally, prefer the `/Applications/Inklet Local.app` workflow instead of `swift run Inklet` or an ad-hoc `dist/dev-run` bundle.
 - Before every Inklet app bundle build, increase both `INKLET_VERSION` and `INKLET_BUILD_NUMBER` in the root `VERSION` file. Increment the patch version by default, the minor version for a substantial new feature, and the major version for broad or breaking changes; reset lower-order semantic version components to zero when incrementing minor or major. Keep `INKLET_BUILD_NUMBER` a globally increasing positive integer; never reset it for a new marketing version.
 - Before choosing the next build number, fetch the latest `main` and Git tags, inspect all GitHub releases including drafts and prereleases, and coordinate with active linked worktrees. Choose a number greater than every already used build number and recheck before building or releasing; a stale worktree's `VERSION` is not sufficient. Inklet compares build numbers alone when checking for updates.
