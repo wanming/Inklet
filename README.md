@@ -110,6 +110,8 @@ Before each app bundle build, increase both `INKLET_VERSION` and `INKLET_BUILD_N
 
 Run remote GitHub DMG builds only from `main`, after merging and pushing the intended changes and updated `VERSION`. Dispatch `build-dmg.yml` with `--ref main`.
 
+For an official release, verify the successful build and final assets, replace the placeholder description with Chinese and English changes since the previous published stable release, and publish as the latest stable release. An already verified draft can be published without rebuilding or changing its version.
+
 The DMG workflow checks for reused or lower build numbers before building; it does not increment either value automatically. See [release version checks](scripts/README.md#release-version-checks) for manual validation. Changing a packaged app's version requires rebuilding, signing, notarizing, and regenerating checksums; changing only the release title or filename does not update the app.
 
 From the repository root:
