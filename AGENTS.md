@@ -4,6 +4,8 @@ Before any response or action, use the relevant `superpowers` skill.
 
 ## Workflow
 
+- Use the current tracked `AGENTS.md` as the shared source of agent instructions on every computer. Record durable project preferences here so they travel with Git; explicit current user instructions still take precedence.
+- Before starting work, fetch the latest remote branches and tags, inspect local changes and branch divergence, and read the current shared instructions. Synchronize the task branch when switching computers while preserving unfinished work and unrelated changes.
 - For every task, work in a dedicated linked Git worktree. Before editing, detect whether the current checkout is already isolated; if it is not, create a worktree and do not edit the primary checkout directly.
 - Inspect relevant files and `git status` before editing. Preserve unrelated user work.
 - State relevant assumptions before editing, and ask only when a safe assumption is not possible.
@@ -15,7 +17,7 @@ Before any response or action, use the relevant `superpowers` skill.
 
 - Trigger remote GitHub DMG builds only from `main`. Merge and push the intended changes and updated `VERSION` to `main` before dispatching `build-dmg.yml` with `--ref main`; never dispatch a remote DMG build from a feature or worktree branch.
 - When explicitly asked to publish an official release, verify the successful `main` DMG build and its final assets, replace placeholder release notes, then publish with `draft=false`, `prerelease=false`, and mark it as latest. Publishing an already verified draft does not require rebuilding or incrementing `VERSION`.
-- Before publishing, compare the release commit with the previous published stable release (excluding drafts and prereleases). Write concise Chinese and English release notes describing shipped user-facing additions, improvements, fixes, and relevant upgrade requirements. Link the full comparison, omit internal planning and version-only commits, and never leave workflow-run boilerplate as the release description.
+- Before publishing, compare the release commit with the previous published stable release (excluding drafts and prereleases). Write concise English-only release notes describing shipped user-facing additions, improvements, fixes, and relevant upgrade requirements. Link the full comparison, omit internal planning and version-only commits, and never leave workflow-run boilerplate as the release description. This language rule takes precedence over older bilingual release guidance in other project documents.
 - When asked to run Inklet locally, prefer the `/Applications/Inklet Local.app` workflow instead of `swift run Inklet` or an ad-hoc `dist/dev-run` bundle.
 - Before every Inklet app bundle build, increase both `INKLET_VERSION` and `INKLET_BUILD_NUMBER` in the root `VERSION` file. Increment the patch version by default, the minor version for a substantial new feature, and the major version for broad or breaking changes; reset lower-order semantic version components to zero when incrementing minor or major. Keep `INKLET_BUILD_NUMBER` a globally increasing positive integer; never reset it for a new marketing version.
 - Before choosing the next build number, fetch the latest `main` and Git tags, inspect all GitHub releases including drafts and prereleases, and coordinate with active linked worktrees. Choose a number greater than every already used build number and recheck before building or releasing; a stale worktree's `VERSION` is not sufficient. Inklet compares build numbers alone when checking for updates.
