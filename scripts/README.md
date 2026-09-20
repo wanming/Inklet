@@ -2,8 +2,6 @@
 
 This directory is split by workflow. Prefer the smallest script that matches the job.
 
-Use these tracked scripts with [AGENTS.md](../AGENTS.md) and the [shared workflow](../CONTRIBUTING.md#shared-workflow-across-computers) on every computer. Keep durable workflow changes in the repository, and keep machine configuration and secrets local.
-
 ## Direct Bundle
 
 - `build-macos-app-bundle.sh` builds and signs an Inklet `.app` in `dist/direct/` by default. Pass `INKLET_OUTPUT_DIR` to select another output directory.
@@ -11,7 +9,7 @@ Use these tracked scripts with [AGENTS.md](../AGENTS.md) and the [shared workflo
 
 ## Release Version Checks
 
-Before each app bundle build, increase both values in the root `VERSION` file. Keep `INKLET_BUILD_NUMBER` a positive integer greater than every previously used or reserved build number; never reset it when `INKLET_VERSION` changes. Fetch remote branches (including `main` and active task branches) and tags, inspect all GitHub releases including drafts and prereleases, and coordinate with active worktrees and work on other computers before choosing the next number. Make planned `VERSION` changes visible in pushed task branches before overlapping builds, then recheck before building or releasing.
+Before each app bundle build, increase both values in the root `VERSION` file. Keep `INKLET_BUILD_NUMBER` a positive integer greater than every previously used build number; never reset it when `INKLET_VERSION` changes. Fetch the latest `main` and tags, inspect all GitHub releases including drafts and prereleases, and coordinate with active worktrees before choosing the next number.
 
 `check-release-build-number.py` validates `VERSION` and rejects a candidate build number that is less than or equal to any existing `vX.Y.Z-N` tag's build number. Provide a text file with one tag per line, containing all Git tags and all GitHub release tag names, including drafts and prereleases:
 
@@ -20,12 +18,6 @@ python3 scripts/check-release-build-number.py VERSION /path/to/release-tags.txt
 ```
 
 The script does not fetch tags or modify `VERSION`. The serialized DMG workflow gathers Git tags and all release tags, then runs this check before building. After packaging, verify the app's `CFBundleShortVersionString` and `CFBundleVersion` match `VERSION`, the release tag/title, and the versioned DMG filename. Correct embedded metadata by rebuilding, signing, notarizing, and regenerating checksums; renaming a release or artifact alone is insufficient.
-
-## Release Notes And Publication
-
-Merge and push intended changes and `VERSION` to `main`, then dispatch `build-dmg.yml` with `--ref main`. Main-only dispatch is a project convention to follow on every computer.
-
-Before an explicitly requested official publication, verify the successful `main` build and final assets. Compare the release commit with the previous published stable release, excluding drafts and prereleases, and write concise English-only notes covering shipped user-facing changes and relevant upgrade requirements. [The shared template](../docs/releases/TEMPLATE.md) is an optional writing guide. Include the full comparison link, omit internal planning and version-only commits, and replace workflow-generated boilerplate before publishing with `draft=false`, `prerelease=false`, and marking it as latest. An already verified draft needs no rebuild or version increment.
 
 ## Public Install
 
