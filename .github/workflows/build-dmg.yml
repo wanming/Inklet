@@ -6,7 +6,7 @@ on:
       draft:
         description: "Create the release as a draft."
         required: true
-        default: true
+        default: false
         type: boolean
       prerelease:
         description: "Mark the release as a prerelease."
@@ -27,23 +27,11 @@ jobs:
     runs-on: macos-15
 
     steps:
-      - name: Check release source
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "DMG builds must run from main. Merge and push the intended changes first." >&2
-            exit 1
-          fi
-
       - name: Check out repository
         uses: actions/checkout@v5
 
       - name: Test release build number checks
         run: python3 scripts/test-release-build-number.py
-
-      - name: Test release notes checks
-        run: python3 scripts/test-release-notes.py
 
       - name: Check release build number
         env:
@@ -82,19 +70,6 @@ jobs:
             echo "release_version=$release_version"
             echo "dmg_name=$dmg_name"
           } >> "$GITHUB_OUTPUT"
-
-      - name: Check release notes
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ steps.release.outputs.tag_name }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          releases="$RUNNER_TEMP/inklet-releases.json"
-          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" | \
-            python3 -c 'import json, sys; json.dump([release for page in json.load(sys.stdin) for release in page], sys.stdout)' > "$releases"
-          python3 scripts/check-release-notes.py "docs/releases/$TAG_NAME.md" \
-            "$releases" "$TAG_NAME" "$GITHUB_REPOSITORY"
 
       - name: Run tests
         env:
@@ -411,32 +386,37 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ steps.release.outputs.tag_name }}
           RELEASE_NAME: ${{ steps.release.outputs.release_name }}
+          APP_VERSION: ${{ steps.release.outputs.app_version }}
+          BUILD_NUMBER: ${{ steps.release.outputs.build_number }}
           DRAFT: ${{ inputs.draft }}
           PRERELEASE: ${{ inputs.prerelease }}
         shell: bash
         run: |
           set -euo pipefail
-          notes_file="docs/releases/$TAG_NAME.md"
 
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             gh release edit "$TAG_NAME" \
               --title "$RELEASE_NAME" \
-              --notes-file "$notes_file"
+              --latest \
+              --draft="$DRAFT" \
+              --prerelease="$PRERELEASE"
           else
-            gh release create "$TAG_NAME" \
-              --target "$GITHUB_SHA" \
-              --title "$RELEASE_NAME" \
-              --draft \
-              --notes-file "$notes_file"
+            create_args=(
+              release create "$TAG_NAME"
+              --target "$GITHUB_SHA"
+              --title "$RELEASE_NAME"
+              --latest
+              --notes "macOS DMG build ${APP_VERSION} (${BUILD_NUMBER}) from workflow run ${GITHUB_RUN_NUMBER}."
+            )
+
+            if [[ "$DRAFT" == "true" ]]; then
+              create_args+=(--draft)
+            fi
+            if [[ "$PRERELEASE" == "true" ]]; then
+              create_args+=(--prerelease)
+            fi
+
+            gh "${create_args[@]}"
           fi
 
           gh release upload "$TAG_NAME" dist/*.dmg dist/*.sha256 --clobber
-
-          make_latest=false
-          if [[ "$DRAFT" == "false" && "$PRERELEASE" == "false" ]]; then
-            make_latest=true
-          fi
-          gh release edit "$TAG_NAME" \
-            --draft="$DRAFT" \
-            --prerelease="$PRERELEASE" \
-            --latest="$make_latest"

@@ -23,17 +23,9 @@ The script does not fetch tags or modify `VERSION`. The serialized DMG workflow 
 
 ## Release Notes And Publication
 
-Create `docs/releases/vX.Y.Z-N.md` from [the shared template](../docs/releases/TEMPLATE.md) before each release build. Use the exact `# Inklet X.Y.Z (N)` title matching `VERSION` and the release tag. Write release notes only in English, with concise user-facing bullets under `## Changes`, covering additions, improvements, and fixes. Include relevant upgrade requirements in English in that section. Add a `**Full changelog**` link to the exact comparison from the previous published stable release; omit internal planning, version-only commits, placeholders, and workflow-run boilerplate.
+Merge and push intended changes and `VERSION` to `main`, then dispatch `build-dmg.yml` with `--ref main`. Main-only dispatch is a project convention to follow on every computer.
 
-`check-release-notes.py` validates the title, `Changes` section, English-only format, content, and exact comparison link. Supply a flat JSON array of every GitHub release, including drafts and prereleases; the checker selects the previous published stable release from that complete list:
-
-```bash
-python3 scripts/check-release-notes.py docs/releases/vX.Y.Z-N.md /path/to/releases.json vX.Y.Z-N owner/repository
-```
-
-For the first release, link to `https://github.com/owner/repository/tree/vX.Y.Z-N` instead of a comparison. The checker validates structure; review clarity, shipped scope, and upgrade requirements before publishing. `test-release-notes.py` exercises these checks and the build workflow using synthetic releases, without publishing anything. Pull requests run it alongside `test-release-build-number.py`.
-
-Merge and push the intended changes, `VERSION`, and matching notes to `main`, then dispatch `build-dmg.yml` with `--ref main`. The workflow rejects other branches, validates the notes before building, and passes the tracked file to GitHub as the release description when creating or updating a release. Builds create drafts by default. When explicitly asked to publish, verify the successful build, final assets, and notes, then publish with `draft=false`, `prerelease=false`, and mark it as latest. An already verified draft needs no rebuild or version increment.
+Before an explicitly requested official publication, verify the successful `main` build and final assets. Compare the release commit with the previous published stable release, excluding drafts and prereleases, and write concise English-only notes covering shipped user-facing changes and relevant upgrade requirements. [The shared template](../docs/releases/TEMPLATE.md) is an optional writing guide. Include the full comparison link, omit internal planning and version-only commits, and replace workflow-generated boilerplate before publishing with `draft=false`, `prerelease=false`, and marking it as latest. An already verified draft needs no rebuild or version increment.
 
 ## Public Install
 

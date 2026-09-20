@@ -110,11 +110,9 @@ For development across computers, follow the tracked [AGENTS.md](AGENTS.md), scr
 
 Before each app bundle build, increase both `INKLET_VERSION` and `INKLET_BUILD_NUMBER` in the root `VERSION` file. Normally increment the patch version; use minor or major increments for larger changes. The build number must remain a positive integer greater than every previously used or reserved build number, including across marketing versions. Check the latest `main`, Git tags, all GitHub releases (including drafts and prereleases), and active work on both computers before choosing it. Make planned version changes visible in pushed task branches before overlapping builds. Inklet uses this build number alone to decide whether an update is newer.
 
-Prepare `docs/releases/vX.Y.Z-N.md` from [the release notes template](docs/releases/TEMPLATE.md), with English-only changes since the previous published stable release and a full comparison link. The [shared release notes checker](scripts/README.md#release-notes-and-publication) validates the version title, `Changes` section, English-only format, comparison link, and absence of placeholders.
+Run remote GitHub DMG builds only from `main`, after merging and pushing the intended changes and updated `VERSION`. Dispatch `build-dmg.yml` with `--ref main`.
 
-Run remote GitHub DMG builds only from `main`, after merging and pushing the intended changes, updated `VERSION`, and matching release notes. Dispatch `build-dmg.yml` with `--ref main`; the workflow rejects other branches, uses the tracked notes, and creates a draft by default.
-
-When explicitly requested, verify the successful build, final assets, and release notes, then publish as the latest stable release. An already verified draft can be published without rebuilding or changing its version.
+For an explicitly requested official release, verify the successful build and final assets, replace workflow-generated boilerplate with concise English-only changes since the previous published stable release and a full comparison link, then publish as the latest stable release. [The release notes template](docs/releases/TEMPLATE.md) is an optional writing guide. An already verified draft can be published without rebuilding or changing its version.
 
 The DMG workflow checks for reused or lower build numbers before building; it does not increment either value automatically. See [release version checks](scripts/README.md#release-version-checks) for manual validation. Changing a packaged app's version requires rebuilding, signing, notarizing, and regenerating checksums; changing only the release title or filename does not update the app.
 
