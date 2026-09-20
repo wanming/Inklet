@@ -2,6 +2,8 @@
 
 This directory is split by workflow. Prefer the smallest script that matches the job.
 
+Use these tracked scripts with [AGENTS.md](../AGENTS.md) and the [shared workflow](../CONTRIBUTING.md#shared-workflow-across-computers) on every computer. Keep durable workflow changes in the repository, and keep machine configuration and secrets local.
+
 ## Direct Bundle
 
 - `build-macos-app-bundle.sh` builds and signs an Inklet `.app` in `dist/direct/` by default. Pass `INKLET_OUTPUT_DIR` to select another output directory.
@@ -9,7 +11,7 @@ This directory is split by workflow. Prefer the smallest script that matches the
 
 ## Release Version Checks
 
-Before each app bundle build, increase both values in the root `VERSION` file. Keep `INKLET_BUILD_NUMBER` a positive integer greater than every previously used build number; never reset it when `INKLET_VERSION` changes. Fetch the latest `main` and tags, inspect all GitHub releases including drafts and prereleases, and coordinate with active worktrees before choosing the next number.
+Before each app bundle build, increase both values in the root `VERSION` file. Keep `INKLET_BUILD_NUMBER` a positive integer greater than every previously used or reserved build number; never reset it when `INKLET_VERSION` changes. Fetch remote branches (including `main` and active task branches) and tags, inspect all GitHub releases including drafts and prereleases, and coordinate with active worktrees and work on other computers before choosing the next number. Make planned `VERSION` changes visible in pushed task branches before overlapping builds, then recheck before building or releasing.
 
 `check-release-build-number.py` validates `VERSION` and rejects a candidate build number that is less than or equal to any existing `vX.Y.Z-N` tag's build number. Provide a text file with one tag per line, containing all Git tags and all GitHub release tag names, including drafts and prereleases:
 
@@ -18,6 +20,20 @@ python3 scripts/check-release-build-number.py VERSION /path/to/release-tags.txt
 ```
 
 The script does not fetch tags or modify `VERSION`. The serialized DMG workflow gathers Git tags and all release tags, then runs this check before building. After packaging, verify the app's `CFBundleShortVersionString` and `CFBundleVersion` match `VERSION`, the release tag/title, and the versioned DMG filename. Correct embedded metadata by rebuilding, signing, notarizing, and regenerating checksums; renaming a release or artifact alone is insufficient.
+
+## Release Notes And Publication
+
+Create `docs/releases/vX.Y.Z-N.md` from [the shared template](../docs/releases/TEMPLATE.md) before each release build. Match the version title to `VERSION` and the release tag. Write concise user-facing changes as Chinese bullets followed by English bullets, covering additions, improvements, fixes, and upgrade requirements where relevant. Include the full comparison from the previous published stable release; omit internal planning, version-only commits, placeholders, and workflow-run boilerplate.
+
+`check-release-notes.py` validates the title, ordered bilingual sections, content, and exact comparison link. Supply a flat JSON array of every GitHub release, including drafts and prereleases; the checker selects the previous published stable release from that complete list:
+
+```bash
+python3 scripts/check-release-notes.py docs/releases/vX.Y.Z-N.md /path/to/releases.json vX.Y.Z-N owner/repository
+```
+
+For the first release, link to `https://github.com/owner/repository/tree/vX.Y.Z-N` instead of a comparison. The checker validates structure; review translation accuracy, shipped scope, and upgrade requirements before publishing. `test-release-notes.py` exercises these checks and the build workflow using synthetic releases, without publishing anything. Pull requests run it alongside `test-release-build-number.py`.
+
+Merge and push the intended changes, `VERSION`, and matching notes to `main`, then dispatch `build-dmg.yml` with `--ref main`. The workflow rejects other branches, validates the notes before building, and passes the tracked file to GitHub as the release description when creating or updating a release. Builds create drafts by default. When explicitly asked to publish, verify the successful build, final assets, and notes, then publish with `draft=false`, `prerelease=false`, and mark it as latest. An already verified draft needs no rebuild or version increment.
 
 ## Public Install
 

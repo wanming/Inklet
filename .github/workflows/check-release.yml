@@ -1,0 +1,19 @@
+name: Check release conventions
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-checks:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check release version and bilingual notes contracts
+        run: |
+          python3 scripts/test-release-build-number.py
+          python3 scripts/test-release-notes.py
