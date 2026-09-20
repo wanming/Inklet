@@ -13,7 +13,7 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
-      - name: Check release version and bilingual notes contracts
+      - name: Check release version and English notes contracts
         run: |
           python3 scripts/test-release-build-number.py
           python3 scripts/test-release-notes.py

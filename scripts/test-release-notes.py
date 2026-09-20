@@ -15,15 +15,11 @@ CHECKER = ROOT / "scripts/check-release-notes.py"
 TAG = "v1.2.0-20"
 NOTES = """# Inklet 1.2.0 (20)
 
-## 中文
-
-- 改善选区翻译的稳定性。
-
-## English
+## Changes
 
 - Improve selection translation reliability.
 
-**Full changelog / 完整改动**: https://github.com/example/Inklet/compare/v1.1.0-18...v1.2.0-20
+**Full changelog**: https://github.com/example/Inklet/compare/v1.1.0-18...v1.2.0-20
 """
 RELEASES = [
     {"tag_name": "v1.1.0-18", "draft": False, "prerelease": False,
@@ -52,7 +48,7 @@ class ReleaseNotesTests(unittest.TestCase):
                 text=True, capture_output=True,
             )
 
-    def test_accepts_bilingual_notes_against_latest_stable_not_draft_or_prerelease(self):
+    def test_accepts_english_notes_against_latest_stable_not_draft_or_prerelease(self):
         result = self.check_notes(releases=list(reversed(RELEASES)))
         self.assertEqual(result.returncode, 0, result.stderr)
 
@@ -61,18 +57,32 @@ class ReleaseNotesTests(unittest.TestCase):
             with self.subTest(notes=notes):
                 self.assertNotEqual(self.check_notes(notes).returncode, 0)
 
-    def test_rejects_missing_language_or_empty_language_section(self):
+    def test_rejects_missing_or_empty_changes_section(self):
         for notes in (
-            NOTES.replace("## 中文", "## Changes"),
-            NOTES.replace("## English", "## Changes"),
-            NOTES.replace("- 改善选区翻译的稳定性。", ""),
+            NOTES.replace("## Changes", "## English"),
+            NOTES.replace("## Changes", ""),
             NOTES.replace("- Improve selection translation reliability.", ""),
-            NOTES.replace("改善选区翻译的稳定性。", "Improve selection reliability."),
-            NOTES.replace("Improve selection translation reliability.", "改善稳定性。"),
-            NOTES.replace("## 中文", "## English").replace("## English\n\n- Improve", "## 中文\n\n- Improve"),
+            NOTES + "\n## Changes\n\n- Fix another issue.\n",
         ):
             with self.subTest(notes=notes):
                 self.assertNotEqual(self.check_notes(notes).returncode, 0)
+
+    def test_rejects_bilingual_or_non_english_copy(self):
+        for notes in (
+            NOTES + "\n## 中文\n\n- 改善稳定性。\n",
+            NOTES.replace("Improve selection translation reliability.", "改善 OpenAI 翻译稳定性。"),
+            NOTES.replace("Full changelog", "Full changelog / 完整改动"),
+            NOTES.replace("Improve selection translation reliability.", "Улучшена стабильность OpenAI."),
+        ):
+            with self.subTest(notes=notes):
+                self.assertNotEqual(self.check_notes(notes).returncode, 0)
+
+    def test_accepts_english_punctuation_and_latin_product_names(self):
+        result = self.check_notes(NOTES.replace(
+            "Improve selection translation reliability.",
+            "Improve Inklet’s translation of café menus — including pasted text.",
+        ))
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_rejects_placeholder_and_workflow_boilerplate(self):
         for placeholder in ("TODO", "TBD", "待填写", "<English summary>",

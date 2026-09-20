@@ -110,7 +110,7 @@ Inklet 是早期 MVP。当前仓库包含：
 
 每次构建 app bundle 前，都要递增根目录 `VERSION` 中的 `INKLET_VERSION` 和 `INKLET_BUILD_NUMBER`。通常递增补丁版本；较大变更使用次版本或主版本。构建号必须是大于所有已用或已预留构建号的正整数，不能因版本号变化而重置。选择构建号前，请检查最新 `main`、Git tags、所有 GitHub releases（包括草稿和预发布版本）以及两台电脑上正在进行的工作。并行构建前，先通过推送任务分支共享计划使用的版本号。Inklet 仅通过构建号判断是否有更新。
 
-使用[更新说明模板](docs/releases/TEMPLATE.md)编写 `docs/releases/vX.Y.Z-N.md`，先中文、后英文，描述相较上次已发布稳定版的变化，并附完整比较链接。[统一更新说明检查](scripts/README.md#release-notes-and-publication)会验证版本标题、双语章节、比较链接，并拒绝占位内容。
+使用[更新说明模板](docs/releases/TEMPLATE.md)编写 `docs/releases/vX.Y.Z-N.md`，统一仅用英文描述相较上次已发布稳定版的变化，并附完整比较链接。[统一更新说明检查](scripts/README.md#release-notes-and-publication)会验证版本标题、`Changes` 章节、纯英文格式、比较链接，并拒绝占位内容。
 
 远端 GitHub DMG 构建只使用 `main` 分支。先将本次改动、更新后的 `VERSION` 和对应更新说明合并并推送到 `main`，再以 `--ref main` 触发 `build-dmg.yml`。工作流会拒绝其他分支，使用仓库中的更新说明，并默认创建草稿。
 

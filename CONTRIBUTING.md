@@ -51,13 +51,13 @@ swift build -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors
 - Keep user-facing behavior accessible by keyboard.
 - Do not commit local build output, `.dmg` files, `.worktrees/`, `.build/`, API keys, tokens, or personal configuration.
 - Update documentation when changing install, setup, provider, or release behavior.
-- Use English for code, commit subjects, and general contributor documentation. Keep the English and Chinese READMEs aligned, preserve supported UI translations, and write release notes in Chinese followed by English.
+- Use English for code, commit subjects, general contributor documentation, and release notes. Keep the English and Chinese READMEs aligned and preserve supported UI translations.
 
 ## Distribution And Release Changes
 
 Inklet ships directly as a signed and notarized GitHub Releases DMG. Keep distribution changes aligned with the active scripts documented in [scripts/README.md](scripts/README.md), the standalone installer contract, and the release workflow in [.github/workflows/build-dmg.yml](.github/workflows/build-dmg.yml).
 
-Before overlapping builds on different computers, make planned `VERSION` changes visible in pushed task branches and check other active work before choosing a higher build number. For each release, prepare `docs/releases/vX.Y.Z-N.md` from [the shared template](docs/releases/TEMPLATE.md), with Chinese and English user-facing changes and the comparison from the previous published stable release. Run the [shared release checks](scripts/README.md#release-notes-and-publication), then merge and push the code, `VERSION`, and notes to `main`. The DMG workflow accepts only `main`, validates the tracked notes, and creates a draft by default. Publish as the latest stable release only when explicitly requested, after verifying the successful build, final assets, and notes.
+Before overlapping builds on different computers, make planned `VERSION` changes visible in pushed task branches and check other active work before choosing a higher build number. For each release, prepare `docs/releases/vX.Y.Z-N.md` from [the shared template](docs/releases/TEMPLATE.md), with English-only user-facing changes and the comparison from the previous published stable release. Run the [shared release checks](scripts/README.md#release-notes-and-publication), then merge and push the code, `VERSION`, and notes to `main`. The DMG workflow accepts only `main`, validates the tracked notes, and creates a draft by default. Publish as the latest stable release only when explicitly requested, after verifying the successful build, final assets, and notes.
 
 Before proposing a release-sensitive change, run the focused shell contracts, `swift test`, the strict build above, and `git diff --check`. Do not publish or claim a release from local QA results; the release workflow must still complete signing, notarization, stapling, Gatekeeper, mounted-app, and checksum verification for the final artifact.
 

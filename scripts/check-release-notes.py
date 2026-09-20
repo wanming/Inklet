@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Validate the shared bilingual release notes before building a DMG."""
+"""Validate the shared English release notes before building a DMG."""
 
 import argparse
 import json
 import pathlib
 import re
 import sys
+import unicodedata
 
 
 def validate(notes_path, releases_path, tag, repository):
@@ -22,13 +23,13 @@ def validate(notes_path, releases_path, tag, repository):
         raise ValueError("Replace placeholders and workflow-run boilerplate with shipped changes.")
 
     sections = re.split(r"^## (.+)\s*$", notes, flags=re.MULTILINE)
-    if sections[1::2] != ["中文", "English"]:
-        raise ValueError("Release notes must contain ## 中文 followed by ## English exactly once.")
-    for heading, content, language in ((sections[1], sections[2], r"[\u3400-\u9fff]"),
-                                        (sections[3], sections[4], r"[A-Za-z]")):
-        bullets = re.findall(r"^[-*] (.+)$", content, re.MULTILINE)
-        if not any(re.search(language, bullet) for bullet in bullets):
-            raise ValueError(f"{heading} must include a change bullet in that language.")
+    if sections[1::2] != ["Changes"]:
+        raise ValueError("Release notes must contain ## Changes exactly once.")
+    if any(character.isalpha() and "LATIN" not in unicodedata.name(character, "") for character in notes):
+        raise ValueError("Release notes must use English only; remove translated sections and copy.")
+    bullets = re.findall(r"^[-*] (.+)$", sections[2], re.MULTILINE)
+    if not any(re.search(r"[A-Za-z]", bullet) for bullet in bullets):
+        raise ValueError("Changes must include an English change bullet.")
 
     releases = json.loads(releases_path.read_text(encoding="utf-8"))
     if not isinstance(releases, list):
@@ -51,7 +52,7 @@ def validate(notes_path, releases_path, tag, repository):
         url = f"https://github.com/{repository}/tree/{tag}"
     if url not in re.findall(r"https://[^\s)<>]+", notes):
         raise ValueError(f"Release notes must link to the previous stable comparison: {url}")
-    return f"Bilingual release notes verified: {tag}. Review translation accuracy and shipped scope before publishing."
+    return f"English release notes verified: {tag}. Review English wording and shipped scope before publishing."
 
 
 def main():
