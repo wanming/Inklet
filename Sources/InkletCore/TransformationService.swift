@@ -28,13 +28,7 @@ public struct TransformationService: Sendable {
             timeoutSeconds: timeoutSeconds
         )
 
-        let trimmedPartialOutput: (@Sendable (String) -> Void)? = onPartialOutput.map { onPartialOutput in
-            { partialOutput in
-                let trimmedPartialOutput = partialOutput.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !trimmedPartialOutput.isEmpty else { return }
-                onPartialOutput(trimmedPartialOutput)
-            }
-        }
+        let trimmedPartialOutput = onPartialOutput.map { Self.trimmingPartialOutput($0) }
         let result = try await withTimeout(seconds: timeoutSeconds) {
             try await transformWithNetworkConnectionLostRetry(request, onPartialOutput: trimmedPartialOutput)
         }
@@ -67,6 +61,16 @@ public struct TransformationService: Sendable {
         } catch {
             guard Self.isNetworkConnectionLost(error) else { throw error }
             throw TransformationError.networkConnectionLost
+        }
+    }
+
+    private static func trimmingPartialOutput(
+        _ onPartialOutput: @escaping @Sendable (String) -> Void
+    ) -> @Sendable (String) -> Void {
+        { partialOutput in
+            let trimmedPartialOutput = partialOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedPartialOutput.isEmpty else { return }
+            onPartialOutput(trimmedPartialOutput)
         }
     }
 
