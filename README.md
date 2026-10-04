@@ -49,7 +49,7 @@ Text workflow:
 3. Fuzzy-search for a prompt mode (for example, `ts` can match `To Chinese Summary`), use `Up` / `Down` to highlight it, then press `Tab` or `Enter` to commit the mode.
 4. Type or paste rough text.
 5. Press `Enter` to transform it. The result appears as it is generated; press `Escape` to stop.
-6. Press `Enter` again to insert the result.
+6. Press `Enter` again to insert the result, or click the copy button on the result to copy it instead.
 
 Dictation workflow:
 
@@ -74,7 +74,7 @@ The Dictation shortcut is source-local and hold-only. You can change its modifie
   - To Simple and Correct English
   - To Chinese Summary
   - Voice Cleanup
-- Streams the result into the popover as it is generated, then inserts it back into the previously focused app.
+- Streams the result into the popover as it is generated, then inserts it back into the previously focused app or copies it with the result's copy button.
 - Uses one application-agnostic, Accessibility-first selection path. Automatic Selection Actions first ask macOS Accessibility for the selection, then use the configured temporary clipboard fallback only when Force Selection permits it. Each read stays bound to the captured source process and cancels if that process exits or loses focus.
 - Keeps simulated `Command+C` off by default. Menu Copy remains the safe Force Selection fallback; you can explicitly enable simulated copy as an advanced fallback for apps without a usable Copy menu, but it may interfere with games, remote desktops, or virtual machines.
 - Serializes temporary clipboard reads and restores the prior snapshot only while the same read still owns the observed copy result; newer clipboard contents win. The double-copy trigger is passive: it consumes the copy the user already made without issuing another synthetic copy or restoring older clipboard data. Right-click remains native and never starts a selection read.

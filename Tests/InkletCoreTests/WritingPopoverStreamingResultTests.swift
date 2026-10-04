@@ -44,6 +44,42 @@ final class WritingPopoverStreamingResultTests: XCTestCase {
         gate.open()
     }
 
+    func testCopyResultWritesTheVisibleResultAndShowsTemporaryFeedback() async throws {
+        let harness = try makeHarness(provider: GatedStreamingProvider(gate: StreamingGate(isOpen: true)))
+        let model = harness.model
+        model.commitMode(modeID: model.selectedModeID)
+        model.updateSourceText("hello")
+        model.submit()
+        try await waitUntil { !model.isTransforming }
+
+        model.copyResult()
+
+        XCTAssertEqual(harness.pasteboard.string(forType: .string), "Hello.")
+        XCTAssertTrue(model.isResultCopied)
+        try await waitUntil(timeout: .seconds(2)) { !model.isResultCopied }
+    }
+
+    func testCopyResultIgnoresMissingResultAndBusyStates() async throws {
+        let gate = StreamingGate()
+        let harness = try makeHarness(provider: GatedStreamingProvider(gate: gate))
+        let model = harness.model
+        model.commitMode(modeID: model.selectedModeID)
+        harness.pasteboard.clearContents()
+
+        model.copyResult()
+        XCTAssertNil(harness.pasteboard.string(forType: .string))
+
+        model.updateSourceText("hello")
+        model.submit()
+        try await waitUntil { model.streamingResultText == "Hel" }
+        model.copyResult()
+
+        XCTAssertNil(harness.pasteboard.string(forType: .string))
+        XCTAssertFalse(model.isResultCopied)
+        gate.open()
+        try await waitUntil { !model.isTransforming }
+    }
+
     private func waitUntil(
         timeout: Duration = .seconds(1),
         _ condition: () -> Bool
@@ -64,6 +100,7 @@ final class WritingPopoverStreamingResultTests: XCTestCase {
         defaults.removePersistentDomain(forName: identifier)
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(identifier, isDirectory: true)
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name(identifier))
         addTeardownBlock {
             defaults.removePersistentDomain(forName: identifier)
             try? FileManager.default.removeItem(at: root)
@@ -74,15 +111,17 @@ final class WritingPopoverStreamingResultTests: XCTestCase {
             configStore: configStore,
             transformationServiceFactory: { _ in TransformationService(provider: provider) },
             historyStore: JSONLHistoryStore(fileURL: root.appendingPathComponent("history.jsonl")),
-            writingModePreferenceStore: WritingModePreferenceStore(userDefaults: defaults)
+            writingModePreferenceStore: WritingModePreferenceStore(userDefaults: defaults),
+            resultPasteboard: pasteboard
         )
         model.resetForOpen(previousApplication: nil)
-        return StreamingHarness(model: model)
+        return StreamingHarness(model: model, pasteboard: pasteboard)
     }
 }
 
 private struct StreamingHarness {
     let model: InkletPopoverViewModel
+    let pasteboard: NSPasteboard
 }
 
 private final class StreamingGate: @unchecked Sendable {

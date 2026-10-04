@@ -35,6 +35,7 @@ struct InkletPopoverView: View {
     private let actionBarHeight: CGFloat = 36
     private let dividerHeight: CGFloat = 1
     private let staleResultBannerHeight: CGFloat = 24
+    private let resultCopyButtonInset: CGFloat = 30
     private let streamingResultEndID = "streamingResultEnd"
     private var isBusy: Bool {
         model.isBusy
@@ -240,14 +241,21 @@ struct InkletPopoverView: View {
                             onTextViewAttachment: nil
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.horizontal, 16)
+                        .padding(.leading, 16)
+                        .padding(.trailing, 16 + resultCopyButtonInset)
                         .padding(.vertical, 12)
+
+                        copyResultButton
                     }
                 }
                 .background(InkletTheme.primary.opacity(0.08))
                 .frame(height: resultHeight)
                 .background {
-                    editorHeightReader(for: displayedResultText, key: ResultEditorHeightPreferenceKey.self)
+                    editorHeightReader(
+                        for: displayedResultText,
+                        trailingInset: resultCopyButtonInset,
+                        key: ResultEditorHeightPreferenceKey.self
+                    )
                 }
                 .onPreferenceChange(ResultEditorHeightPreferenceKey.self) { height in
                     resultMeasuredHeight = height
@@ -271,7 +279,8 @@ struct InkletPopoverView: View {
                         .font(.system(size: 14))
                         .foregroundStyle(InkletTheme.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .padding(.horizontal, 16)
+                        .padding(.leading, 16)
+                        .padding(.trailing, 16 + resultCopyButtonInset)
                         .padding(.vertical, 12)
                     Color.clear
                         .frame(height: 0)
@@ -283,6 +292,24 @@ struct InkletPopoverView: View {
                 proxy.scrollTo(streamingResultEndID, anchor: .bottom)
             }
         }
+    }
+
+    private var copyResultButton: some View {
+        Button {
+            model.copyResult()
+        } label: {
+            Image(systemName: model.isResultCopied ? "checkmark" : "doc.on.doc")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(InkletTheme.textSecondary)
+                .frame(width: 26, height: 26)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isBusy)
+        .padding(.top, 7)
+        .padding(.trailing, 10)
+        .help(L10n.text("popover.action.copyResult"))
+        .accessibilityLabel(L10n.text("popover.action.copyResult"))
     }
 
     @ViewBuilder
@@ -547,13 +574,15 @@ struct InkletPopoverView: View {
 
     private func editorHeightReader<Key: PreferenceKey>(
         for text: String,
+        trailingInset: CGFloat = 0,
         key: Key.Type
     ) -> some View where Key.Value == CGFloat {
         Text(text.isEmpty ? " \n " : text)
             .font(.system(size: 14))
             .lineSpacing(3)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 16)
+            .padding(.leading, 16)
+            .padding(.trailing, 16 + trailingInset)
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .hidden()
