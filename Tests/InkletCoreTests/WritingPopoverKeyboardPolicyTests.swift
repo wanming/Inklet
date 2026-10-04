@@ -224,6 +224,33 @@ final class WritingPopoverKeyboardPolicyTests: XCTestCase {
         }
     }
 
+    func testEditorCommandShiftCCopiesResult() {
+        XCTAssertEqual(action(route: .editor, keyCode: 8, modifiers: [.command, .shift]), .copyResult)
+
+        for modifiers: WritingPopoverKeyboardModifiers in [
+            [],
+            [.command],
+            [.shift],
+            [.command, .shift, .option],
+            [.command, .shift, .control]
+        ] {
+            XCTAssertEqual(
+                action(route: .editor, keyCode: 8, modifiers: modifiers),
+                .passThrough,
+                "Expected key code 8 with modifiers \(modifiers.rawValue) to pass through"
+            )
+        }
+
+        XCTAssertEqual(
+            action(route: .editor, keyCode: 8, modifiers: [.command, .shift], isComposingText: true),
+            .passThrough
+        )
+        XCTAssertEqual(
+            action(route: .modePicker, keyCode: 8, modifiers: [.command, .shift]),
+            .passThrough
+        )
+    }
+
     func testEditorCycleRequiresCommandWithoutShiftOrOption() {
         for modifiers: WritingPopoverKeyboardModifiers in [
             [.command, .shift],

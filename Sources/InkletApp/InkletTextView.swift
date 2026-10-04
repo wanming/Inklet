@@ -295,6 +295,7 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
     let onCycleMode: (Int) -> Void
     let onMoveModeHighlight: (Int) -> Void
     let onCommitMode: () -> Void
+    let onCopyResult: () -> Void
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView(frame: .zero)
@@ -310,6 +311,7 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
         context.coordinator.onCycleMode = onCycleMode
         context.coordinator.onMoveModeHighlight = onMoveModeHighlight
         context.coordinator.onCommitMode = onCommitMode
+        context.coordinator.onCopyResult = onCopyResult
         context.coordinator.attach(to: nsView)
     }
 
@@ -325,7 +327,8 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
             onEscape: onEscape,
             onCycleMode: onCycleMode,
             onMoveModeHighlight: onMoveModeHighlight,
-            onCommitMode: onCommitMode
+            onCommitMode: onCommitMode,
+            onCopyResult: onCopyResult
         )
     }
 
@@ -338,6 +341,7 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
         var onCycleMode: (Int) -> Void
         var onMoveModeHighlight: (Int) -> Void
         var onCommitMode: () -> Void
+        var onCopyResult: () -> Void
         private weak var view: NSView?
         private var monitor: Any?
 
@@ -348,7 +352,8 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
             onEscape: @escaping () -> Void,
             onCycleMode: @escaping (Int) -> Void,
             onMoveModeHighlight: @escaping (Int) -> Void,
-            onCommitMode: @escaping () -> Void
+            onCommitMode: @escaping () -> Void,
+            onCopyResult: @escaping () -> Void
         ) {
             self.route = route
             self.onSubmit = onSubmit
@@ -357,6 +362,7 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
             self.onCycleMode = onCycleMode
             self.onMoveModeHighlight = onMoveModeHighlight
             self.onCommitMode = onCommitMode
+            self.onCopyResult = onCopyResult
         }
 
         func detach() {
@@ -412,6 +418,9 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
                 return nil
             case .insertOriginal:
                 onInsertOriginal()
+                return nil
+            case .copyResult:
+                onCopyResult()
                 return nil
             }
         }

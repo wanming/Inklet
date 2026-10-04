@@ -20,6 +20,7 @@ public enum WritingPopoverKeyboardAction: Equatable, Sendable {
     case cycleMode(Int)
     case submit
     case insertOriginal
+    case copyResult
 }
 
 public enum WritingPopoverKeyboardPolicy {
@@ -87,6 +88,10 @@ public enum WritingPopoverKeyboardPolicy {
                 if keyCode == 125 {
                     return .cycleMode(1)
                 }
+            }
+
+            if keyCode == 8, modifiers == [.command, .shift], !isComposingText {
+                return .copyResult
             }
 
             guard isReturnKey else {

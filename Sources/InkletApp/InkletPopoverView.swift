@@ -140,7 +140,8 @@ struct InkletPopoverView: View {
                 onEscape: { model.escape() },
                 onCycleMode: { model.cyclePromptMode(direction: $0) },
                 onMoveModeHighlight: { model.moveModeHighlight(by: $0) },
-                onCommitMode: { model.commitHighlightedMode() }
+                onCommitMode: { model.commitHighlightedMode() },
+                onCopyResult: { model.copyResult() }
             )
         )
         .frame(width: 600, height: popoverHeight, alignment: .top)
@@ -308,7 +309,7 @@ struct InkletPopoverView: View {
         .disabled(isBusy)
         .padding(.top, 7)
         .padding(.trailing, 10)
-        .help(L10n.text("popover.action.copyResult"))
+        .help(L10n.text("popover.action.copyResultHelp"))
         .accessibilityLabel(L10n.text("popover.action.copyResult"))
     }
 
