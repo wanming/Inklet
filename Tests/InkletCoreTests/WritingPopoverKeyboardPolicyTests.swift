@@ -224,6 +224,29 @@ final class WritingPopoverKeyboardPolicyTests: XCTestCase {
         }
     }
 
+    func testEditorShiftCommandCCopiesResultOnLayoutCharacterC() {
+        XCTAssertEqual(
+            action(route: .editor, keyCode: 8, modifiers: [.command, .shift], characters: "C"),
+            .copyResult
+        )
+        XCTAssertEqual(
+            action(route: .editor, keyCode: 34, modifiers: [.command, .shift], characters: "c"),
+            .copyResult
+        )
+        XCTAssertEqual(
+            action(route: .editor, keyCode: 8, modifiers: [.command], characters: "c"),
+            .passThrough
+        )
+        XCTAssertEqual(
+            action(route: .editor, keyCode: 8, modifiers: [.command, .shift, .option], characters: "c"),
+            .passThrough
+        )
+        XCTAssertEqual(
+            action(route: .modePicker, keyCode: 8, modifiers: [.command, .shift], characters: "c"),
+            .passThrough
+        )
+    }
+
     func testEditorCycleRequiresCommandWithoutShiftOrOption() {
         for modifiers: WritingPopoverKeyboardModifiers in [
             [.command, .shift],
@@ -249,13 +272,15 @@ final class WritingPopoverKeyboardPolicyTests: XCTestCase {
         route: WritingPopoverSessionState.Route,
         keyCode: UInt16,
         modifiers: WritingPopoverKeyboardModifiers = [],
-        isComposingText: Bool = false
+        isComposingText: Bool = false,
+        characters: String? = nil
     ) -> WritingPopoverKeyboardAction {
         WritingPopoverKeyboardPolicy.action(
             route: route,
             keyCode: keyCode,
             modifiers: modifiers,
-            isComposingText: isComposingText
+            isComposingText: isComposingText,
+            charactersIgnoringModifiers: characters
         )
     }
 

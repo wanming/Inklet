@@ -10,6 +10,8 @@ final class InkletPopoverViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var isTransforming = false
     @Published var isInserting = false
+    @Published private(set) var streamingResultText = ""
+    @Published private(set) var isResultCopied = false
     @Published private(set) var modePickerState: WritingModePickerState
     @Published private(set) var popoverSession: WritingPopoverSessionState
     @Published private(set) var modeSearchFocusRevision = 0
@@ -108,10 +110,13 @@ final class InkletPopoverViewModel: ObservableObject {
     private let transformationServiceFactory: (any LLMProvider) -> TransformationService
     private let historyStore: any HistoryStore
     private let writingModePreferenceStore: WritingModePreferenceStore
+    private let resultPasteboard: NSPasteboard
     private var config: AppConfig
     private var previousApplication: NSRunningApplication?
     private var transformationTask: Task<Void, Never>?
+    private var transformationGeneration = 0
     private var insertionTask: Task<Void, Never>?
+    private var resultCopyFeedbackTask: Task<Void, Never>?
     private var sessionID = 0
     private var draftSourceText = ""
     private var hasTransformedInSession = false
@@ -128,7 +133,8 @@ final class InkletPopoverViewModel: ObservableObject {
         transformationServiceFactory: @escaping (any LLMProvider) -> TransformationService = { TransformationService(provider: $0) },
         insertionService: InsertionService = InsertionService(),
         historyStore: any HistoryStore = JSONLHistoryStore(),
-        writingModePreferenceStore: WritingModePreferenceStore = WritingModePreferenceStore()
+        writingModePreferenceStore: WritingModePreferenceStore = WritingModePreferenceStore(),
+        resultPasteboard: NSPasteboard = .general
     ) {
         self.stateMachine = stateMachine
         self.configStore = configStore
@@ -137,6 +143,7 @@ final class InkletPopoverViewModel: ObservableObject {
         self.insertionService = insertionService
         self.historyStore = historyStore
         self.writingModePreferenceStore = writingModePreferenceStore
+        self.resultPasteboard = resultPasteboard
 
         let loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         let selectedModeID = Self.resolvedModeID(
@@ -198,6 +205,8 @@ final class InkletPopoverViewModel: ObservableObject {
         refreshVoiceShortcutHint()
         sourceText = draftSourceText
         resultText = ""
+        streamingResultText = ""
+        resetResultCopyFeedback()
         errorMessage = nil
         isTransforming = false
         isInserting = false
@@ -226,6 +235,7 @@ final class InkletPopoverViewModel: ObservableObject {
         insertionTask = nil
         isTransforming = false
         isInserting = false
+        streamingResultText = ""
     }
 
     private func refreshVoiceShortcutHint() {
@@ -589,6 +599,10 @@ final class InkletPopoverViewModel: ObservableObject {
         }
         errorMessage = nil
         isTransforming = true
+        streamingResultText = ""
+        resetResultCopyFeedback()
+        transformationGeneration += 1
+        let transformationGeneration = self.transformationGeneration
 
         let resolvedModeID = Self.resolvedModeID(
             preferredModeID: selectedModeID,
@@ -612,6 +626,13 @@ final class InkletPopoverViewModel: ObservableObject {
             ).loadAPIKey()
         }
         let transformationService = transformationServiceFactory(provider)
+        let onPartialOutput: @Sendable (String) -> Void = { [weak self] partialOutput in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    self?.showStreamingResult(partialOutput, generation: transformationGeneration)
+                }
+            }
+        }
 
         transformationTask = Task { [weak self] in
             guard let self else { return }
@@ -620,7 +641,8 @@ final class InkletPopoverViewModel: ObservableObject {
                     sourceText: source,
                     mode: mode,
                     model: model,
-                    timeoutSeconds: timeoutSeconds
+                    timeoutSeconds: timeoutSeconds,
+                    onPartialOutput: onPartialOutput
                 )
                 guard !Task.isCancelled else { return }
                 try? historyStore.append(HistoryItem(
@@ -637,12 +659,14 @@ final class InkletPopoverViewModel: ObservableObject {
                 ))
                 transformationTask = nil
                 isTransforming = false
+                streamingResultText = ""
                 mutatePopoverSession { $0.recordResult(modeID: transformationModeID) }
                 handle(actions: stateMachine.send(.transformationSucceeded(result: result.outputText)))
             } catch {
                 guard !Task.isCancelled else { return }
                 transformationTask = nil
                 isTransforming = false
+                streamingResultText = ""
                 if !preservesExistingResult {
                     resultText = ""
                     mutatePopoverSession { $0.clearResult() }
@@ -659,6 +683,7 @@ final class InkletPopoverViewModel: ObservableObject {
         transformationTask?.cancel()
         transformationTask = nil
         isTransforming = false
+        streamingResultText = ""
         errorMessage = nil
         mutatePopoverSession { $0.enterEditor(modeID: selectedModeID) }
         synchronizeStateMachineWithVisibleContent()
@@ -669,6 +694,36 @@ final class InkletPopoverViewModel: ObservableObject {
             ? .editingSource(source: sourceText, errorMessage: nil)
             : .previewingResult(source: sourceText, result: resultText)
         stateMachine = PopoverStateMachine(state: visibleState)
+    }
+
+    private func showStreamingResult(_ partialOutput: String, generation: Int) {
+        guard isTransforming, generation == transformationGeneration else {
+            return
+        }
+        streamingResultText = partialOutput
+    }
+
+    func copyResult() {
+        guard !isBusy, !resultText.isEmpty else {
+            return
+        }
+
+        resultPasteboard.clearContents()
+        resultPasteboard.setString(resultText, forType: .string)
+        isResultCopied = true
+        resultCopyFeedbackTask?.cancel()
+        resultCopyFeedbackTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(900))
+            guard !Task.isCancelled else { return }
+            self?.isResultCopied = false
+            self?.resultCopyFeedbackTask = nil
+        }
+    }
+
+    private func resetResultCopyFeedback() {
+        resultCopyFeedbackTask?.cancel()
+        resultCopyFeedbackTask = nil
+        isResultCopied = false
     }
 
     private func mutateModePickerState(_ mutation: (inout WritingModePickerState) -> Void) {
