@@ -33,7 +33,9 @@ final class LegacyMigrationAppSourceTests: XCTestCase {
 
     func testSettingsRetainsOneModelAndFreezesAutosaveDuringMigration() throws {
         let controller = try appSource(named: "SettingsWindowController.swift")
-        let view = try appSource(named: "SettingsView.swift")
+        let view = try ["SettingsViewModel.swift", "SettingsView.swift"]
+            .map { try appSource(named: $0) }
+            .joined(separator: "\n")
         let compactController = controller.filter { !$0.isWhitespace }
         let pronunciationPreview = try sourceScope(
             startingAt: "func previewPronunciationVoice()",
