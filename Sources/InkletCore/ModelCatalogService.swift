@@ -129,22 +129,7 @@ public final class ModelCatalogService: @unchecked Sendable {
     }
 
     private static let providerMapping: [String: String] = [
-        "openai": "openai",
-        "anthropic": "anthropic",
-        "gemini": "google",
-        "deepseek": "deepseek",
-        "qwen": "alibaba",
-        "moonshot": "moonshotai",
-        "xai": "xai",
-        "groq": "groq",
-        "mistral": "mistral",
-        "openrouter": "openrouter",
-        "perplexity": "perplexity",
-        "together": "togetherai",
-        "cerebras": "cerebras",
-        "zhipu": "zhipuai",
-        "minimax": "minimax",
-        "siliconflow": "siliconflow"
+        LLMProviderPreset.openAI.id: "openai"
     ]
 }
 

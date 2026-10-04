@@ -28,7 +28,7 @@ final class ModelCatalogServiceTests: XCTestCase {
         try await service.refreshIfNeeded()
 
         XCTAssertEqual(service.cachedModelIDs(for: "openai"), ["gpt-5.2", "gpt-4.1-mini"])
-        XCTAssertEqual(service.cachedModelIDs(for: "gemini"), ["gemini-3.5-flash"])
+        XCTAssertNil(service.cachedModelIDs(for: "gemini"))
         XCTAssertNil(service.cachedModelIDs(for: "custom-openai-compatible"))
     }
 
@@ -86,8 +86,6 @@ final class ModelCatalogServiceTests: XCTestCase {
         let service = ModelCatalogService(userDefaults: userDefaults)
 
         XCTAssertFalse(service.cachedModelIDs(for: "openai")?.isEmpty ?? true)
-        XCTAssertFalse(service.cachedModelIDs(for: "anthropic")?.isEmpty ?? true)
-        XCTAssertFalse(service.cachedModelIDs(for: "gemini")?.isEmpty ?? true)
     }
 
     func testBundledFallbackURLFindsAppResourcesBundle() throws {

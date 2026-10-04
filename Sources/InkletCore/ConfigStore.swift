@@ -21,7 +21,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
     public var hotkey: String
     public var appearance: AppAppearance
     public var promptModes: [PromptMode]
-    public var customOpenAICompatibleEndpoint: String
     public var voiceInput: VoiceInputConfig
     public var selectionActions: SelectionActionsConfig
 
@@ -33,7 +32,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
         hotkey: String,
         appearance: AppAppearance = .system,
         promptModes: [PromptMode],
-        customOpenAICompatibleEndpoint: String = LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString,
         voiceInput: VoiceInputConfig = VoiceInputConfig.defaultConfig(),
         selectionActions: SelectionActionsConfig = SelectionActionsConfig.defaultConfig()
     ) {
@@ -44,7 +42,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
         self.hotkey = hotkey
         self.appearance = appearance
         self.promptModes = promptModes
-        self.customOpenAICompatibleEndpoint = customOpenAICompatibleEndpoint
         self.voiceInput = voiceInput
         self.selectionActions = selectionActions
     }
@@ -93,7 +90,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
         case hotkey
         case appearance
         case promptModes
-        case customOpenAICompatibleEndpoint
         case voiceInput
         case selectionActions
     }
@@ -123,10 +119,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
         promptModes = AppConfig.migratedPromptModes(
             try container.decodeIfPresent([PromptMode].self, forKey: .promptModes) ?? defaults.promptModes
         )
-        customOpenAICompatibleEndpoint = try container.decodeIfPresent(
-            String.self,
-            forKey: .customOpenAICompatibleEndpoint
-        ) ?? defaults.customOpenAICompatibleEndpoint
         voiceInput = try container.decodeIfPresent(
             VoiceInputConfig.self,
             forKey: .voiceInput
@@ -147,7 +139,6 @@ public struct AppConfig: Codable, Equatable, Sendable {
         try container.encode(hotkey, forKey: .hotkey)
         try container.encode(appearance, forKey: .appearance)
         try container.encode(promptModes, forKey: .promptModes)
-        try container.encode(customOpenAICompatibleEndpoint, forKey: .customOpenAICompatibleEndpoint)
         try container.encode(voiceInput, forKey: .voiceInput)
         try container.encode(selectionActions, forKey: .selectionActions)
     }

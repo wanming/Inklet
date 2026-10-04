@@ -46,7 +46,7 @@ final class InkletPopoverViewModel: ObservableObject {
     }
 
     var currentProviderName: String {
-        LLMProviderPreset.preset(id: config.providerID).name
+        config.resolvedProviderPreset.name
     }
 
     var currentModelName: String {
@@ -604,13 +604,16 @@ final class InkletPopoverViewModel: ObservableObject {
         let providerPreset = config.resolvedProviderPreset
         let providerID = config.providerID
         let apiKeyStore = self.apiKeyStore
-        let provider = LLMProviderFactory.provider(for: providerPreset) {
-            try LocalAPIKeyProvider(
-                apiKeyStore: apiKeyStore,
-                providerID: providerID,
-                providerName: providerPreset.name
-            ).loadAPIKey()
-        }
+        let provider = OpenAIProvider(
+            apiKeyProvider: {
+                try LocalAPIKeyProvider(
+                    apiKeyStore: apiKeyStore,
+                    providerID: providerID,
+                    providerName: providerPreset.name
+                ).loadAPIKey()
+            },
+            endpoint: providerPreset.endpoint
+        )
         let transformationService = transformationServiceFactory(provider)
 
         transformationTask = Task { [weak self] in
@@ -823,23 +826,20 @@ private extension Error {
     }
 
     private func localizedProviderMessage(_ message: String) -> String {
-        for providerName in LLMProviderPreset.all.map(\.name) {
-            let prefix = "\(providerName) 请求失败："
-            guard message.hasPrefix(prefix) else {
-                continue
-            }
-
-            let detail = String(message.dropFirst(prefix.count))
-            if detail == "URL 无效" {
-                return L10n.format("error.provider.urlInvalid", providerName)
-            }
-            if detail == "HTTP unknown" {
-                return L10n.format("error.provider.httpUnknown", providerName)
-            }
-            return L10n.format("error.provider.prefix", providerName, detail)
+        let providerName = LLMProviderPreset.openAI.name
+        let prefix = "\(providerName) 请求失败："
+        guard message.hasPrefix(prefix) else {
+            return message
         }
 
-        return message
+        let detail = String(message.dropFirst(prefix.count))
+        if detail == "URL 无效" {
+            return L10n.format("error.provider.urlInvalid", providerName)
+        }
+        if detail == "HTTP unknown" {
+            return L10n.format("error.provider.httpUnknown", providerName)
+        }
+        return L10n.format("error.provider.prefix", providerName, detail)
     }
 }
 
