@@ -20,6 +20,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var config: AppConfig
     @Published var message: String
     @Published var providerAPIKey: String
+    @Published var openAIAPIKey: String
     @Published var selectedPromptModeID: String
     @Published var interfaceLanguage: InterfaceLanguage
     @Published var cachedProviderModels: [String: [String]]
@@ -46,6 +47,7 @@ final class SettingsViewModel: ObservableObject {
     private var modelCatalogRefreshTaskID: UUID?
     private var savedConfig: AppConfig
     private var savedProviderAPIKey: String
+    private var savedOpenAIAPIKey: String
     private var savedInterfaceLanguage: InterfaceLanguage
 
     static let customModelMenuID = "__custom_model__"
@@ -57,22 +59,24 @@ final class SettingsViewModel: ObservableObject {
         historyStore: any HistoryStore = JSONLHistoryStore(),
         microphoneDeviceCatalog: MicrophoneDeviceCatalog = MicrophoneDeviceCatalog()
     ) {
-        var loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
+        let loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         self.configStore = configStore
         self.apiKeyStore = apiKeyStore
         self.modelCatalogService = modelCatalogService
         self.historyStore = historyStore
         self.microphoneDeviceCatalog = microphoneDeviceCatalog
         self.pronunciationPreviewPlaybackService = SpeechPlaybackService()
-        loadedConfig.providerID = LLMProviderPreset.openAI.id
         self.config = loadedConfig
         self.savedConfig = loadedConfig
         self.message = ""
         self.interfaceLanguage = InkletLanguageStore.selectedLanguage
         self.savedInterfaceLanguage = InkletLanguageStore.selectedLanguage
-        let loadedProviderAPIKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id) ?? ""
+        let loadedProviderAPIKey = apiKeyStore.loadAPIKey(forProviderID: loadedConfig.providerID) ?? ""
         self.providerAPIKey = loadedProviderAPIKey
         self.savedProviderAPIKey = loadedProviderAPIKey
+        let loadedOpenAIAPIKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id) ?? ""
+        self.openAIAPIKey = loadedOpenAIAPIKey
+        self.savedOpenAIAPIKey = loadedOpenAIAPIKey
         self.selectedPromptModeID = loadedConfig.promptModes.sorted { $0.sortOrder < $1.sortOrder }.first?.id
             ?? PromptMode.translateToEnglishID
         self.cachedProviderModels = Dictionary(
@@ -99,7 +103,35 @@ final class SettingsViewModel: ObservableObject {
     }
 
     var selectedProvider: LLMProviderPreset {
-        LLMProviderPreset.openAI
+        LLMProviderPreset.preset(id: config.providerID)
+    }
+
+    var usesOpenAIForWriting: Bool {
+        selectedProvider.id == LLMProviderPreset.openAI.id
+    }
+
+    func providerDisplayName(_ preset: LLMProviderPreset) -> String {
+        preset.id == LLMProviderPreset.customOpenAICompatible.id
+            ? L10n.text("settings.provider.customOpenAICompatible")
+            : preset.name
+    }
+
+    func selectProvider(_ providerID: String) {
+        guard !isMigrationMaintenanceActive, providerID != config.providerID else { return }
+        // Persist a key typed for the previous provider before its field is replaced.
+        _ = flushPendingEdits()
+
+        let preset = LLMProviderPreset.preset(id: providerID)
+        let loadedProviderAPIKey = apiKeyStore.loadAPIKey(forProviderID: preset.id) ?? ""
+        let loadedOpenAIAPIKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id) ?? ""
+        providerAPIKey = loadedProviderAPIKey
+        savedProviderAPIKey = loadedProviderAPIKey
+        openAIAPIKey = loadedOpenAIAPIKey
+        savedOpenAIAPIKey = loadedOpenAIAPIKey
+        isEditingCustomModel = false
+        config.providerID = preset.id
+        config.model = preset.defaultModel
+        save()
     }
 
     var filteredHistoryItems: [HistoryItem] {
@@ -110,7 +142,7 @@ final class SettingsViewModel: ObservableObject {
     }
 
     var isCustomOpenAICompatibleProvider: Bool {
-        false
+        selectedProvider.id == LLMProviderPreset.customOpenAICompatible.id
     }
 
     var selectedProviderModelOptions: [String] {
@@ -121,7 +153,7 @@ final class SettingsViewModel: ObservableObject {
         var seen = Set<String>()
         var options: [String] = []
 
-        for modelID in cachedProviderModels[LLMProviderPreset.openAI.id] ?? [] {
+        for modelID in cachedProviderModels[selectedProvider.id] ?? [] {
             if seen.insert(modelID).inserted {
                 options.append(modelID)
             }
@@ -463,10 +495,12 @@ final class SettingsViewModel: ObservableObject {
     func save() -> Bool {
         guard !isMigrationMaintenanceActive else { return false }
         let trimmedKey = providerAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedOpenAIKey = openAIAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
         let shouldSaveConfig = config != savedConfig
         let shouldSaveProviderAPIKey = providerAPIKey != savedProviderAPIKey
+        let shouldSaveOpenAIAPIKey = hasPendingOpenAIAPIKeyEdit
         let shouldSaveInterfaceLanguage = interfaceLanguage != savedInterfaceLanguage
-        guard shouldSaveConfig || shouldSaveProviderAPIKey || shouldSaveInterfaceLanguage else {
+        guard shouldSaveConfig || shouldSaveProviderAPIKey || shouldSaveOpenAIAPIKey || shouldSaveInterfaceLanguage else {
             return true
         }
 
@@ -480,8 +514,6 @@ final class SettingsViewModel: ObservableObject {
                     message = L10n.text("settings.error.modelRequired")
                     return false
                 }
-                config.providerID = LLMProviderPreset.openAI.id
-
                 _ = try Hotkey.parse(config.hotkey)
                 try configStore.save(config)
                 savedConfig = config
@@ -493,13 +525,19 @@ final class SettingsViewModel: ObservableObject {
             }
 
             if shouldSaveProviderAPIKey {
-                if trimmedKey.isEmpty {
-                    try apiKeyStore.deleteAPIKey(forProviderID: LLMProviderPreset.openAI.id)
-                } else {
-                    try apiKeyStore.saveAPIKey(trimmedKey, forProviderID: LLMProviderPreset.openAI.id)
-                }
+                try storeAPIKey(trimmedKey, forProviderID: config.providerID)
                 providerAPIKey = trimmedKey
                 savedProviderAPIKey = trimmedKey
+                if usesOpenAIForWriting {
+                    openAIAPIKey = trimmedKey
+                    savedOpenAIAPIKey = trimmedKey
+                }
+            }
+
+            if shouldSaveOpenAIAPIKey {
+                try storeAPIKey(trimmedOpenAIKey, forProviderID: LLMProviderPreset.openAI.id)
+                openAIAPIKey = trimmedOpenAIKey
+                savedOpenAIAPIKey = trimmedOpenAIKey
             }
             message = L10n.text("settings.saved")
             NotificationCenter.default.post(name: .appConfigDidSave, object: nil)
@@ -513,14 +551,22 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
+    private func storeAPIKey(_ apiKey: String, forProviderID providerID: String) throws {
+        if apiKey.isEmpty {
+            try apiKeyStore.deleteAPIKey(forProviderID: providerID)
+        } else {
+            try apiKeyStore.saveAPIKey(apiKey, forProviderID: providerID)
+        }
+    }
+
     private func installAutoSave() {
         guard !isMigrationMaintenanceActive, autoSaveCancellable == nil else {
             return
         }
-        autoSaveCancellable = Publishers.CombineLatest3($config, $providerAPIKey, $interfaceLanguage)
+        autoSaveCancellable = Publishers.CombineLatest4($config, $providerAPIKey, $openAIAPIKey, $interfaceLanguage)
             .dropFirst()
             .debounce(for: .milliseconds(450), scheduler: RunLoop.main)
-            .sink { [weak self] _, _, _ in
+            .sink { [weak self] _, _, _, _ in
                 guard let self else { return }
                 self.save()
             }
@@ -537,7 +583,13 @@ final class SettingsViewModel: ObservableObject {
     private var hasPendingEdits: Bool {
         config != savedConfig
             || providerAPIKey != savedProviderAPIKey
+            || hasPendingOpenAIAPIKeyEdit
             || interfaceLanguage != savedInterfaceLanguage
+    }
+
+    // The separate OpenAI key field only exists while another provider handles writing.
+    private var hasPendingOpenAIAPIKeyEdit: Bool {
+        !usesOpenAIForWriting && openAIAPIKey != savedOpenAIAPIKey
     }
 
     func setMigrationMaintenanceActive(_ isActive: Bool) {
