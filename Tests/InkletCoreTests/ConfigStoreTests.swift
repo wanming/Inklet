@@ -223,7 +223,7 @@ final class ConfigStoreTests: XCTestCase {
 
             let config = try JSONDecoder().decode(AppConfig.self, from: data)
 
-            XCTAssertEqual(AppConfig.currentVersion, 4)
+            XCTAssertEqual(AppConfig.currentVersion, 5)
             XCTAssertEqual(config.version, AppConfig.currentVersion)
             XCTAssertEqual(config.model, "gpt-5.6-luna")
         }
