@@ -267,6 +267,57 @@ final class TransformationServiceTests: XCTestCase {
         }
     }
 
+    func testStreamingProviderForwardsTrimmedPartialOutput() async throws {
+        let service = TransformationService(provider: StreamingLLMProvider(
+            partialOutputs: ["\n", "\nHel", "\nHello. "],
+            outputText: "\nHello. "
+        ))
+        let partialOutputs = StreamedOutputRecorder()
+
+        let result = try await service.transform(
+            sourceText: "hello",
+            mode: mode,
+            model: "test-model",
+            timeoutSeconds: 1,
+            onPartialOutput: { partialOutputs.append($0) }
+        )
+
+        XCTAssertEqual(result.outputText, "Hello.")
+        XCTAssertEqual(partialOutputs.values, ["Hel", "Hello."])
+    }
+
+    func testStreamingRequestFallsBackToCompleteResultForProvidersWithoutStreaming() async throws {
+        let service = TransformationService(provider: FakeLLMProvider(outputText: "  Hello.  "))
+        let partialOutputs = StreamedOutputRecorder()
+
+        let result = try await service.transform(
+            sourceText: "hello",
+            mode: mode,
+            model: "test-model",
+            timeoutSeconds: 1,
+            onPartialOutput: { partialOutputs.append($0) }
+        )
+
+        XCTAssertEqual(result.outputText, "Hello.")
+        XCTAssertEqual(partialOutputs.values, [])
+    }
+
+    func testTransformWithoutPartialOutputDoesNotStream() async throws {
+        let service = TransformationService(provider: StreamingLLMProvider(
+            partialOutputs: ["Hel"],
+            outputText: "Hello."
+        ))
+
+        let result = try await service.transform(
+            sourceText: "hello",
+            mode: mode,
+            model: "test-model",
+            timeoutSeconds: 1
+        )
+
+        XCTAssertEqual(result.providerMetadata["path"], "transform")
+    }
+
     private var mode: PromptMode {
         PromptMode(
             id: "polish",
@@ -323,6 +374,42 @@ private struct FakeLLMProvider: LLMProvider {
                 continue
             }
         }
+    }
+}
+
+private struct StreamingLLMProvider: LLMProvider {
+    var partialOutputs: [String]
+    var outputText: String
+
+    func transform(_ request: TransformationRequest) async throws -> TransformationResult {
+        TransformationResult(outputText: outputText, providerMetadata: ["path": "transform"], elapsedMilliseconds: 1)
+    }
+
+    func streamTransform(
+        _ request: TransformationRequest,
+        onPartialOutput: @escaping @Sendable (String) -> Void
+    ) async throws -> TransformationResult {
+        for partialOutput in partialOutputs {
+            onPartialOutput(partialOutput)
+        }
+        return TransformationResult(outputText: outputText, providerMetadata: ["path": "stream"], elapsedMilliseconds: 1)
+    }
+}
+
+private final class StreamedOutputRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [String] = []
+
+    var values: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
+
+    func append(_ value: String) {
+        lock.lock()
+        storage.append(value)
+        lock.unlock()
     }
 }
 

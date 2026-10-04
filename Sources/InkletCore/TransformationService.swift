@@ -11,7 +11,8 @@ public struct TransformationService: Sendable {
         sourceText: String,
         mode: PromptMode,
         model: String,
-        timeoutSeconds: TimeInterval
+        timeoutSeconds: TimeInterval,
+        onPartialOutput: (@Sendable (String) -> Void)? = nil
     ) async throws -> TransformationResult {
         let trimmedSource = sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedSource.isEmpty else {
@@ -27,8 +28,15 @@ public struct TransformationService: Sendable {
             timeoutSeconds: timeoutSeconds
         )
 
+        let trimmedPartialOutput: (@Sendable (String) -> Void)? = onPartialOutput.map { onPartialOutput in
+            { partialOutput in
+                let trimmedPartialOutput = partialOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmedPartialOutput.isEmpty else { return }
+                onPartialOutput(trimmedPartialOutput)
+            }
+        }
         let result = try await withTimeout(seconds: timeoutSeconds) {
-            try await transformWithNetworkConnectionLostRetry(request)
+            try await transformWithNetworkConnectionLostRetry(request, onPartialOutput: trimmedPartialOutput)
         }
         let trimmedOutput = result.outputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedOutput.isEmpty else {
@@ -43,10 +51,11 @@ public struct TransformationService: Sendable {
     }
 
     private func transformWithNetworkConnectionLostRetry(
-        _ request: TransformationRequest
+        _ request: TransformationRequest,
+        onPartialOutput: (@Sendable (String) -> Void)?
     ) async throws -> TransformationResult {
         do {
-            return try await provider.transform(request)
+            return try await transformOnce(request, onPartialOutput: onPartialOutput)
         } catch {
             guard Self.isNetworkConnectionLost(error) else { throw error }
         }
@@ -54,11 +63,21 @@ public struct TransformationService: Sendable {
         try Task.checkCancellation()
 
         do {
-            return try await provider.transform(request)
+            return try await transformOnce(request, onPartialOutput: onPartialOutput)
         } catch {
             guard Self.isNetworkConnectionLost(error) else { throw error }
             throw TransformationError.networkConnectionLost
         }
+    }
+
+    private func transformOnce(
+        _ request: TransformationRequest,
+        onPartialOutput: (@Sendable (String) -> Void)?
+    ) async throws -> TransformationResult {
+        guard let onPartialOutput else {
+            return try await provider.transform(request)
+        }
+        return try await provider.streamTransform(request, onPartialOutput: onPartialOutput)
     }
 
     private static func isNetworkConnectionLost(_ error: Error) -> Bool {

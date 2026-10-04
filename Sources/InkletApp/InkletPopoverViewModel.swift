@@ -10,6 +10,7 @@ final class InkletPopoverViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var isTransforming = false
     @Published var isInserting = false
+    @Published private(set) var streamingResultText = ""
     @Published private(set) var modePickerState: WritingModePickerState
     @Published private(set) var popoverSession: WritingPopoverSessionState
     @Published private(set) var modeSearchFocusRevision = 0
@@ -111,6 +112,7 @@ final class InkletPopoverViewModel: ObservableObject {
     private var config: AppConfig
     private var previousApplication: NSRunningApplication?
     private var transformationTask: Task<Void, Never>?
+    private var transformationGeneration = 0
     private var insertionTask: Task<Void, Never>?
     private var sessionID = 0
     private var draftSourceText = ""
@@ -198,6 +200,7 @@ final class InkletPopoverViewModel: ObservableObject {
         refreshVoiceShortcutHint()
         sourceText = draftSourceText
         resultText = ""
+        streamingResultText = ""
         errorMessage = nil
         isTransforming = false
         isInserting = false
@@ -226,6 +229,7 @@ final class InkletPopoverViewModel: ObservableObject {
         insertionTask = nil
         isTransforming = false
         isInserting = false
+        streamingResultText = ""
     }
 
     private func refreshVoiceShortcutHint() {
@@ -589,6 +593,9 @@ final class InkletPopoverViewModel: ObservableObject {
         }
         errorMessage = nil
         isTransforming = true
+        streamingResultText = ""
+        transformationGeneration += 1
+        let transformationGeneration = self.transformationGeneration
 
         let resolvedModeID = Self.resolvedModeID(
             preferredModeID: selectedModeID,
@@ -612,6 +619,13 @@ final class InkletPopoverViewModel: ObservableObject {
             ).loadAPIKey()
         }
         let transformationService = transformationServiceFactory(provider)
+        let onPartialOutput: @Sendable (String) -> Void = { [weak self] partialOutput in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    self?.showStreamingResult(partialOutput, generation: transformationGeneration)
+                }
+            }
+        }
 
         transformationTask = Task { [weak self] in
             guard let self else { return }
@@ -620,7 +634,8 @@ final class InkletPopoverViewModel: ObservableObject {
                     sourceText: source,
                     mode: mode,
                     model: model,
-                    timeoutSeconds: timeoutSeconds
+                    timeoutSeconds: timeoutSeconds,
+                    onPartialOutput: onPartialOutput
                 )
                 guard !Task.isCancelled else { return }
                 try? historyStore.append(HistoryItem(
@@ -637,12 +652,14 @@ final class InkletPopoverViewModel: ObservableObject {
                 ))
                 transformationTask = nil
                 isTransforming = false
+                streamingResultText = ""
                 mutatePopoverSession { $0.recordResult(modeID: transformationModeID) }
                 handle(actions: stateMachine.send(.transformationSucceeded(result: result.outputText)))
             } catch {
                 guard !Task.isCancelled else { return }
                 transformationTask = nil
                 isTransforming = false
+                streamingResultText = ""
                 if !preservesExistingResult {
                     resultText = ""
                     mutatePopoverSession { $0.clearResult() }
@@ -659,6 +676,7 @@ final class InkletPopoverViewModel: ObservableObject {
         transformationTask?.cancel()
         transformationTask = nil
         isTransforming = false
+        streamingResultText = ""
         errorMessage = nil
         mutatePopoverSession { $0.enterEditor(modeID: selectedModeID) }
         synchronizeStateMachineWithVisibleContent()
@@ -669,6 +687,13 @@ final class InkletPopoverViewModel: ObservableObject {
             ? .editingSource(source: sourceText, errorMessage: nil)
             : .previewingResult(source: sourceText, result: resultText)
         stateMachine = PopoverStateMachine(state: visibleState)
+    }
+
+    private func showStreamingResult(_ partialOutput: String, generation: Int) {
+        guard isTransforming, generation == transformationGeneration else {
+            return
+        }
+        streamingResultText = partialOutput
     }
 
     private func mutateModePickerState(_ mutation: (inout WritingModePickerState) -> Void) {

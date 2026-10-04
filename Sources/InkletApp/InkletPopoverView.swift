@@ -35,6 +35,7 @@ struct InkletPopoverView: View {
     private let actionBarHeight: CGFloat = 36
     private let dividerHeight: CGFloat = 1
     private let staleResultBannerHeight: CGFloat = 24
+    private let streamingResultEndID = "streamingResultEnd"
     private var isBusy: Bool {
         model.isBusy
     }
@@ -54,6 +55,15 @@ struct InkletPopoverView: View {
 
     private var busyTitle: String {
         model.isInserting ? L10n.text("popover.busy.inserting") : L10n.text("popover.busy.transforming")
+    }
+
+    private var isStreamingResult: Bool {
+        model.isTransforming && !model.streamingResultText.isEmpty
+    }
+
+    /// The streamed partial output while generating, otherwise the editable result.
+    private var displayedResultText: String {
+        isStreamingResult ? model.streamingResultText : model.resultText
     }
 
     private var modeIconName: String {
@@ -82,7 +92,7 @@ struct InkletPopoverView: View {
         headerHeight
             + dividerHeight
             + inputHeight
-            + (model.resultText.isEmpty ? 0 : dividerHeight + resultPanelHeight)
+            + (displayedResultText.isEmpty ? 0 : dividerHeight + resultPanelHeight)
             + (model.errorMessage == nil ? 0 : dividerHeight + min(statusMeasuredHeight, 120))
             + dividerHeight
             + max(actionBarHeight, actionBarMeasuredHeight)
@@ -98,7 +108,7 @@ struct InkletPopoverView: View {
 
     private var resultHeight: CGFloat {
         editorHeight(
-            for: model.resultText,
+            for: displayedResultText,
             measuredHeight: resultMeasuredHeight,
             maxRows: maxResultEditorRows
         )
@@ -109,7 +119,7 @@ struct InkletPopoverView: View {
     }
 
     private var showsStaleResultBanner: Bool {
-        model.isResultStale && model.resultModeDisplayName != nil
+        !isStreamingResult && model.isResultStale && model.resultModeDisplayName != nil
     }
 
     var body: some View {
@@ -194,10 +204,10 @@ struct InkletPopoverView: View {
 
     @ViewBuilder
     private var resultPanel: some View {
-        if !model.resultText.isEmpty {
+        if !displayedResultText.isEmpty {
             Divider().opacity(0.45)
             VStack(spacing: 0) {
-                if model.isResultStale, let resultModeDisplayName = model.resultModeDisplayName {
+                if showsStaleResultBanner, let resultModeDisplayName = model.resultModeDisplayName {
                     HStack(spacing: 6) {
                         Image(systemName: "clock.arrow.circlepath")
                             .font(.system(size: 10, weight: .medium))
@@ -215,25 +225,29 @@ struct InkletPopoverView: View {
                 }
 
                 ZStack(alignment: .topTrailing) {
-                    InkletTextView(
-                        text: Binding(
-                            get: { model.resultText },
-                            set: { model.updateResultText($0) }
-                        ),
-                        isEditable: !isBusy,
-                        onSubmit: { model.submit() },
-                        onInsertOriginal: { model.insertOriginal() },
-                        onEscape: { model.escape() },
-                        onTextViewAttachment: nil
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(InkletTheme.primary.opacity(0.08))
+                    if isStreamingResult {
+                        streamingResultView
+                    } else {
+                        InkletTextView(
+                            text: Binding(
+                                get: { model.resultText },
+                                set: { model.updateResultText($0) }
+                            ),
+                            isEditable: !isBusy,
+                            onSubmit: { model.submit() },
+                            onInsertOriginal: { model.insertOriginal() },
+                            onEscape: { model.escape() },
+                            onTextViewAttachment: nil
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
                 }
+                .background(InkletTheme.primary.opacity(0.08))
                 .frame(height: resultHeight)
                 .background {
-                    editorHeightReader(for: model.resultText, key: ResultEditorHeightPreferenceKey.self)
+                    editorHeightReader(for: displayedResultText, key: ResultEditorHeightPreferenceKey.self)
                 }
                 .onPreferenceChange(ResultEditorHeightPreferenceKey.self) { height in
                     resultMeasuredHeight = height
@@ -245,6 +259,28 @@ struct InkletPopoverView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                     isResultFocused = true
                 }
+            }
+        }
+    }
+
+    private var streamingResultView: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                VStack(spacing: 0) {
+                    Text(model.streamingResultText)
+                        .font(.system(size: 14))
+                        .foregroundStyle(InkletTheme.textPrimary)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    Color.clear
+                        .frame(height: 0)
+                        .id(streamingResultEndID)
+                }
+            }
+            .scrollIndicators(.never)
+            .onChange(of: model.streamingResultText) {
+                proxy.scrollTo(streamingResultEndID, anchor: .bottom)
             }
         }
     }
@@ -424,6 +460,11 @@ struct InkletPopoverView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(InkletTheme.textSecondary)
             Spacer()
+            if model.isTransforming {
+                shortcutHint(keys: ["esc"], label: L10n.text("popover.hint.stop")) {
+                    model.escape()
+                }
+            }
         }
         .padding(.horizontal, 4)
     }

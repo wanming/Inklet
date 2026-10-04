@@ -68,6 +68,8 @@ Record the tested Inklet version, artifact checksum, macOS version, hardware arc
 - Restore Insert behavior: reselect the mode that generated the existing result and confirm the stale-result label clears and `Enter` inserts the result instead of regenerating it.
 - Layered `Escape`: with a result visible, press `Escape` once to return to the source editor, once to return to the mode launcher, and once to close the popover. Confirm each press moves only one level.
 - Generation cancellation: press `Escape` while transforming and confirm generation cancels, remains in the editor, and performs no additional back navigation.
+- Streaming result: transform a long draft and confirm the result area appears as soon as text starts arriving, grows with the text, keeps the newest line in view once it reaches its maximum height, and shows an `esc` Stop hint in the toolbar. Confirm the final result is editable and matches the streamed text.
+- Streaming cancellation: press `Escape` or click Stop while text is streaming and confirm the partial text disappears, the source draft stays, and a prior result from a different mode reappears if one was visible.
 - Launcher capacity and copy: configure more than six visible modes with long English and Chinese names; at the actual 600-point popover width, confirm scrolling reaches every mode and text, icons, and hints do not overlap.
 - Pointer interaction: confirm a single click highlights without committing, a double-click commits, and hover and pressed states are visible without changing layout.
 - VoiceOver: confirm the search field and every mode have useful labels, the highlighted mode exposes its selected state, and each mode offers a named `Write` action that commits it.
