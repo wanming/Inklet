@@ -141,6 +141,10 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.hotkey, "⌥Space")
         XCTAssertEqual(config.appearance, .system)
         XCTAssertEqual(config.defaultVisibleModeID, PromptMode.translateToEnglishID)
+        XCTAssertEqual(
+            config.customOpenAICompatibleEndpoint,
+            LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString
+        )
         XCTAssertEqual(config.selectionActions, SelectionActionsConfig.defaultConfig())
     }
 
@@ -157,6 +161,7 @@ final class ConfigStoreTests: XCTestCase {
         config.timeoutSeconds = 9
         config.hotkey = "⌘Space"
         config.appearance = .dark
+        config.customOpenAICompatibleEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
         config.selectionActions = SelectionActionsConfig(
             isEnabled: false,
             translationLanguage: .japanese,
@@ -196,6 +201,10 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.appearance, AppConfig.defaultConfig().appearance)
         XCTAssertEqual(config.defaultVisibleModeID, AppConfig.defaultConfig().defaultVisibleModeID)
         XCTAssertEqual(config.promptModes, AppConfig.defaultConfig().promptModes)
+        XCTAssertEqual(
+            config.customOpenAICompatibleEndpoint,
+            AppConfig.defaultConfig().customOpenAICompatibleEndpoint
+        )
         XCTAssertEqual(config.selectionActions, AppConfig.defaultConfig().selectionActions)
     }
 
@@ -500,7 +509,8 @@ final class ConfigStoreTests: XCTestCase {
 
     func testResolvedProviderPresetAlwaysUsesOpenAI() {
         var config = AppConfig.defaultConfig()
-        config.providerID = "custom-openai-compatible"
+        config.providerID = LLMProviderPreset.customOpenAICompatible.id
+        config.customOpenAICompatibleEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
 
         XCTAssertEqual(
             config.resolvedProviderPreset,

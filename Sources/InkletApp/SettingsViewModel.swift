@@ -76,7 +76,7 @@ final class SettingsViewModel: ObservableObject {
         self.selectedPromptModeID = loadedConfig.promptModes.sorted { $0.sortOrder < $1.sortOrder }.first?.id
             ?? PromptMode.translateToEnglishID
         self.cachedProviderModels = Dictionary(
-            uniqueKeysWithValues: [LLMProviderPreset.openAI].compactMap { preset in
+            uniqueKeysWithValues: LLMProviderPreset.all.compactMap { preset in
                 guard let modelIDs = modelCatalogService.cachedModelIDs(for: preset.id) else {
                     return nil
                 }
@@ -109,7 +109,15 @@ final class SettingsViewModel: ObservableObject {
         return historyItems.filter { $0.source == historyFilter }
     }
 
+    var isCustomOpenAICompatibleProvider: Bool {
+        false
+    }
+
     var selectedProviderModelOptions: [String] {
+        guard !isCustomOpenAICompatibleProvider else {
+            return []
+        }
+
         var seen = Set<String>()
         var options: [String] = []
 
@@ -135,7 +143,7 @@ final class SettingsViewModel: ObservableObject {
     }
 
     var shouldShowCustomModelField: Bool {
-        selectedModelMenuValue == Self.customModelMenuID
+        isCustomOpenAICompatibleProvider || selectedModelMenuValue == Self.customModelMenuID
     }
 
     var selectedModelIsDefault: Bool {
@@ -323,7 +331,7 @@ final class SettingsViewModel: ObservableObject {
         refreshMigrationWorkflowIdle()
         guard !isMigrationMaintenanceActive else { return }
         cachedProviderModels = Dictionary(
-            uniqueKeysWithValues: [LLMProviderPreset.openAI].compactMap { preset in
+            uniqueKeysWithValues: LLMProviderPreset.all.compactMap { preset in
                 guard let modelIDs = modelCatalogService.cachedModelIDs(for: preset.id) else {
                     return nil
                 }

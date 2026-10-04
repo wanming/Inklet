@@ -542,17 +542,14 @@ final class SelectionActionsController {
                 let providerPreset = config.resolvedProviderPreset
                 let providerID = config.providerID
                 let apiKeyStore = self.apiKeyStore
-                let provider = OpenAIProvider(
-                    apiKeyProvider: {
-                        guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: providerID),
-                              !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        else {
-                            throw TransformationError.provider(L10n.format("popover.error.missingAPIKey", providerPreset.name))
-                        }
-                        return apiKey
-                    },
-                    endpoint: providerPreset.endpoint
-                )
+                let provider = LLMProviderFactory.provider(for: providerPreset) {
+                    guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: providerID),
+                          !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    else {
+                        throw TransformationError.provider(L10n.format("popover.error.missingAPIKey", providerPreset.name))
+                    }
+                    return apiKey
+                }
                 let targetLanguageName = config.selectionActions.translationLanguage.resolvedPromptTargetName(
                     interfaceLanguageCode: L10n.resolvedLanguage.localeIdentifier
                 )
