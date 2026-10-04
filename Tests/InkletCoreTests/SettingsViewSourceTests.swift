@@ -13,9 +13,7 @@ final class SettingsViewSourceTests: XCTestCase {
     }
 
     func testTemperatureLocalizationKeysAreRemoved() throws {
-        let packageRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let sourceURL = packageRoot.appendingPathComponent("Sources/InkletApp/InkletLocalization.swift")
-        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let source = try LocalizationSourceFixture.source()
 
         XCTAssertFalse(source.contains("settings.row.temperature"))
         XCTAssertFalse(source.contains("settings.help.temperature"))
