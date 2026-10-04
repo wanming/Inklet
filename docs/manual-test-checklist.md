@@ -134,7 +134,8 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 
 - `Command+,`: open Settings while Inklet is active.
 - General: configure the OpenAI API key, then change language and appearance.
-- Write Assistant: configure the OpenAI model, writing shortcut, and timeout.
+- Provider: switch to another provider (for example DeepSeek), enter its key, and confirm the OpenAI API Key field becomes the optional voice-only field. Transform text in the popover and translate a selection with that provider; confirm dictation and pronunciation still use the OpenAI key. Choose Custom (OpenAI Compatible), set a local endpoint, and transform text. Switch back to OpenAI and confirm the shared key and default model return. Check the General panel in English and Chinese for fit.
+- Write Assistant: configure the model for the selected provider, writing shortcut, and timeout.
 - Writing Assistant: configure the Dictation hold shortcut and microphone. In Advanced Dictation, confirm only the recovery model is available and there is no endpoint field.
 - Selection Assistant: configure translation language, Translate prompt, Force Selection mode, pronunciation voice, and speed; preview the voice.
 - Prompt Modes: add, edit, hide, delete with confirmation, and reorder modes.

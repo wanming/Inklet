@@ -332,10 +332,7 @@ struct SettingsView: View {
 
             VStack(alignment: .leading, spacing: 22) {
                 settingsPanel {
-                    settingsRow(L10n.text("settings.row.openAIAPIKey"), help: L10n.text("settings.help.openAIAPIKey")) {
-                        SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $model.providerAPIKey)
-                            .textFieldStyle(.roundedBorder)
-                    }
+                    providerRows
 
                     settingsRow(L10n.text("settings.row.language"), help: L10n.text("settings.help.language")) {
                         Picker("", selection: $model.interfaceLanguage) {
@@ -361,6 +358,51 @@ struct SettingsView: View {
                 systemPermissionsPanel
             }
             .disabled(model.isMigrationMaintenanceActive)
+        }
+    }
+
+    @ViewBuilder
+    private var providerRows: some View {
+        let selectedProviderBinding = Binding(
+            get: { model.config.providerID },
+            set: { model.selectProvider($0) }
+        )
+
+        settingsRow(L10n.text("settings.row.provider"), help: L10n.text("settings.help.provider")) {
+            Picker("", selection: selectedProviderBinding) {
+                ForEach(LLMProviderPreset.all) { preset in
+                    Text(model.providerDisplayName(preset)).tag(preset.id)
+                }
+            }
+            .labelsHidden()
+            .frame(maxWidth: 320, alignment: .leading)
+        }
+
+        if model.usesOpenAIForWriting {
+            settingsRow(L10n.text("settings.row.openAIAPIKey"), help: L10n.text("settings.help.openAIAPIKey")) {
+                SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $model.providerAPIKey)
+                    .textFieldStyle(.roundedBorder)
+            }
+        } else {
+            settingsRow(L10n.text("settings.row.apiKey"), help: L10n.text("settings.help.apiKey")) {
+                SecureField(model.selectedProvider.apiKeyPlaceholder, text: $model.providerAPIKey)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            if model.isCustomOpenAICompatibleProvider {
+                settingsRow(L10n.text("settings.row.endpoint"), help: L10n.text("settings.help.endpoint")) {
+                    TextField(
+                        LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString,
+                        text: $model.config.customOpenAICompatibleEndpoint
+                    )
+                    .textFieldStyle(.roundedBorder)
+                }
+            }
+
+            settingsRow(L10n.text("settings.row.openAIAPIKey"), help: L10n.text("settings.help.openAIAPIKey.voiceOnly")) {
+                SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $model.openAIAPIKey)
+                    .textFieldStyle(.roundedBorder)
+            }
         }
     }
 

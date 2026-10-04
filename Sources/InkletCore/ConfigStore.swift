@@ -9,9 +9,10 @@ public enum AppAppearance: String, Codable, Equatable, Sendable, CaseIterable, I
 }
 
 public struct AppConfig: Codable, Equatable, Sendable {
-    public static let currentVersion = 4
+    public static let currentVersion = 5
 
     private static let lunaDefaultMigrationVersion = 3
+    private static let providerSelectionVersion = 5
     private static let formerOpenAIDefaultModel = "gpt-5.4-mini"
 
     public var version: Int
@@ -61,7 +62,15 @@ public struct AppConfig: Codable, Equatable, Sendable {
     }
 
     public var resolvedProviderPreset: LLMProviderPreset {
-        LLMProviderPreset.openAI
+        var preset = LLMProviderPreset.preset(id: providerID)
+        if preset.id == LLMProviderPreset.customOpenAICompatible.id,
+           let endpoint = URL(string: customOpenAICompatibleEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)),
+           let scheme = endpoint.scheme?.lowercased(),
+           scheme == "https" || scheme == "http",
+           endpoint.host != nil {
+            preset.endpoint = endpoint
+        }
+        return preset
     }
 
     public var promptModeStore: PromptModeStore {
@@ -105,10 +114,17 @@ public struct AppConfig: Codable, Equatable, Sendable {
         let decodedVersion = try container.decodeIfPresent(Int.self, forKey: .version) ?? 1
         version = max(decodedVersion, AppConfig.currentVersion)
         let decodedProviderID = try container.decodeIfPresent(String.self, forKey: .providerID) ?? defaults.providerID
-        providerID = LLMProviderPreset.openAI.id
-        if decodedProviderID == LLMProviderPreset.openAI.id {
-            let decodedModel = try container.decodeIfPresent(String.self, forKey: .model) ?? defaults.model
-            if decodedVersion < AppConfig.lunaDefaultMigrationVersion,
+        // Configurations saved before provider selection always wrote with OpenAI.
+        let resolvedProviderID = decodedVersion >= AppConfig.providerSelectionVersion
+            && LLMProviderPreset.all.contains(where: { $0.id == decodedProviderID })
+            ? decodedProviderID
+            : LLMProviderPreset.openAI.id
+        providerID = resolvedProviderID
+        if resolvedProviderID == decodedProviderID {
+            let decodedModel = try container.decodeIfPresent(String.self, forKey: .model)
+                ?? LLMProviderPreset.preset(id: resolvedProviderID).defaultModel
+            if resolvedProviderID == LLMProviderPreset.openAI.id,
+               decodedVersion < AppConfig.lunaDefaultMigrationVersion,
                decodedModel == AppConfig.formerOpenAIDefaultModel {
                 model = defaults.model
             } else {
