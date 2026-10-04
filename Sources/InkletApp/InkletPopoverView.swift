@@ -295,10 +295,6 @@ struct InkletPopoverView: View {
         }
     }
 
-    private var copyResultHelp: String {
-        L10n.text("popover.action.copyResult") + " (⇧⌘C)"
-    }
-
     private var copyResultButton: some View {
         Button {
             model.copyResult()
@@ -313,7 +309,7 @@ struct InkletPopoverView: View {
         .disabled(isBusy)
         .padding(.top, 7)
         .padding(.trailing, 10)
-        .help(copyResultHelp)
+        .help(L10n.text("popover.action.copyResultHelp"))
         .accessibilityLabel(L10n.text("popover.action.copyResult"))
     }
 
