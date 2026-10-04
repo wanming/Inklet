@@ -137,6 +137,7 @@ struct InkletPopoverView: View {
                 route: model.route,
                 onSubmit: { model.submit() },
                 onInsertOriginal: { model.insertOriginal() },
+                onCopyResult: { model.copyResult() },
                 onEscape: { model.escape() },
                 onCycleMode: { model.cyclePromptMode(direction: $0) },
                 onMoveModeHighlight: { model.moveModeHighlight(by: $0) },
@@ -294,6 +295,10 @@ struct InkletPopoverView: View {
         }
     }
 
+    private var copyResultHelp: String {
+        L10n.text("popover.action.copyResult") + " (⇧⌘C)"
+    }
+
     private var copyResultButton: some View {
         Button {
             model.copyResult()
@@ -308,7 +313,7 @@ struct InkletPopoverView: View {
         .disabled(isBusy)
         .padding(.top, 7)
         .padding(.trailing, 10)
-        .help(L10n.text("popover.action.copyResult"))
+        .help(copyResultHelp)
         .accessibilityLabel(L10n.text("popover.action.copyResult"))
     }
 

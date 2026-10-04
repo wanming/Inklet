@@ -291,6 +291,7 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
     let route: WritingPopoverSessionState.Route
     let onSubmit: () -> Void
     let onInsertOriginal: () -> Void
+    let onCopyResult: () -> Void
     let onEscape: () -> Void
     let onCycleMode: (Int) -> Void
     let onMoveModeHighlight: (Int) -> Void
@@ -306,6 +307,7 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
         context.coordinator.route = route
         context.coordinator.onSubmit = onSubmit
         context.coordinator.onInsertOriginal = onInsertOriginal
+        context.coordinator.onCopyResult = onCopyResult
         context.coordinator.onEscape = onEscape
         context.coordinator.onCycleMode = onCycleMode
         context.coordinator.onMoveModeHighlight = onMoveModeHighlight
@@ -322,6 +324,7 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
             route: route,
             onSubmit: onSubmit,
             onInsertOriginal: onInsertOriginal,
+            onCopyResult: onCopyResult,
             onEscape: onEscape,
             onCycleMode: onCycleMode,
             onMoveModeHighlight: onMoveModeHighlight,
@@ -334,6 +337,7 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
         var route: WritingPopoverSessionState.Route
         var onSubmit: () -> Void
         var onInsertOriginal: () -> Void
+        var onCopyResult: () -> Void
         var onEscape: () -> Void
         var onCycleMode: (Int) -> Void
         var onMoveModeHighlight: (Int) -> Void
@@ -345,6 +349,7 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
             route: WritingPopoverSessionState.Route,
             onSubmit: @escaping () -> Void,
             onInsertOriginal: @escaping () -> Void,
+            onCopyResult: @escaping () -> Void,
             onEscape: @escaping () -> Void,
             onCycleMode: @escaping (Int) -> Void,
             onMoveModeHighlight: @escaping (Int) -> Void,
@@ -353,6 +358,7 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
             self.route = route
             self.onSubmit = onSubmit
             self.onInsertOriginal = onInsertOriginal
+            self.onCopyResult = onCopyResult
             self.onEscape = onEscape
             self.onCycleMode = onCycleMode
             self.onMoveModeHighlight = onMoveModeHighlight
@@ -387,7 +393,8 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
                 route: route,
                 keyCode: event.keyCode,
                 modifiers: keyboardModifiers(from: event.modifierFlags),
-                isComposingText: isComposingText
+                isComposingText: isComposingText,
+                charactersIgnoringModifiers: event.charactersIgnoringModifiers
             )
 
             switch action {
@@ -412,6 +419,9 @@ struct PopoverKeyEventHandler: NSViewRepresentable {
                 return nil
             case .insertOriginal:
                 onInsertOriginal()
+                return nil
+            case .copyResult:
+                onCopyResult()
                 return nil
             }
         }

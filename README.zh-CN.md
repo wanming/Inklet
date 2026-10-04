@@ -49,7 +49,7 @@ Inklet 仅通过 GitHub Releases 检查更新。正式版大约每 24 小时从 
 3. 用模糊搜索查找 Prompt 模式（例如 `ts` 可以匹配 `To Chinese Summary`），用 `↑` / `↓` 高亮，然后按 `Tab` 或 `Enter` 确认。
 4. 输入或粘贴一段草稿。
 5. 按 `Enter` 让 Inklet 处理文本。结果会边生成边显示；按 `Escape` 可停止。
-6. 再按一次 `Enter` 插入结果，或点击结果上的复制按钮改为复制。
+6. 再按一次 `Enter` 插入结果，或按 `Shift+Command+C`（也可点击结果上的复制按钮）改为复制。
 
 听写流程：
 
@@ -141,6 +141,7 @@ swift test
 - 模式启动器中的 `Tab`、`Return` 或小键盘 `Enter`：确认高亮的 Prompt 模式并聚焦源文本编辑器。输入法正在组合文字时，Return 仍用于确认文字或候选项；配合 Command、Shift、Option 或 Control 的 Return 不会确认模式。
 - 编辑器中的 `Enter`：处理源文本；插入由当前模式生成的结果；如果可见结果由之前的模式生成，则用刚确认的新模式重新生成。
 - `Command+Enter`：不调用模型，直接插入原文。
+- `Shift+Command+C`：复制当前结果，浮窗保持打开。
 - `Command+Up` / `Command+Down`：切换可见 prompt modes。
 - `Escape`：每按一次只返回一层，依次从结果回到源文本编辑器、模式启动器，再关闭 popover。处理文本期间按下会停止生成、丢弃未完成的结果，并停留在编辑器。
 - `Command+,`：Inklet 激活时打开 Settings。
