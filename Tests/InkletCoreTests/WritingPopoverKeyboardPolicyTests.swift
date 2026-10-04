@@ -106,7 +106,7 @@ final class WritingPopoverKeyboardPolicyTests: XCTestCase {
         let source = try popoverSource()
         let nativeStart = try XCTUnwrap(source.range(of: "private final class InkletNativeTextView"))
         let representableStart = try XCTUnwrap(source.range(
-            of: "private struct InkletTextView",
+            of: "struct InkletTextView",
             range: nativeStart.upperBound..<source.endIndex
         ))
         let nativeBlock = source[nativeStart.lowerBound..<representableStart.lowerBound]
@@ -154,9 +154,9 @@ final class WritingPopoverKeyboardPolicyTests: XCTestCase {
 
     func testNativeEditorAttachmentEventsAlwaysCarryConcreteIdentity() throws {
         let source = try popoverSource()
-        let representableStart = try XCTUnwrap(source.range(of: "private struct InkletTextView"))
+        let representableStart = try XCTUnwrap(source.range(of: "struct InkletTextView"))
         let handlerStart = try XCTUnwrap(source.range(
-            of: "private struct PopoverKeyEventHandler",
+            of: "struct PopoverKeyEventHandler",
             range: representableStart.upperBound..<source.endIndex
         ))
         let representable = source[representableStart.lowerBound..<handlerStart.lowerBound]
@@ -259,12 +259,15 @@ final class WritingPopoverKeyboardPolicyTests: XCTestCase {
         )
     }
 
+    /// The writing popover sources in their original single-file order: view model, view, text view.
     private func popoverSource() throws -> String {
         let packageRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        return try String(
-            contentsOf: packageRoot.appendingPathComponent("Sources/InkletApp/InkletPopoverView.swift"),
-            encoding: .utf8
-        )
+        return try ["InkletPopoverViewModel.swift", "InkletPopoverView.swift", "InkletTextView.swift"].map {
+            try String(
+                contentsOf: packageRoot.appendingPathComponent("Sources/InkletApp").appendingPathComponent($0),
+                encoding: .utf8
+            )
+        }.joined(separator: "\n")
     }
 
     private func windowControllerSource() throws -> String {

@@ -5,9 +5,7 @@ import Security
 
 final class SettingsViewSourceTests: XCTestCase {
     func testTemperatureSettingIsRemoved() throws {
-        let packageRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let sourceURL = packageRoot.appendingPathComponent("Sources/InkletApp/SettingsView.swift")
-        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let source = try settingsViewSource()
 
         XCTAssertFalse(source.contains("settings.row.temperature"))
         XCTAssertFalse(source.contains("settings.help.temperature"))
@@ -228,10 +226,15 @@ final class SettingsViewSourceTests: XCTestCase {
         XCTAssertFalse(rowBlock.contains("settings.history.copyOriginal"))
     }
 
+    /// The settings sources in their original single-file order: view model, view, controls.
     private func settingsViewSource() throws -> String {
         let packageRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let sourceURL = packageRoot.appendingPathComponent("Sources/InkletApp/SettingsView.swift")
-        return try String(contentsOf: sourceURL, encoding: .utf8)
+        return try ["SettingsViewModel.swift", "SettingsView.swift", "SettingsControls.swift"].map {
+            try String(
+                contentsOf: packageRoot.appendingPathComponent("Sources/InkletApp").appendingPathComponent($0),
+                encoding: .utf8
+            )
+        }.joined(separator: "\n")
     }
 
     private func sourceScope(

@@ -35,7 +35,7 @@ final class WritingModeLauncherSourceTests: XCTestCase {
             of: "private final class InkletNativeTextView"
         ))
         let representableStart = try XCTUnwrap(source.range(
-            of: "private struct InkletTextView",
+            of: "struct InkletTextView",
             range: nativeTextViewStart.upperBound..<source.endIndex
         ))
         let nativeTextViewBlock = source[nativeTextViewStart.lowerBound..<representableStart.lowerBound]
@@ -81,9 +81,9 @@ final class WritingModeLauncherSourceTests: XCTestCase {
 
     func testNativeTextViewResolutionTracksMakeUpdateAndDismantle() throws {
         let source = try popoverSource()
-        let representableStart = try XCTUnwrap(source.range(of: "private struct InkletTextView"))
+        let representableStart = try XCTUnwrap(source.range(of: "struct InkletTextView"))
         let handlerStart = try XCTUnwrap(source.range(
-            of: "private struct PopoverKeyEventHandler",
+            of: "struct PopoverKeyEventHandler",
             range: representableStart.upperBound..<source.endIndex
         ))
         let representable = source[representableStart.lowerBound..<handlerStart.lowerBound]
@@ -323,7 +323,7 @@ final class WritingModeLauncherSourceTests: XCTestCase {
             range: handlerCallStart.upperBound..<source.endIndex
         ))
         let handlerCall = source[handlerCallStart.lowerBound..<handlerCallEnd.lowerBound]
-        let handlerStart = try XCTUnwrap(source.range(of: "private struct PopoverKeyEventHandler"))
+        let handlerStart = try XCTUnwrap(source.range(of: "struct PopoverKeyEventHandler"))
         let updateStart = try XCTUnwrap(source.range(
             of: "func updateNSView",
             range: handlerStart.upperBound..<source.endIndex
@@ -347,7 +347,7 @@ final class WritingModeLauncherSourceTests: XCTestCase {
 
     func testPopoverKeyHandlerDelegatesToExecutableKeyboardPolicy() throws {
         let source = try popoverSource()
-        let handlerStart = try XCTUnwrap(source.range(of: "private struct PopoverKeyEventHandler"))
+        let handlerStart = try XCTUnwrap(source.range(of: "struct PopoverKeyEventHandler"))
         let handleStart = try XCTUnwrap(source.range(
             of: "private func handle(_ event: NSEvent)",
             range: handlerStart.upperBound..<source.endIndex
@@ -948,10 +948,15 @@ final class WritingModeLauncherSourceTests: XCTestCase {
         XCTAssertFalse(actions.contains(.insertText(oldResult)))
     }
 
+    /// The writing popover sources in their original single-file order: view model, view, text view.
     private func popoverSource() throws -> String {
         let packageRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let sourceURL = packageRoot.appendingPathComponent("Sources/InkletApp/InkletPopoverView.swift")
-        return try String(contentsOf: sourceURL, encoding: .utf8)
+        return try ["InkletPopoverViewModel.swift", "InkletPopoverView.swift", "InkletTextView.swift"].map {
+            try String(
+                contentsOf: packageRoot.appendingPathComponent("Sources/InkletApp").appendingPathComponent($0),
+                encoding: .utf8
+            )
+        }.joined(separator: "\n")
     }
 
     private func pickerSource() throws -> String {

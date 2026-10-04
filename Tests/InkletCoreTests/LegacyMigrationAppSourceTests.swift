@@ -33,7 +33,9 @@ final class LegacyMigrationAppSourceTests: XCTestCase {
 
     func testSettingsRetainsOneModelAndFreezesAutosaveDuringMigration() throws {
         let controller = try appSource(named: "SettingsWindowController.swift")
-        let view = try appSource(named: "SettingsView.swift")
+        let view = try ["SettingsViewModel.swift", "SettingsView.swift"]
+            .map { try appSource(named: $0) }
+            .joined(separator: "\n")
         let compactController = controller.filter { !$0.isWhitespace }
         let pronunciationPreview = try sourceScope(
             startingAt: "func previewPronunciationVoice()",
@@ -154,6 +156,7 @@ final class LegacyMigrationAppSourceTests: XCTestCase {
 
     func testCoordinatorFreezesAllMutationSurfacesAndRechecksBusyState() throws {
         let source = try appSource(named: "AppCoordinator.swift")
+        let selectionSource = try appSource(named: "SelectionActionsController.swift")
         let importFlow = try sourceScope(
             startingAt: "private func requestAssistedMigrationImport() async",
             endingBefore: "private func enterMigrationMaintenance() async",
@@ -167,51 +170,54 @@ final class LegacyMigrationAppSourceTests: XCTestCase {
         let copyTrigger = try sourceScope(
             startingAt: "private func handleSelectionActionCopyTrigger",
             endingBefore: "private func handleSelectionActionEffects",
-            in: source
+            in: selectionSource
         )
         let scheduledRead = try sourceScope(
             startingAt: "private func completeScheduledSelectionRead",
             endingBefore: "private func readSelectedTextForAutomaticSelection",
-            in: source
+            in: selectionSource
         )
         let translation = try sourceScope(
             startingAt: "private func translateCurrentSelection",
             endingBefore: "private func pronounceCurrentSelection",
-            in: source
+            in: selectionSource
         )
         let pronunciation = try sourceScope(
             startingAt: "private func pronounceSelectionText",
             endingBefore: "private func restoreSelectionPronunciationReturnState",
-            in: source
+            in: selectionSource
         )
         let pronunciationRestore = try sourceScope(
             startingAt: "private func restoreSelectionPronunciationReturnState",
             endingBefore: "private func showSelectionPronunciationError",
-            in: source
+            in: selectionSource
         )
 
         XCTAssertTrue(source.contains("private var isMigrationMaintenanceActive"))
         XCTAssertTrue(source.contains("windowController.isBusy"))
         XCTAssertTrue(source.contains("settingsController.isMigrationWorkflowIdle"))
         XCTAssertTrue(source.contains("settingsController.onMigrationWorkflowIdleChange"))
-        XCTAssertTrue(source.contains("selectionReadTask == nil"))
-        XCTAssertTrue(source.contains("selectionTranslationTask == nil"))
-        XCTAssertTrue(source.contains("selectionTTSTask == nil"))
-        XCTAssertTrue(source.contains("!isSelectionSpeechPlaying"))
+        XCTAssertTrue(source.contains("selectionActions.isIdle"))
+        XCTAssertTrue(selectionSource.contains("selectionReadTask == nil"))
+        XCTAssertTrue(selectionSource.contains("selectionTranslationTask == nil"))
+        XCTAssertTrue(selectionSource.contains("selectionTTSTask == nil"))
+        XCTAssertTrue(selectionSource.contains("!isSelectionSpeechPlaying"))
         XCTAssertTrue(source.contains("guard canRequestAssistedMigration"))
         XCTAssertGreaterThanOrEqual(
             source.components(separatedBy: "guard canRequestAssistedMigration").count - 1,
             2
         )
         XCTAssertTrue(source.contains("hotkeyManager.unregister()"))
-        XCTAssertTrue(source.contains("selectionActionMonitor.stop()"))
+        XCTAssertTrue(source.contains("selectionActions.enterMigrationMaintenance()"))
+        XCTAssertTrue(selectionSource.contains("selectionActionMonitor.stop()"))
         XCTAssertTrue(source.contains("await settingsController.waitForMigrationMaintenanceQuiescence()"))
         XCTAssertTrue(source.contains("await windowController.cancelForMigrationMaintenance()"))
-        XCTAssertTrue(source.contains("selectionReadTask?.cancel()"))
-        XCTAssertTrue(source.contains("selectionTranslationTask?.cancel()"))
-        XCTAssertTrue(source.contains("selectionTTSTask?.cancel()"))
-        XCTAssertTrue(source.contains("speechPlaybackService.stop()"))
+        XCTAssertTrue(selectionSource.contains("selectionReadTask?.cancel()"))
+        XCTAssertTrue(selectionSource.contains("selectionTranslationTask?.cancel()"))
+        XCTAssertTrue(selectionSource.contains("selectionTTSTask?.cancel()"))
+        XCTAssertTrue(selectionSource.contains("speechPlaybackService.stop()"))
         XCTAssertTrue(source.contains("guard !isStopping, !isMigrationMaintenanceActive"))
+        XCTAssertTrue(selectionSource.contains("guard !isStopping, !isMigrationMaintenanceActive"))
         XCTAssertTrue(copyTrigger.contains("let task = Task"))
         XCTAssertTrue(copyTrigger.contains("selectionTaskRegistry.register(task, id: taskID)"))
         try assertTokensAppearInOrder(
@@ -225,6 +231,7 @@ final class LegacyMigrationAppSourceTests: XCTestCase {
         try assertTokensAppearInOrder(
             [
                 "isMigrationMaintenanceActive = true",
+                "selectionActions.enterMigrationMaintenance()",
                 "await windowController.cancelForMigrationMaintenance()",
                 "await settingsController.waitForMigrationMaintenanceQuiescence()",
             ],
@@ -260,7 +267,9 @@ final class LegacyMigrationAppSourceTests: XCTestCase {
     }
 
     func testPopoverExposesBusyAndMaintenanceCancellation() throws {
-        let view = try appSource(named: "InkletPopoverView.swift")
+        let view = try ["InkletPopoverViewModel.swift", "InkletPopoverView.swift"]
+            .map { try appSource(named: $0) }
+            .joined(separator: "\n")
         let controller = try appSource(named: "InkletPopoverWindowController.swift")
 
         XCTAssertTrue(view.contains("var isBusy: Bool"))
@@ -332,7 +341,7 @@ final class LegacyMigrationAppSourceTests: XCTestCase {
         let source = try appSource(named: "AppCoordinator.swift")
         let delegate = try sourceScope(
             startingAt: "final class AppDelegate",
-            endingBefore: "private enum SelectionPronunciationReturnState",
+            endingBefore: "enum UpdateCheckMenuConfiguration",
             in: source
         )
 

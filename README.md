@@ -131,7 +131,7 @@ swift test
 
 If tests fail because `XCTest` is unavailable, install the full Xcode app instead of using only Command Line Tools.
 
-Check all UI languages with `scripts/check-localization.sh`. Add `--snapshots` to generate a local HTML gallery of synthetic native UI fixtures under `.build/localization-audit/`; the command prints its path. Pull requests run the localization checks automatically. See [localization coverage and remaining manual checks](docs/localization-audit.md).
+Check all UI languages with `scripts/check-localization.sh`. Add `--snapshots` to generate a local HTML gallery of synthetic native UI fixtures under `.build/localization-audit/`; the command prints its path. Pull requests and pushes to `main` run the full unit test suite and the localization checks automatically. See [localization coverage and remaining manual checks](docs/localization-audit.md).
 
 ## Keyboard Flow
 

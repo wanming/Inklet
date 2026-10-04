@@ -231,7 +231,7 @@ final class SelectionActionMonitorSourceTests: XCTestCase {
     func testSelectionEventDiagnosticsAreRateLimitedWithoutReadingContent() throws {
         let monitorSource = try monitorSource()
         let diagnosticsSource = try appSource(named: "SelectionActionDiagnostics.swift")
-        let coordinatorSource = try appSource(named: "AppCoordinator.swift")
+        let coordinatorSource = try appSource(named: "SelectionActionsController.swift")
 
         XCTAssertTrue(diagnosticsSource.contains("SelectionActionDiagnosticRateLimiter"))
         XCTAssertTrue(diagnosticsSource.contains("static func logRateLimited"))
