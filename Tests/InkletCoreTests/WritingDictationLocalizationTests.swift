@@ -187,7 +187,9 @@ final class WritingDictationLocalizationTests: XCTestCase {
     }
 
     func testDictationAccessibilityUndoAndErrorKeysAreWiredToProductionSurfaces() throws {
-        let popover = try sourceFile("Sources/InkletApp/InkletPopoverView.swift")
+        let popover = try ["InkletPopoverViewModel.swift", "InkletPopoverView.swift", "InkletTextView.swift"]
+            .map { try sourceFile("Sources/InkletApp/\($0)") }
+            .joined(separator: "\n")
         let transaction = try sourceFile("Sources/InkletApp/DictationEditorTransaction.swift")
         let controller = try sourceFile("Sources/InkletApp/InkletPopoverWindowController.swift")
         let recorder = try sourceFile("Sources/InkletApp/AudioRecorder.swift")

@@ -267,7 +267,9 @@ final class LegacyMigrationAppSourceTests: XCTestCase {
     }
 
     func testPopoverExposesBusyAndMaintenanceCancellation() throws {
-        let view = try appSource(named: "InkletPopoverView.swift")
+        let view = try ["InkletPopoverViewModel.swift", "InkletPopoverView.swift"]
+            .map { try appSource(named: $0) }
+            .joined(separator: "\n")
         let controller = try appSource(named: "InkletPopoverWindowController.swift")
 
         XCTAssertTrue(view.contains("var isBusy: Bool"))
