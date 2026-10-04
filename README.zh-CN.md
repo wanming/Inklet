@@ -131,7 +131,7 @@ swift test
 
 如果测试因为 `XCTest` 不可用而失败，请安装完整 Xcode，而不是只安装 Command Line Tools。
 
-使用 `scripts/check-localization.sh` 检查所有界面语言。加上 `--snapshots` 可在 `.build/localization-audit/` 下生成使用模拟数据的原生界面 HTML 截图集，命令会输出文件路径。Pull request 会自动运行本地化检查。检查范围和仍需手动验证的项目见[本地化检查说明](docs/localization-audit.md)。
+使用 `scripts/check-localization.sh` 检查所有界面语言。加上 `--snapshots` 可在 `.build/localization-audit/` 下生成使用模拟数据的原生界面 HTML 截图集，命令会输出文件路径。Pull request 和推送到 `main` 的提交会自动运行全部单元测试和本地化检查。检查范围和仍需手动验证的项目见[本地化检查说明](docs/localization-audit.md)。
 
 ## 快捷键
 
