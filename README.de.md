@@ -160,6 +160,7 @@ Prüfen Sie alle Oberflächensprachen mit `scripts/check-localization.sh`. Mit `
 - `Command+Enter`: fügt den Originaltext ein, ohne das Modell aufzurufen.
 - `Shift+Command+C`: kopiert das sichtbare Ergebnis, ohne das Popover zu schließen.
 - `Command+Up` / `Command+Down`: wechselt durch die sichtbaren Prompt-Modi.
+- Nur `Command` gedrückt halten: zeigt alle Kurzbefehle in der Aktionsleiste. Sonst zeigt die Leiste nur den Diktierhinweis und die Hauptschaltfläche; alle Kurzbefehle funktionieren in beiden Fällen.
 - `Escape`: geht pro Tastendruck eine Ebene zurück – vom Ergebnis zum Quelleditor, dann zum Modusstarter, dann schließt es das Popover. Während einer Umwandlung stoppt es die Generierung, verwirft das Teilergebnis und bleibt im Editor.
 - `Command+,`: öffnet die Einstellungen, während Inklet aktiv ist.
 

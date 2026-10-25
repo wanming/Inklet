@@ -158,6 +158,7 @@ Check all UI languages with `scripts/check-localization.sh`. Add `--snapshots` t
 - `Command+Enter`: insert the original text without calling the model.
 - `Shift+Command+C`: copy the visible result without closing the popover.
 - `Command+Up` / `Command+Down`: cycle through visible prompt modes.
+- Hold `Command` on its own: show every shortcut in the action bar. The bar otherwise shows only the dictation hint and the main button; all shortcuts work either way.
 - `Escape`: move back one level per press, from the result to the source editor, then to the mode launcher, then close the popover. While transforming, it stops generation, discards the partial result, and stays in the editor.
 - `Command+,`: open Settings while Inklet is active.
 

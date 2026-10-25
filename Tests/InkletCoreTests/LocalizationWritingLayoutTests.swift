@@ -65,19 +65,24 @@ final class LocalizationWritingLayoutTests: XCTestCase {
         withExtendedLifetime(subscription) {}
     }
 
-    func testLongLocalizedDictationStatusUsesASecondToolbarRow() async throws {
+    func testQuietToolbarKeepsLongDictationStatusOnOneRow() async throws {
         let previousLanguage = UserDefaults.standard.object(forKey: InkletPreferenceKeys.interfaceLanguage)
         defer { UserDefaults.standard.set(previousLanguage, forKey: InkletPreferenceKeys.interfaceLanguage) }
         InkletLanguageStore.selectedLanguage = .german
         let model = try makeModel(shortcut: .rightCommand)
         model.commitMode(modeID: model.selectedModeID)
-        let host = NSHostingView(rootView: InkletPopoverView(model: model))
+        let commandHold = CommandHoldMonitor()
+        let host = NSHostingView(rootView: InkletPopoverView(model: model, commandHold: commandHold))
         host.frame = NSRect(x: 0, y: 0, width: 600, height: 400)
+        await settle(host)
+        let quietHeight = model.preferredPopoverHeight
+
+        commandHold.reveal()
         await settle(host)
 
         try LocalizationSnapshot.record(host, name: "writing-german-toolbar")
-        // Header, dividers and two editor rows occupy 112pt before the toolbar.
-        XCTAssertGreaterThan(model.preferredPopoverHeight, 148)
+        // Holding ⌘ shows every shortcut; in German they wrap onto a second row.
+        XCTAssertGreaterThan(model.preferredPopoverHeight, quietHeight)
     }
 
     func testLoadingKeepsTheExpandedToolbarHeight() async throws {
@@ -86,8 +91,10 @@ final class LocalizationWritingLayoutTests: XCTestCase {
         InkletLanguageStore.selectedLanguage = .german
         let model = try makeModel(shortcut: .rightCommand)
         model.commitMode(modeID: model.selectedModeID)
-        let host = NSHostingView(rootView: InkletPopoverView(model: model))
+        let commandHold = CommandHoldMonitor()
+        let host = NSHostingView(rootView: InkletPopoverView(model: model, commandHold: commandHold))
         host.frame = NSRect(x: 0, y: 0, width: 600, height: 400)
+        commandHold.reveal()
         await settle(host)
         let baseline = model.preferredPopoverHeight
         XCTAssertGreaterThan(baseline, 148)

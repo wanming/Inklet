@@ -356,7 +356,7 @@ extension L10n {
         "whatsNew.1.2.0.dictation.title": "Diktieren auf deinem Mac",
         "whatsNew.1.2.0.dictation.detail": "Das Echtzeitdiktat erkennt Sprache jetzt auf deinem Mac, auch Chinesisch gemischt mit Englisch. Wähle in den Einstellungen für das Echtzeitdiktat „Auf diesem Mac“, dann verlässt deine Stimme deinen Mac nie.",
         "welcome.shortcuts.writing": "Inklet öffnen",
-        "welcome.shortcuts.writing.detail": "Drücke es in jeder App, um das Schreibfenster zu öffnen. Klicke ins Feld und drücke dann die neuen Tasten.",
+        "welcome.shortcuts.writing.detail": "Drücke es in jeder App, um das Schreibfenster zu öffnen. Klicke ins Feld und drücke dann die neuen Tasten. Halte im Fenster ⌘ gedrückt, um alle Kurzbefehle zu sehen.",
         "welcome.shortcuts.dictation": "Taste zum Halten",
         "welcome.shortcuts.dictation.detail": "Halte es im Schreibfenster gedrückt, um zu diktieren.",
         "welcome.ready.title": "Alles bereit",

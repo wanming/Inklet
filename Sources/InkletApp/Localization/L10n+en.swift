@@ -294,7 +294,7 @@ extension L10n {
         "whatsNew.1.2.0.dictation.title": "Dictate on Your Mac",
         "whatsNew.1.2.0.dictation.detail": "Live Dictation can now recognize speech on your Mac, including Chinese mixed with English. Choose On this Mac in Live Dictation settings, and your voice never leaves your Mac.",
         "welcome.shortcuts.writing": "Open Inklet",
-        "welcome.shortcuts.writing.detail": "Press in any app to open the writing popover. Click the field, then press new keys.",
+        "welcome.shortcuts.writing.detail": "Press in any app to open the writing popover. Click the field, then press new keys. In the popover, hold ⌘ to see every shortcut.",
         "welcome.shortcuts.dictation": "Hold Key",
         "welcome.shortcuts.dictation.detail": "Hold in the writing popover to dictate.",
         "welcome.ready.title": "You're All Set",

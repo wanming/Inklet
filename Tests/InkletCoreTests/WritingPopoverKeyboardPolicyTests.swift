@@ -195,7 +195,7 @@ final class WritingPopoverKeyboardPolicyTests: XCTestCase {
             lockedActions.components(
                 separatedBy: ".disabled(model.dictationPhase.isActive)"
             ).count - 1,
-            4
+            5
         )
         XCTAssertFalse(escapeAction.contains(".disabled(model.dictationPhase.isActive)"))
     }

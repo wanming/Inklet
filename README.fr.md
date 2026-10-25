@@ -160,6 +160,7 @@ Vérifiez toutes les langues de l’interface avec `scripts/check-localization.s
 - `Command+Enter` : insère le texte original sans appeler le modèle.
 - `Shift+Command+C` : copie le résultat visible sans fermer le popover.
 - `Command+Up` / `Command+Down` : parcourt les modes de prompt visibles.
+- Maintenir `Command` seule : affiche tous les raccourcis dans la barre d'actions. Sinon, la barre n'affiche que l'indication de dictée et le bouton principal ; tous les raccourcis fonctionnent dans les deux cas.
 - `Escape` : recule d’un niveau à chaque appui, du résultat à l’éditeur source, puis au lanceur de modes, puis ferme le popover. Pendant une transformation, arrête la génération, abandonne le résultat partiel et reste dans l’éditeur.
 - `Command+,` : ouvre les réglages lorsque Inklet est actif.
 

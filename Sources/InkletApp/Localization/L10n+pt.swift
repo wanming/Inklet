@@ -356,7 +356,7 @@ extension L10n {
         "whatsNew.1.2.0.dictation.title": "Dite no seu Mac",
         "whatsNew.1.2.0.dictation.detail": "O Ditado em tempo real agora reconhece a fala no seu Mac, incluindo chinês misturado com inglês. Escolha Neste Mac nos ajustes de Ditado em tempo real e sua voz nunca sai do seu Mac.",
         "welcome.shortcuts.writing": "Abrir o Inklet",
-        "welcome.shortcuts.writing.detail": "Pressione em qualquer app para abrir a janela de escrita. Clique no campo e pressione as novas teclas.",
+        "welcome.shortcuts.writing.detail": "Pressione em qualquer app para abrir a janela de escrita. Clique no campo e pressione as novas teclas. Na janela, mantenha ⌘ pressionada para ver todos os atalhos.",
         "welcome.shortcuts.dictation": "Tecla para segurar",
         "welcome.shortcuts.dictation.detail": "Mantenha pressionado na janela de escrita para ditar.",
         "welcome.ready.title": "Tudo pronto",

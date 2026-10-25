@@ -160,6 +160,7 @@ Comprueba todos los idiomas de la interfaz con `scripts/check-localization.sh`. 
 - `Command+Enter`: inserta el texto original sin llamar al modelo.
 - `Shift+Command+C`: copia el resultado visible sin cerrar el popover.
 - `Command+Up` / `Command+Down`: recorre los modos de prompt visibles.
+- Mantener pulsada solo `Command`: muestra todos los atajos en la barra de acciones. Normalmente la barra solo muestra la pista de dictado y el botón principal; todos los atajos funcionan igual.
 - `Escape`: retrocede un nivel con cada pulsación, del resultado al editor de origen, luego al lanzador de modos y después cierra el popover. Durante la transformación, detiene la generación, descarta el resultado parcial y se queda en el editor.
 - `Command+,`: abre Ajustes mientras Inklet está activo.
 
