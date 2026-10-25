@@ -110,7 +110,7 @@ final class SelectionActionWindowController: NSWindowController {
     private var menuItems = SelectionMenuItem.defaults
     private var resultKind = SelectionActionResultKind.translation
     private let panelWidth: CGFloat = 300
-    private let minimumPanelHeight: CGFloat = 46
+    private let minimumPanelHeight: CGFloat = 36
     // Wide enough for four menu buttons with truncated prompt mode names.
     private let maximumMenuPanelWidth: CGFloat = 600
     private var hasUserResizedTranslationPanel = false

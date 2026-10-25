@@ -45,9 +45,11 @@ struct SelectionActionView: View {
                     .fixedSize(horizontal: true, vertical: false)
                 if let errorMessage {
                     Text(errorMessage)
-                        .font(.system(size: 11))
-                        .foregroundStyle(InkletTheme.warning)
+                        .font(InkletTheme.Typography.help)
+                        .foregroundStyle(InkletTheme.statusWarning)
                         .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 6)
+                        .padding(.bottom, 4)
                 }
 
             case .preparingPronunciation:
@@ -58,8 +60,8 @@ struct SelectionActionView: View {
 
             case .notice(let message):
                 Text(message)
-                    .font(.system(size: 12))
-                    .foregroundStyle(InkletTheme.textSecondary)
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
                     .fixedSize(horizontal: false, vertical: true)
 
             case .translating:
@@ -67,8 +69,8 @@ struct SelectionActionView: View {
                     ProgressView()
                         .controlSize(.small)
                     Text(L10n.text("selection.action.translating"))
-                        .font(.system(size: 12))
-                        .foregroundStyle(InkletTheme.textSecondary)
+                        .font(InkletTheme.Typography.help)
+                        .foregroundStyle(InkletTheme.secondaryLabel)
                 }
 
             case .translationResult(let text, let errorMessage, let feedback):
@@ -78,18 +80,24 @@ struct SelectionActionView: View {
 
                     if let errorMessage {
                         Text(errorMessage)
-                            .font(.system(size: 11))
-                            .foregroundStyle(InkletTheme.warning)
+                            .font(InkletTheme.Typography.help)
+                            .foregroundStyle(InkletTheme.statusWarning)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
             case .translationError(let message):
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(message)
-                        .font(.system(size: 12))
-                        .foregroundStyle(InkletTheme.warning)
-                        .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(InkletTheme.statusWarning)
+                            .accessibilityHidden(true)
+                        Text(message)
+                            .font(InkletTheme.Typography.body)
+                            .foregroundStyle(InkletTheme.label)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     compactButton(
                         title: L10n.text("selection.action.retry"),
                         systemImage: "arrow.clockwise",
@@ -105,13 +113,13 @@ struct SelectionActionView: View {
             alignment: .leading
         )
         .frame(maxHeight: usesFlexiblePanelSize ? .infinity : nil, alignment: .topLeading)
-        .background(InkletTheme.panelBackground)
+        .inkletFloatingPanel(cornerRadius: InkletTheme.Radius.card)
     }
 
     var preferredWidth: CGFloat? {
         switch state {
         case .menu(let errorMessage, _):
-            errorMessage == nil ? nil : max(300, estimatedMenuRowWidth + 16)
+            errorMessage == nil ? nil : max(300, estimatedMenuRowWidth + 8)
         case .preparingPronunciation, .playingPronunciation, .translating:
             210
         case .translationResult:
@@ -127,12 +135,21 @@ struct SelectionActionView: View {
         let layout = SelectionMenuLayout.split(menuItems)
         let buttonWidths = layout.inline.map { item in
             let titleWidth = Self.titleWidth(item.title)
-            return (item.promptModeName == nil ? titleWidth : min(titleWidth, Self.promptModeTitleMaxWidth)) + 39
+            return (item.promptModeName == nil ? titleWidth : min(titleWidth, Self.promptModeTitleMaxWidth))
+                + Self.menuButtonChromeWidth
         }
-        let moreWidth: CGFloat = layout.overflow.isEmpty ? 0 : 30
+        let moreWidth: CGFloat = layout.overflow.isEmpty ? 0 : Self.menuButtonHeight
         let count = layout.inline.count + (layout.overflow.isEmpty ? 0 : 1)
-        return buttonWidths.reduce(0, +) + moreWidth + CGFloat(max(count - 1, 0)) * 6
+        return buttonWidths.reduce(0, +) + moreWidth + CGFloat(max(count - 1, 0)) * Self.menuButtonSpacing
     }
+
+    private static let menuButtonHeight = InkletTheme.ControlHeight.regular
+    private static let menuButtonSpacing: CGFloat = 2
+    private static let menuButtonPadding: CGFloat = 10
+    private static let menuIconSize = InkletTheme.IconSize.regular
+    private static let menuIconSpacing: CGFloat = 6
+    /// Padding, icon and icon gap around a menu button's title.
+    private static let menuButtonChromeWidth = menuButtonPadding * 2 + menuIconSize + menuIconSpacing
 
     private var usesFlexiblePanelSize: Bool {
         if case .translationResult = state {
@@ -144,9 +161,9 @@ struct SelectionActionView: View {
     private var panelPadding: EdgeInsets {
         switch state {
         case .menu:
-            EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8)
+            EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4)
         default:
-            EdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10)
+            EdgeInsets(top: 12, leading: 12, bottom: 8, trailing: 8)
         }
     }
 
@@ -159,31 +176,26 @@ struct SelectionActionView: View {
     }
 
     private var toolbarForegroundColor: Color {
-        InkletTheme.textSecondary.opacity(toolbarDisplayStyle.foregroundOpacity)
+        InkletTheme.secondaryLabel.opacity(toolbarDisplayStyle.foregroundOpacity)
     }
 
     private func translationResultText(_ text: String) -> some View {
         ScrollView {
             Text(text)
-                .font(.system(size: 13))
-                .lineSpacing(2)
-                .foregroundStyle(InkletTheme.textPrimary)
+                .font(.system(size: 14))
+                .lineSpacing(3)
+                .foregroundStyle(InkletTheme.label)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
+                .padding(.trailing, 4)
+                .padding(.vertical, 2)
         }
         .frame(maxHeight: usesFlexiblePanelSize ? .infinity : 180)
-        .background(InkletTheme.controlFill.opacity(0.58), in: RoundedRectangle(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(InkletTheme.subtleBorder)
-        }
     }
 
     private func menuButtonRow(feedback: SelectionActionFeedback?) -> some View {
         let layout = SelectionMenuLayout.split(menuItems)
-        return HStack(spacing: 6) {
+        return HStack(spacing: Self.menuButtonSpacing) {
             ForEach(layout.inline) { item in
                 compactButton(
                     title: item.title,
@@ -238,18 +250,13 @@ struct SelectionActionView: View {
                 } else {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(InkletTheme.textPrimary)
+                        .foregroundStyle(InkletTheme.secondaryLabel)
                 }
             }
-            .frame(width: 15, height: 15)
-            .frame(width: 30, height: 30)
-            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
-            .overlay {
-                RoundedRectangle(cornerRadius: 7)
-                    .stroke(InkletTheme.subtleBorder)
-            }
+            .frame(width: Self.menuIconSize, height: Self.menuIconSize)
+            .frame(width: Self.menuButtonHeight, height: Self.menuButtonHeight)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(FlatToolbarButtonStyle(cornerRadius: InkletTheme.Radius.control))
         .help(title)
         .accessibilityLabel(title)
         .disabled(isLoading)
@@ -287,9 +294,9 @@ struct SelectionActionView: View {
         }
         .padding(.top, 6)
         .overlay(alignment: .top) {
-            Rectangle()
-                .fill(InkletTheme.subtleBorder.opacity(0.55))
+            InkletTheme.hairline
                 .frame(height: 1)
+                .padding(.trailing, 4)
         }
     }
 
@@ -310,51 +317,52 @@ struct SelectionActionView: View {
                     } else if isPlaying {
                         buttonIcon(
                             systemImage: systemImage,
-                            fontSize: 12,
-                            weight: .semibold,
+                            fontSize: 13,
+                            weight: .medium,
                             isPlaying: true
                         )
                     } else {
                         buttonIcon(
                             systemImage: systemImage,
-                            fontSize: 12,
-                            weight: .semibold,
+                            fontSize: 13,
+                            weight: .medium,
                             isPlaying: false
                         )
                     }
                 }
-                .frame(width: 15, height: 15)
+                .frame(width: Self.menuIconSize, height: Self.menuIconSize)
 
                 if let maxTitleWidth {
                     Text(title)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(Self.menuTitleFont)
+                        .foregroundStyle(InkletTheme.label)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(width: min(Self.titleWidth(title), maxTitleWidth), alignment: .leading)
                 } else {
                     Text(title)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(Self.menuTitleFont)
+                        .foregroundStyle(InkletTheme.label)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
                 }
             }
-            .frame(height: 30)
-            .padding(.horizontal, 9)
-            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
-            .overlay {
-                RoundedRectangle(cornerRadius: 7)
-                    .stroke(InkletTheme.subtleBorder)
-                }
+            .frame(height: Self.menuButtonHeight)
+            .padding(.horizontal, Self.menuButtonPadding)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(FlatToolbarButtonStyle(cornerRadius: InkletTheme.Radius.control))
         .help(maxTitleWidth == nil ? "" : title)
         .disabled(isLoading)
     }
 
     private static let promptModeTitleMaxWidth: CGFloat = 120
 
+    private static var menuTitleFont: Font {
+        InkletTheme.Typography.control
+    }
+
     private static func titleWidth(_ title: String) -> CGFloat {
-        let font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        let font = NSFont.systemFont(ofSize: 13, weight: .medium)
         return ceil((title as NSString).size(withAttributes: [.font: font]).width)
     }
 
@@ -389,8 +397,8 @@ struct SelectionActionView: View {
                 }
             }
             .frame(width: 14, height: 14)
-            .frame(width: 30, height: 30)
-            .contentShape(RoundedRectangle(cornerRadius: 6))
+            .frame(width: InkletTheme.ControlHeight.regular, height: InkletTheme.ControlHeight.regular)
+            .contentShape(RoundedRectangle(cornerRadius: InkletTheme.Radius.small))
         }
         .buttonStyle(FlatToolbarButtonStyle())
         .help(title)
@@ -426,14 +434,14 @@ struct SelectionActionView: View {
                 .frame(width: 14, height: 14)
 
                 Text(L10n.text(labelKey ?? role.labelLocalizationKey))
-                    .font(.system(size: 11, weight: .regular))
+                    .font(InkletTheme.Typography.caption)
                     .foregroundStyle(toolbarForegroundColor)
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
             }
-            .frame(height: 30)
+            .frame(height: InkletTheme.ControlHeight.regular)
             .padding(.horizontal, 7)
-            .contentShape(RoundedRectangle(cornerRadius: 6))
+            .contentShape(RoundedRectangle(cornerRadius: InkletTheme.Radius.small))
         }
         .buttonStyle(FlatToolbarButtonStyle())
         .help(title)
@@ -447,7 +455,7 @@ struct SelectionActionView: View {
         fontSize: CGFloat,
         weight: Font.Weight,
         isPlaying: Bool,
-        color: Color = InkletTheme.textPrimary
+        color: Color = InkletTheme.label
     ) -> some View {
         if systemImage.hasPrefix("speaker.wave") {
             SpeakerWaveIcon(
@@ -469,22 +477,37 @@ struct SelectionActionView: View {
             ProgressView()
                 .controlSize(.small)
             Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(InkletTheme.textSecondary)
+                .font(InkletTheme.Typography.help)
+                .foregroundStyle(InkletTheme.secondaryLabel)
                 .lineLimit(1)
         }
-        .frame(minHeight: 28)
+        .frame(minHeight: InkletTheme.ControlHeight.regular)
+        .padding(.horizontal, 8)
     }
 }
 
+/// Chromeless buttons for the selection bar and result toolbar: a neutral fill on hover and press.
 private struct FlatToolbarButtonStyle: ButtonStyle {
+    var cornerRadius = InkletTheme.Radius.small
+
     func makeBody(configuration: Configuration) -> some View {
+        FlatToolbarButtonBody(configuration: configuration, cornerRadius: cornerRadius)
+    }
+}
+
+private struct FlatToolbarButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    let cornerRadius: CGFloat
+    @State private var isHovered = false
+
+    var body: some View {
         configuration.label
             .background(
-                configuration.isPressed
-                    ? InkletTheme.controlFill.opacity(0.46)
-                    : Color.clear,
-                in: RoundedRectangle(cornerRadius: 6)
+                configuration.isPressed ? InkletTheme.fillPressed : isHovered ? InkletTheme.fillHover : .clear,
+                in: RoundedRectangle(cornerRadius: cornerRadius)
             )
+            .contentShape(RoundedRectangle(cornerRadius: cornerRadius))
+            .onHover { isHovered = $0 }
+            .animation(InkletTheme.Motion.fast, value: isHovered)
     }
 }

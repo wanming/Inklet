@@ -162,6 +162,13 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - Reopen menus, About, update and migration dialogs after switching. Check localized title/action/help/VoiceOver labels, errors, confirmations and cancellation. Check system-language preference order, including English ahead of another supported language.
 - Mark any unavailable permission, migration, update, playback or error state as unverified. Synthetic snapshots do not verify these live flows or translation quality.
 
+## Design Language
+
+- Compare the writing popover, mode picker, selection bar and translation card with `docs/DESIGN.md` and its linked canvas in Light and Dark appearance.
+- In System Settings > Appearance, switch the accent color through blue, purple, pink, red, orange, yellow, green and graphite with the popover open. The primary button, mode chip icon, selected mode row and listening waveform follow the accent; button text stays readable (dark text on orange, yellow and green).
+- Hover every icon button, shortcut hint, mode row and selection bar button: each shows a neutral fill, and every icon-only control has a tooltip.
+- Turn on Reduce Motion and check that results appear with a fade only.
+
 ## Exact Signed Release Matrix
 
 Run the fresh-install and signed-upgrade sections using the exact final DMG and supported hardware on macOS 14.x, macOS 15.x, and macOS 26.x. Record automatic versus assisted migration results separately for every OS version.

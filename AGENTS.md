@@ -32,8 +32,8 @@ Before any response or action, use the relevant `superpowers` skill.
 ## Product Quality
 
 - Treat localization as part of every user-facing copy change. Update all supported language tables, or explicitly document an intentional fallback.
-- Keep UI consistent with the existing Inklet style: restrained macOS settings aesthetics, shared theme colors, consistent typography, spacing, controls, and alignment.
-- Favor clarity over decoration. Do not add flashy effects, oversized cards, gradients, or new visual motifs unless the product already uses them.
+- Follow the Inklet design language in `docs/DESIGN.md` for every UI change: use the `InkletTheme` tokens (color, typography, spacing, radius, motion) and the shared components in `InkletComponents.swift` instead of literal sizes, colors, or shadows. If a token or component is missing, add it to the code and to `docs/DESIGN.md` in the same change.
+- Favor clarity over decoration. Do not add flashy effects, oversized cards, gradients, or new visual motifs that `docs/DESIGN.md` does not define.
 - For SwiftUI layout changes, verify text fits in Chinese and English, avoids overlap, and behaves at the app's actual window size.
 - Treat Accessibility, clipboard, text insertion, voice audio, and API key flows as sensitive surfaces.
 

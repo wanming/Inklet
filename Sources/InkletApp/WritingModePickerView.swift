@@ -29,9 +29,9 @@ struct WritingModePickerView: View {
     var body: some View {
         VStack(spacing: 0) {
             searchHeader
-            Divider().opacity(0.45)
+            hairline
             results
-            Divider().opacity(0.45)
+            hairline
             footer
         }
         .frame(
@@ -39,7 +39,11 @@ struct WritingModePickerView: View {
             height: Self.preferredHeight(resultCount: filteredItems.count),
             alignment: .top
         )
-        .background(InkletTheme.panelBackground)
+    }
+
+    private var hairline: some View {
+        InkletTheme.hairline
+            .frame(height: 1)
     }
 
     private var searchHeader: some View {
@@ -59,18 +63,14 @@ struct WritingModePickerView: View {
                 model.openSettings()
             } label: {
                 Image(systemName: "gearshape")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(InkletTheme.textSecondary.opacity(0.72))
-                    .frame(width: 22, height: 22)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(InkletIconButtonStyle())
             .help(L10n.text("app.menu.settings"))
             .accessibilityLabel(L10n.text("app.menu.settings"))
         }
-        .padding(.horizontal, 14)
+        .padding(.leading, InkletTheme.Spacing.md)
+        .padding(.trailing, InkletTheme.Spacing.xs)
         .frame(height: Self.searchHeight)
-        .background(Color.white.opacity(0.018))
     }
 
     private var results: some View {
@@ -78,8 +78,8 @@ struct WritingModePickerView: View {
             Group {
                 if filteredItems.isEmpty {
                     Text(L10n.text("popover.modeSearch.empty"))
-                        .font(.system(size: 12))
-                        .foregroundStyle(InkletTheme.textSecondary)
+                        .font(InkletTheme.Typography.help)
+                        .foregroundStyle(InkletTheme.secondaryLabel)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .frame(height: Self.rowHeight)
                 } else {
@@ -125,19 +125,16 @@ struct WritingModePickerView: View {
         return Button {
             highlightModeFromMouse(modeID: item.id)
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: InkletTheme.Spacing.sm) {
                 Image(systemName: writingModeIconName(for: item.id))
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(
-                        isHighlighted
-                            ? InkletTheme.primary.opacity(0.92)
-                            : InkletTheme.textSecondary.opacity(0.78)
-                    )
-                    .frame(width: 18)
+                    .font(.system(size: InkletTheme.IconSize.small, weight: .semibold))
+                    .foregroundStyle(isHighlighted ? InkletTheme.accentText : InkletTheme.secondaryLabel)
+                    .frame(width: 24, height: 24)
+                    .background(InkletTheme.fill, in: RoundedRectangle(cornerRadius: InkletTheme.Radius.small))
 
                 Text(item.title)
-                    .font(.system(size: 13, weight: isHighlighted ? .semibold : .regular))
-                    .foregroundStyle(InkletTheme.textPrimary.opacity(0.94))
+                    .font(.system(size: 13, weight: isHighlighted ? .semibold : .medium))
+                    .foregroundStyle(InkletTheme.label)
                     .lineLimit(1)
                     .truncationMode(.tail)
 
@@ -148,13 +145,13 @@ struct WritingModePickerView: View {
                         Keycap(title: "↵", compact: true)
                         Keycap(title: "tab", compact: true)
                         Text(L10n.text("popover.modeSearch.write"))
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(InkletTheme.textSecondary)
+                            .font(InkletTheme.Typography.caption)
+                            .foregroundStyle(InkletTheme.secondaryLabel)
                             .lineLimit(1)
                     }
                 }
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, InkletTheme.Spacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: Self.rowHeight)
             .contentShape(Rectangle())
@@ -202,8 +199,8 @@ struct WritingModePickerView: View {
                 Keycap(title: "↑", compact: true)
                 Keycap(title: "↓", compact: true)
                 Text(L10n.text("popover.modeSearch.select"))
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(InkletTheme.textSecondary)
+                    .font(InkletTheme.Typography.caption)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
                     .lineLimit(1)
                     .padding(.leading, 2)
             }
@@ -212,9 +209,9 @@ struct WritingModePickerView: View {
             Spacer()
             footerHint(keys: ["esc"], label: L10n.text("popover.hint.close"))
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, InkletTheme.Spacing.md)
         .frame(height: Self.footerHeight)
-        .background(InkletTheme.toolbarBackground)
+        .background(InkletTheme.surfaceSunken)
     }
 
     private func footerHint(keys: [String], label: String) -> some View {
@@ -223,8 +220,8 @@ struct WritingModePickerView: View {
                 Keycap(title: key, compact: true)
             }
             Text(label)
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(InkletTheme.textSecondary)
+                .font(InkletTheme.Typography.caption)
+                .foregroundStyle(InkletTheme.secondaryLabel)
                 .lineLimit(1)
         }
         .accessibilityElement(children: .combine)
@@ -254,20 +251,18 @@ private struct WritingModeRowButtonStyle: ButtonStyle {
         configuration.label
             .frame(maxWidth: .infinity)
             .frame(height: WritingModePickerView.rowHeight)
-            .background(backgroundColor(isPressed: configuration.isPressed))
-    }
-
-    private func backgroundColor(isPressed: Bool) -> Color {
-        if isPressed {
-            return InkletTheme.primary.opacity(0.24)
-        }
-        if isHighlighted {
-            return InkletTheme.primary.opacity(0.16)
-        }
-        if isHovered {
-            return Color.white.opacity(0.055)
-        }
-        return .clear
+            .background {
+                if configuration.isPressed && !isHighlighted {
+                    RoundedRectangle(cornerRadius: InkletTheme.Radius.control)
+                        .fill(InkletTheme.fillPressed)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                } else {
+                    InkletRowBackground(isSelected: isHighlighted, isHovered: isHovered)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                }
+            }
     }
 }
 
