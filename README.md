@@ -8,7 +8,7 @@ Homepage: [gitinklet.app](https://gitinklet.app)
 
 **Inklet** is a macOS writing assistant that helps you turn typed, pasted, or spoken thoughts into clear text without leaving the app you are already using.
 
-Use the global shortcut to open the writing popover, then type, paste, or dictate into the same editable source draft. Realtime dictation stays inside Writing Assistant so you can review the transcript before deciding whether to transform or insert it.
+Use the global shortcut to open the writing popover, then type, paste, or dictate into the same editable source draft. Realtime dictation stays inside Writing Assistant so you can review the transcript before deciding whether to transform or insert it. On Apple silicon, new installs recognize speech on your Mac, so your voice never leaves it.
 
 ## Demo
 
@@ -35,8 +35,8 @@ Use **Check for Updates…** from the app menu to check manually in either the p
 1. Open Inklet from your Applications folder. For a source build, run `scripts/run-local-app.sh` from the repository root, then use `/Applications/Inklet Local.app`.
 2. Click the Inklet menu bar icon and open Settings.
 3. Grant Accessibility permission when macOS asks. Inklet uses this one generic permission to read selections, perform a configured copy fallback, return focus to the previous app, and paste confirmed results. Inklet stays in the background while System Settings is open and returns to General settings when you close it.
-4. On a new install on Apple silicon, Inklet starts with **Built-in** and downloads its recommended model in the background; the writing popover shows the progress and works offline once it finishes. To use a cloud provider instead, choose it in General and enter its API key. With OpenAI, the default on Intel Macs, one key covers writing, realtime dictation, selection translation, and pronunciation. With any other provider, writing and selection translation use that provider, while realtime dictation and pronunciation still need an OpenAI API key in the separate optional field. To run writing and translation on your Mac without any key, choose **Built-in** and download a model, or choose **Ollama** or **LM Studio** if you already run one of them (see [Local Models](#local-models)).
-5. Configure Writing Assistant with the model, writing shortcut, generation settings, and prompt modes you want to use. Live Dictation has its own Settings page: turn it on or off, and choose the hold shortcut and microphone. Advanced Dictation exposes only the recovery model; the recovery endpoint is not editable. The realtime model is fixed by Inklet.
+4. On a new install on Apple silicon, Inklet starts with **Built-in** and downloads its recommended model in the background; the writing popover shows the progress and works offline once it finishes. To use a cloud provider instead, choose it in General and enter its API key. With OpenAI, the default on Intel Macs, one key covers writing, realtime dictation, selection translation, and pronunciation. With any other provider, writing and selection translation use that provider, while pronunciation, and dictation when you choose OpenAI for it, still need an OpenAI API key in the separate optional field. To run writing and translation on your Mac without any key, choose **Built-in** and download a model, or choose **Ollama** or **LM Studio** if you already run one of them (see [Local Models](#local-models)).
+5. Configure Writing Assistant with the model, writing shortcut, generation settings, and prompt modes you want to use. Live Dictation has its own Settings page: turn it on or off, choose **On this Mac** or **OpenAI** for speech recognition, and choose the hold shortcut and microphone. On Apple silicon, new installs use **On this Mac** and download its speech model after the writing model; existing setups keep OpenAI until you switch. With OpenAI, Advanced Dictation exposes only the recovery model; the recovery endpoint is not editable. The realtime model is fixed by Inklet.
 6. Optional: configure Selection Assistant with a translation language, Force Selection mode, AI pronunciation voice, and pronunciation speed, then preview the voice in Settings.
 7. Grant Microphone permission on the first valid Dictation hold. Opening Inklet, visiting Settings, or pressing the Dictation shortcut outside the active source editor does not request it.
 
@@ -57,7 +57,7 @@ Dictation workflow:
 2. **Confirm a Prompt Mode**. Dictation is unavailable in the mode picker and result editor.
 3. **Put the caret in the source draft, or select text to replace.** Dictation inserts at the caret or replaces the selection.
 4. **Hold the configured Dictation shortcut** (Right Option by default) and speak normally while the draft updates in place. A short press does nothing. If the realtime connection fails, keep holding and speaking while Inklet keeps one temporary recovery recording.
-5. **Release to finalize** the transcript. If recovery is needed, Inklet sends one request to `https://api.openai.com/v1/audio/transcriptions` with the same existing OpenAI API key used by realtime dictation. The temporary recording remains local until the fallback request actually begins, is uploaded at most once, and is deleted when the session ends.
+5. **Release to finalize** the transcript. With **On this Mac**, recovery transcribes the recording on your Mac. With OpenAI, if recovery is needed, Inklet sends one request to `https://api.openai.com/v1/audio/transcriptions` with the same existing OpenAI API key used by realtime dictation. The temporary recording remains local until the fallback request actually begins, is uploaded at most once, and is deleted when the session ends.
 6. Review and edit the dictated draft. Dictation by itself does not run the Prompt Mode or insert text into another app.
 7. **Press Return only when ready** to run the confirmed Prompt Mode; press Return again only when you want to insert the result.
 
@@ -81,7 +81,7 @@ The Dictation shortcut is source-local and hold-only. You can change its modifie
 - Does not use browser-specific selection code and does not request browser Automation. Chrome, Safari, Edge, and native apps use the same generic path.
 - Lets you edit prompt modes, provider, model, custom OpenAI-compatible endpoint, timeout, writing shortcut, Dictation hold shortcut, microphone, recovery model, selection translation language, selection Translate prompt, Force Selection mode, simulated-copy permission, AI pronunciation voice, and AI pronunciation speed.
 - Shows local History for successful Write and Selection results, with consecutive duplicate entries collapsed, selectable source/result text, a result copy control, and a clear-all action. Existing legacy Voice entries remain readable.
-- Writes and translates with OpenAI, Anthropic, Google Gemini, DeepSeek, Alibaba Qwen, Moonshot Kimi, Zhipu GLM, MiniMax, SiliconFlow, Volcengine Ark, Tencent Hunyuan, Baichuan, 01.AI Yi, xAI, Groq, Mistral, OpenRouter, Perplexity, Together AI, Cerebras, or any custom OpenAI-compatible endpoint, such as a local model server. Realtime dictation and pronunciation always use OpenAI.
+- Writes and translates with OpenAI, Anthropic, Google Gemini, DeepSeek, Alibaba Qwen, Moonshot Kimi, Zhipu GLM, MiniMax, SiliconFlow, Volcengine Ark, Tencent Hunyuan, Baichuan, 01.AI Yi, xAI, Groq, Mistral, OpenRouter, Perplexity, Together AI, Cerebras, or any custom OpenAI-compatible endpoint, such as a local model server. Pronunciation always uses OpenAI; dictation uses the speech recognition engine chosen in Live Dictation.
 - Runs writing and translation on your Mac with the built-in engine (Qwen3.5 4B or Gemma 4 E4B, downloaded once from Hugging Face), or with a local Ollama or LM Studio server. No API key is needed, and text stays on your Mac.
 - Provides English, Simplified Chinese, Traditional Chinese, Japanese, Korean, Spanish, French, German, Portuguese, and Italian app UI localization.
 - Adapts compact selection menus and constrained settings/writing controls to translated labels; language changes refresh open UI while preserving writing content.
@@ -103,13 +103,14 @@ Inklet is an early MVP. The repository currently includes:
 - Full Xcode is recommended for XCTest support.
 - Accessibility permission for Inklet, required for generic selection reading, configured copy fallback, returning focus to the previous app, and pasting the generated result.
 - Microphone permission for realtime dictation while the shortcut is held.
-- An API key for OpenAI or another supported provider, or a local model. Realtime dictation and pronunciation require an OpenAI API key.
+- An API key for OpenAI or another supported provider, or a local model. Pronunciation, and dictation with the OpenAI engine, require an OpenAI API key.
 
 ## Local Models
 
 Inklet can write and translate with a model that runs on your Mac, so your text never leaves it and no API key is needed.
 
 - **Built-in** (Apple silicon only, and the default on new installs): choose **Built-in** as the provider, pick a model, and click **Download**. Gemma 4 E4B (about 4.6 GB) is the default for Macs with 16 GB of memory or more; Qwen3.5 4B (about 2.7 GB) is recommended for 8 GB. A new install starts downloading on first launch, and while a model is downloading the writing popover shows its progress, with a **Download** button if the model isn't there yet. Downloads resume after an interruption and are checked against a pinned SHA-256 before use. When you open the writing popover with Built-in selected, Inklet starts its bundled llama.cpp server on the loopback address only and loads the model, so it is usually ready by the time you submit. On Macs with 24 GB of memory or more the model stays loaded and is released only when macOS runs short of memory; on smaller Macs the server releases it after five idle minutes.
+- **Dictation on this Mac** (Apple silicon only, and the default on new installs): Live Dictation recognizes speech with Qwen3-ASR 0.6B (about 1 GB), which understands 30 languages and Chinese mixed with English. It runs on the same bundled llama.cpp engine in a separate server, re-transcribes what you are saying about every 0.6 seconds while you speak, and fixes each sentence at a pause. On Macs with 16 GB of memory or more the speech model stays loaded while dictation is on; on smaller Macs it loads when the writing popover opens and is released after five idle minutes. Turning dictation off, or choosing OpenAI, stops it.
 - **Ollama**: install [Ollama](https://ollama.com), run `ollama pull qwen3.5:4b`, then choose **Ollama**. Inklet lists the models Ollama has downloaded.
 - **LM Studio**: start LM Studio's local server on port 1234, load a model, then choose **LM Studio**.
 
@@ -195,8 +196,9 @@ If macOS blocks automatic access to the matching legacy container, Settings keep
 
 ## Privacy
 
-- Inklet sends writing and selection translation requests to the provider you choose in Settings, using that provider's API key. Realtime dictation and pronunciation always use your OpenAI API key and OpenAI.
-- While you hold the Dictation shortcut, active microphone audio is streamed directly to OpenAI Realtime transcription. Inklet also keeps one temporary local recovery recording. It remains local until the fallback request actually begins, is uploaded at most once to `https://api.openai.com/v1/audio/transcriptions` using the same existing OpenAI API key used by realtime dictation, and is deleted on every terminal session path.
+- Inklet sends writing and selection translation requests to the provider you choose in Settings, using that provider's API key. Pronunciation always uses your OpenAI API key and OpenAI. Dictation uses OpenAI only when you choose it as the speech recognition engine.
+- With **On this Mac** speech recognition, dictation audio and its recovery recording are processed by a server on your Mac and never leave it.
+- With OpenAI speech recognition, while you hold the Dictation shortcut, active microphone audio is streamed directly to OpenAI Realtime transcription. Inklet also keeps one temporary local recovery recording. It remains local until the fallback request actually begins, is uploaded at most once to `https://api.openai.com/v1/audio/transcriptions` using the same existing OpenAI API key used by realtime dictation, and is deleted on every terminal session path.
 - Your API keys are stored locally on your Mac, one per provider.
 - With the Built-in, Ollama, or LM Studio provider, writing and translation requests go only to a server on your Mac. Downloading a built-in model sends one request to Hugging Face for the chosen file; it does not include your text, audio, API keys, or settings.
 - Inklet uses Accessibility permission for generic selection reading, configured copy fallback, returning focus to the previous app, and pasting text.

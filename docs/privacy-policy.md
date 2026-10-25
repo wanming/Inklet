@@ -1,6 +1,6 @@
 # Inklet Privacy Policy
 
-Last updated: September 5, 2026
+Last updated: October 25, 2026
 
 ## Overview
 
@@ -17,7 +17,7 @@ Inklet may process:
 - Text selected by you for Selection Actions.
 - Successful Write and Selection source/result text saved in local History, plus readable legacy Voice entries created by older Inklet versions.
 - Successful Selection translation results cached locally for repeat use.
-- Active microphone audio streamed while you hold the Dictation shortcut, plus one temporary recovery recording for that session.
+- Active microphone audio captured while you hold the Dictation shortcut, plus one temporary recovery recording for that session.
 - API keys and provider settings you enter.
 - App settings such as prompt modes, model choices, shortcuts, and preferences.
 
@@ -35,15 +35,15 @@ Inklet uses this information to:
 
 ## AI And Speech Providers
 
-Inklet sends text only to provider endpoints used for app functionality. Dictation audio is sent only to OpenAI.
+Inklet sends text only to provider endpoints used for app functionality. Dictation audio is sent only to OpenAI, and only when you choose OpenAI for speech recognition; with On this Mac, dictation audio never leaves your Mac.
 
-Text may be sent to the selected AI provider for rewriting or summarization. Dictation audio is sent to OpenAI for realtime transcription and, only when recovery is needed, to the fixed canonical HTTPS URL `https://api.openai.com/v1/audio/transcriptions`. The recovery model is configurable, but the endpoint is not editable.
+Text may be sent to the selected AI provider for rewriting or summarization. With OpenAI speech recognition, dictation audio is sent to OpenAI for realtime transcription and, only when recovery is needed, to the fixed canonical HTTPS URL `https://api.openai.com/v1/audio/transcriptions`. The recovery model is configurable, but the endpoint is not editable.
 
 Provider handling of your data is governed by the provider's own privacy policy and account terms. Do not send private text or audio to a provider unless you trust that provider.
 
 Inklet may fetch the public model catalog from `models.dev` periodically, currently no more than once per day. This request does not include your text, audio, API keys, or app settings.
 
-If you choose the Built-in, Ollama, or LM Studio provider, Inklet sends writing and translation text only to a server running on your Mac. When you download a built-in model, Inklet fetches the chosen model file from Hugging Face (`huggingface.co`). This request does not include your text, audio, API keys, or app settings.
+If you choose the Built-in, Ollama, or LM Studio provider, Inklet sends writing and translation text only to a server running on your Mac. When you download a built-in model or the on-device speech model, Inklet fetches the model files from Hugging Face (`huggingface.co`). This request does not include your text, audio, API keys, or app settings.
 
 ## Update Checks
 
@@ -53,9 +53,13 @@ Inklet announces only a release with an uploaded `Inklet.dmg`; it never download
 
 ## Realtime Dictation
 
-Dictation is available only while the editable Writing Assistant source editor is active and you hold the configured shortcut. Active microphone audio is streamed to OpenAI's Realtime transcription service as it is captured. Inklet authenticates that connection with your OpenAI API key and keeps only bounded in-memory PCM while connecting and streaming.
+Dictation is available only while the editable Writing Assistant source editor is active and you hold the configured shortcut. You choose the speech recognition engine in Live Dictation settings: **On this Mac**, the default for new installs on Apple silicon, or **OpenAI**.
 
-At capture start, Inklet also creates one temporary local `.m4a` recovery recording. If the realtime connection cannot produce a final transcript, that recording remains local until the fallback request actually begins. Recovery uses the same existing OpenAI API key used by realtime dictation and sends the recording to `https://api.openai.com/v1/audio/transcriptions`. The recording is uploaded at most once and is not reused for another request.
+With On this Mac, audio is sent only to Inklet's bundled speech server, which listens on the loopback address of your Mac and requires a per-launch key. Audio is held in memory for the length of the hold, and the temporary recovery recording described below is transcribed by the same local server. No dictation audio or transcript leaves your Mac.
+
+With OpenAI: Active microphone audio is streamed to OpenAI's Realtime transcription service as it is captured. Inklet authenticates that connection with your OpenAI API key and keeps only bounded in-memory PCM while connecting and streaming.
+
+At capture start, Inklet also creates one temporary local `.m4a` recovery recording. With OpenAI, if the realtime connection cannot produce a final transcript, that recording remains local until the fallback request actually begins. Recovery uses the same existing OpenAI API key used by realtime dictation and sends the recording to `https://api.openai.com/v1/audio/transcriptions`. The recording is uploaded at most once and is not reused for another request.
 
 The temporary recording is deleted after every terminal path: success, no speech, fallback success or failure, Escape, focus loss, popover closure, supersession, migration maintenance, and app termination. Dictation diagnostics record only lifecycle state needed to troubleshoot the session and does not log audio or transcript content, Authorization headers, microphone identifiers, or temporary file paths.
 

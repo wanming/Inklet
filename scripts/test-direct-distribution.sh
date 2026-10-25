@@ -155,37 +155,37 @@ done
 
 require_microphone_usage_description \
   "${repo_root}/StoreSupport/Info.plist" \
-  "Inklet streams microphone audio to OpenAI during a valid Dictation hold and keeps a temporary recovery recording for that session."
+  "Inklet uses the microphone only during a valid Dictation hold. Speech is recognized on this Mac, or by OpenAI if you choose it, and a temporary recovery recording is kept for that session."
 require_microphone_usage_description \
   "${repo_root}/StoreSupport/InfoPlistStrings/en.lproj/InfoPlist.strings" \
-  "Inklet streams microphone audio to OpenAI during a valid Dictation hold and keeps a temporary recovery recording for that session."
+  "Inklet uses the microphone only during a valid Dictation hold. Speech is recognized on this Mac, or by OpenAI if you choose it, and a temporary recovery recording is kept for that session."
 require_microphone_usage_description \
   "${repo_root}/StoreSupport/InfoPlistStrings/zh-Hans.lproj/InfoPlist.strings" \
-  "有效长按听写快捷键时，Inklet 会将麦克风音频流式发送到 OpenAI，并为该次会话保留一份临时恢复录音。"
+  "Inklet 仅在有效长按听写快捷键时使用麦克风。语音在本机识别，或在你选择时由 OpenAI 识别，并为该次会话保留一份临时恢复录音。"
 require_microphone_usage_description \
   "${repo_root}/StoreSupport/InfoPlistStrings/zh-Hant.lproj/InfoPlist.strings" \
-  "有效長按聽寫快速鍵時，Inklet 會將麥克風音訊串流傳送至 OpenAI，並為該次工作階段保留一份暫時復原錄音。"
+  "Inklet 僅在有效長按聽寫快速鍵時使用麥克風。語音會在本機辨識，或在你選擇時由 OpenAI 辨識，並為該次工作階段保留一份暫時復原錄音。"
 require_microphone_usage_description \
   "${repo_root}/StoreSupport/InfoPlistStrings/ja.lproj/InfoPlist.strings" \
-  "有効な音声入力の長押し中、Inklet はマイク音声を OpenAI にストリーミングし、そのセッション用の一時的な復旧録音を保持します。"
+  "Inklet は有効な音声入力の長押し中だけマイクを使います。音声はこの Mac で認識されるか、選択した場合は OpenAI で認識され、そのセッション用の一時的な復旧録音を保持します。"
 require_microphone_usage_description \
   "${repo_root}/StoreSupport/InfoPlistStrings/ko.lproj/InfoPlist.strings" \
-  "유효한 받아쓰기 길게 누르기 동안 Inklet은 마이크 오디오를 OpenAI로 스트리밍하고 해당 세션의 임시 복구 녹음을 보관합니다."
+  "Inklet은 유효한 받아쓰기 길게 누르기 동안에만 마이크를 사용합니다. 음성은 이 Mac에서 인식되거나, 선택한 경우 OpenAI에서 인식되며, 해당 세션의 임시 복구 녹음을 보관합니다."
 require_microphone_usage_description \
   "${repo_root}/StoreSupport/InfoPlistStrings/es.lproj/InfoPlist.strings" \
-  "Durante una pulsación válida para Dictado, Inklet transmite el audio del micrófono a OpenAI y conserva una grabación temporal de recuperación para esa sesión."
+  "Inklet usa el micrófono solo durante una pulsación válida para Dictado. La voz se reconoce en este Mac, o en OpenAI si lo eliges, y se conserva una grabación temporal de recuperación para esa sesión."
 require_microphone_usage_description \
   "${repo_root}/StoreSupport/InfoPlistStrings/fr.lproj/InfoPlist.strings" \
-  "Lors d’un appui valide pour la dictée, Inklet diffuse l’audio du microphone vers OpenAI et conserve un enregistrement temporaire de récupération pour cette session."
+  "Inklet utilise le microphone uniquement lors d’un appui valide pour la dictée. La parole est reconnue sur ce Mac, ou par OpenAI si vous le choisissez, et un enregistrement temporaire de récupération est conservé pour cette session."
 require_microphone_usage_description \
   "${repo_root}/StoreSupport/InfoPlistStrings/de.lproj/InfoPlist.strings" \
-  "Während du die Diktierfunktion gültig gedrückt hältst, streamt Inklet Mikrofonaudio an OpenAI und speichert für diese Sitzung eine temporäre Wiederherstellungsaufnahme."
+  "Inklet verwendet das Mikrofon nur, während du die Diktierfunktion gültig gedrückt hältst. Die Sprache wird auf diesem Mac erkannt oder, wenn du es wählst, von OpenAI, und für diese Sitzung wird eine temporäre Wiederherstellungsaufnahme gespeichert."
 require_microphone_usage_description \
   "${repo_root}/StoreSupport/InfoPlistStrings/pt.lproj/InfoPlist.strings" \
-  "Durante um pressionamento válido para Ditado, o Inklet transmite o áudio do microfone para a OpenAI e mantém uma gravação temporária de recuperação para essa sessão."
+  "O Inklet usa o microfone apenas durante um pressionamento válido para Ditado. A fala é reconhecida neste Mac, ou pela OpenAI se você escolher, e uma gravação temporária de recuperação é mantida para essa sessão."
 require_microphone_usage_description \
   "${repo_root}/StoreSupport/InfoPlistStrings/it.lproj/InfoPlist.strings" \
-  "Durante una pressione valida per la dettatura, Inklet trasmette l’audio del microfono a OpenAI e conserva una registrazione temporanea di recupero per la sessione."
+  "Inklet usa il microfono solo durante una pressione valida per la dettatura. Il parlato viene riconosciuto su questo Mac, o da OpenAI se lo scegli, e viene conservata una registrazione temporanea di recupero per la sessione."
 localized_info_plist_strings=(
   "${repo_root}"/StoreSupport/InfoPlistStrings/*.lproj/InfoPlist.strings
 )
@@ -628,9 +628,9 @@ require_documentation_prose "$contributing" \
 
 privacy_policy="${repo_root}/docs/privacy-policy.md"
 privacy_update_lines="$(grep -E '^Last updated:' "$privacy_policy" || true)"
-if [[ "$privacy_update_lines" != "Last updated: September 5, 2026" ]]; then
+if [[ "$privacy_update_lines" != "Last updated: October 25, 2026" ]]; then
   record_documentation_failure \
-    "privacy-policy.md must contain exactly one current policy date: Last updated: September 5, 2026."
+    "privacy-policy.md must contain exactly one current policy date: Last updated: October 25, 2026."
 fi
 for privacy_text in \
   "~/Library/Application Support/com.tomwan.inklet/" \

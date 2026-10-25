@@ -159,6 +159,10 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - Ollama: with Ollama closed, choose **Ollama** and confirm the connection row says it can't reach Ollama; open Ollama, click **Refresh**, and confirm the downloaded models appear. Transform text and confirm no thinking text appears in the result.
 - LM Studio: repeat the Ollama check with LM Studio's local server.
 - Confirm the API key field is hidden for local providers and the optional OpenAI key field still controls dictation and pronunciation.
+- On-device dictation, new install on Apple silicon: confirm Live Dictation shows **On this Mac** for speech recognition and the speech model starts downloading after the writing model, with its own strip in the writing popover. Upgrade a setup saved by an older build and confirm it keeps **OpenAI**.
+- With **On this Mac** and the speech model ready, turn Wi-Fi off and dictate Chinese, English, and Chinese mixed with English. Confirm the draft updates while you speak, earlier words may be corrected, each sentence settles after a pause, and release leaves one undoable dictation.
+- Delete the speech model and hold the shortcut: confirm the error says to download it in Live Dictation settings and the popover offers **Download**. Choose **OpenAI** and confirm the Advanced Dictation recovery model appears again and dictation streams to OpenAI.
+- Speech model residency: on 16 GB or more, confirm a second `llama-server` for the speech model starts at launch while dictation is on, stays loaded through long pauses, and exits when you turn dictation off or choose OpenAI. On smaller Macs, confirm it starts when the writing popover opens and releases its memory after five idle minutes. Quit Inklet and confirm both servers exit.
 
 ## Language Switching And Layout
 
