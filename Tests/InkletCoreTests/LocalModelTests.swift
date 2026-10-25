@@ -116,6 +116,12 @@ final class LocalModelTests: XCTestCase {
         }
     }
 
+    func testChoosingBuiltInPrefersADownloadedModel() {
+        XCTAssertEqual(BuiltInModel.preferred(recommended: .gemma4E4B) { _ in false }, .gemma4E4B)
+        XCTAssertEqual(BuiltInModel.preferred(recommended: .gemma4E4B) { $0 == .qwen35_4B }, .qwen35_4B)
+        XCTAssertEqual(BuiltInModel.preferred(recommended: .gemma4E4B) { _ in true }, .gemma4E4B)
+    }
+
     func testDownloadedModelMustMatchSizeAndChecksum() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

@@ -162,7 +162,7 @@ final class SettingsViewModel: ObservableObject {
         localServerStatus = nil
         config.providerID = preset.id
         config.model = preset.isBuiltIn
-            ? BuiltInModel.recommended(forPhysicalMemoryBytes: ProcessInfo.processInfo.physicalMemory).id
+            ? BuiltInModel.preferred(recommended: recommendedBuiltInModel) { builtInModelStore.isInstalled($0) }.id
             : preset.defaultModel
         save()
         if isLocalServerProvider {

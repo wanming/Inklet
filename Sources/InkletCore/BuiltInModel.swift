@@ -71,6 +71,18 @@ public struct BuiltInModel: Equatable, Identifiable, Sendable {
         let gigabyte: UInt64 = 1_073_741_824
         return memoryBytes >= UInt64(gemma4E4B.recommendedMemoryGB) * gigabyte ? gemma4E4B : qwen35_4B
     }
+
+    /// The model to select when someone picks the built-in provider: a downloaded model works right
+    /// away, so it wins over a recommended one that still needs a download.
+    public static func preferred(
+        recommended: BuiltInModel,
+        isInstalled: (BuiltInModel) -> Bool
+    ) -> BuiltInModel {
+        if isInstalled(recommended) {
+            return recommended
+        }
+        return all.first(where: isInstalled) ?? recommended
+    }
 }
 
 /// Where downloaded built-in models live, and which of them are ready to run.
