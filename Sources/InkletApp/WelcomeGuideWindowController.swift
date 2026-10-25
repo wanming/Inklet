@@ -71,6 +71,7 @@ final class WelcomeGuideViewModel: ObservableObject {
         case accessibility
         case writingModel
         case dictation
+        case shortcuts
         case ready
     }
 
@@ -133,6 +134,8 @@ final class WelcomeGuideViewModel: ObservableObject {
             needsBuiltInDownload ? L10n.text("welcome.action.downloadAndContinue") : L10n.text("welcome.action.continue")
         case .dictation:
             microphoneStatus == .authorized ? L10n.text("welcome.action.continue") : L10n.text("welcome.action.later")
+        case .shortcuts:
+            L10n.text("welcome.action.continue")
         case .ready:
             L10n.text("welcome.action.finish")
         }
@@ -176,6 +179,8 @@ final class WelcomeGuideViewModel: ObservableObject {
             if microphoneStatus == .authorized {
                 downloadDictationModelIfNeeded()
             }
+        case .shortcuts:
+            _ = settings.flushPendingEdits()
         case .welcome, .accessibility:
             break
         case .ready:
@@ -305,6 +310,8 @@ struct WelcomeGuideView: View {
             writingModelStep
         case .dictation:
             dictationStep
+        case .shortcuts:
+            shortcutsStep
         case .ready:
             readyStep
         }
@@ -435,6 +442,61 @@ struct WelcomeGuideView: View {
                     downloadStatus(model.dictationModelState)
                 }
             }
+        }
+    }
+
+    private var shortcutsStep: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            stepHeader(
+                systemImage: "command",
+                title: L10n.text("welcome.shortcuts.title"),
+                message: L10n.text("welcome.shortcuts.message")
+            )
+            shortcutRow(
+                title: L10n.text("welcome.shortcuts.writing"),
+                detail: L10n.text("welcome.shortcuts.writing.detail")
+            ) {
+                HotkeyRecorderField(hotkey: $settings.config.hotkey)
+                    .frame(width: 180, height: 30)
+            }
+            shortcutRow(
+                title: L10n.text("welcome.shortcuts.dictation"),
+                detail: L10n.text("welcome.shortcuts.dictation.detail")
+            ) {
+                Picker("", selection: $settings.config.voiceInput.shortcut) {
+                    ForEach(VoiceInputConfig.Shortcut.allCases.filter { $0 != .disabled }) { shortcut in
+                        Text(shortcut.localizedName).tag(shortcut)
+                    }
+                }
+                .labelsHidden()
+                .frame(width: 180)
+            }
+        }
+    }
+
+    private func shortcutRow<Control: View>(
+        title: String,
+        detail: String,
+        @ViewBuilder control: () -> Control
+    ) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(InkletTheme.textPrimary)
+                Text(detail)
+                    .font(.system(size: 12))
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            control()
+        }
+        .padding(14)
+        .background(InkletTheme.elevatedBackground, in: RoundedRectangle(cornerRadius: InkletTheme.cornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: InkletTheme.cornerRadius)
+                .stroke(InkletTheme.subtleBorder)
         }
     }
 

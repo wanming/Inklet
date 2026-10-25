@@ -54,6 +54,9 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     private let settingsController: SettingsWindowController
     private let aboutController: AboutWindowController
     private var welcomeGuideController: WelcomeGuideWindowController?
+    private var whatsNewController: WhatsNewWindowController?
+    private var pendingWhatsNewReleases: [WhatsNewRelease] = []
+    private var whatsNewTask: Task<Void, Never>?
     private let hotkeyManager: GlobalHotkeyManager
     private let configStore: UserDefaultsConfigStore
     private let accessibilityPermissionService: AccessibilityPermissionService
@@ -282,6 +285,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         if !showWelcomeGuideIfPending() {
             showPermissionSettingsIfNeeded()
         }
+        prepareWhatsNew()
         installSettingsShortcutMonitor()
         refreshMigrationImportEligibility()
         settingsController.showMigrationNotice()
@@ -292,6 +296,8 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         isStopping = true
         updateCheckCoordinator.stop()
         automaticUpdatePresentationGate.cancel()
+        whatsNewTask?.cancel()
+        whatsNewTask = nil
         if let configObserver {
             NotificationCenter.default.removeObserver(configObserver)
             self.configObserver = nil
@@ -681,6 +687,73 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         openPopover()
     }
 
+    /// Release notes show once, on the first launch after an update. People open the new version
+    /// themselves after installing it, so they are looking at Inklet; the window still waits until
+    /// Inklet is idle and never takes focus from another app.
+    private func prepareWhatsNew() {
+        let userDefaults = UserDefaults.standard
+        guard let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        else {
+            return
+        }
+        let lastSeenVersion = userDefaults.string(forKey: InkletPreferenceKeys.lastSeenWhatsNewVersion)
+        pendingWhatsNewReleases = WhatsNewCatalog.releases(for: WhatsNewPolicy.unseenVersions(
+            withNotes: WhatsNewCatalog.versions,
+            currentVersion: currentVersion,
+            lastSeenVersion: lastSeenVersion,
+            isWelcomeGuideShowing: welcomeGuideController != nil
+        ))
+        if lastSeenVersion.map({ WhatsNewPolicy.isNewer(currentVersion, than: $0) }) ?? true {
+            userDefaults.set(currentVersion, forKey: InkletPreferenceKeys.lastSeenWhatsNewVersion)
+        }
+        guard !pendingWhatsNewReleases.isEmpty else { return }
+        whatsNewTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(2.5))
+            while !Task.isCancelled {
+                guard let self, !self.pendingWhatsNewReleases.isEmpty else { return }
+                if self.canPresentWhatsNew {
+                    self.presentPendingWhatsNew()
+                    return
+                }
+                try? await Task.sleep(for: .seconds(3))
+            }
+        }
+    }
+
+    private var canPresentWhatsNew: Bool {
+        welcomeGuideController == nil
+            && whatsNewController?.window?.isVisible != true
+            && windowController.window?.isVisible != true
+            && canPresentAutomaticUpdate
+    }
+
+    private func presentPendingWhatsNew() {
+        let releases = pendingWhatsNewReleases
+        pendingWhatsNewReleases = []
+        whatsNewTask = nil
+        showWhatsNew(releases, style: .update, activating: false)
+    }
+
+    @objc func openChangelog() {
+        guard !isStopping else { return }
+        showWhatsNew(WhatsNewCatalog.changelog(upTo: currentAppVersion), style: .changelog, activating: true)
+    }
+
+    private var currentAppVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
+
+    private func showWhatsNew(_ releases: [WhatsNewRelease], style: WhatsNewView.Style, activating: Bool) {
+        whatsNewController?.close()
+        let controller = WhatsNewWindowController(
+            releases: releases,
+            style: style,
+            currentVersion: currentAppVersion
+        )
+        whatsNewController = controller
+        controller.show(activating: activating)
+    }
+
     private func configureStatusItemIcon() {
         statusItem.length = NSStatusItem.squareLength
         statusItem.button?.attributedTitle = NSAttributedString()
@@ -778,6 +851,13 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
             NSMenuItem(
                 title: L10n.text("app.menu.sendFeedback"),
                 action: #selector(sendFeedback),
+                keyEquivalent: ""
+            )
+        )
+        menu.addItem(
+            NSMenuItem(
+                title: L10n.text("app.menu.changelog"),
+                action: #selector(openChangelog),
                 keyEquivalent: ""
             )
         )

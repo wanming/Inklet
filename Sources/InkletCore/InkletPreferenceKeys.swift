@@ -4,6 +4,7 @@ public enum InkletPreferenceKeys {
     public static let interfaceLanguage = "InkletInterfaceLanguage"
     public static let didCompleteOnboarding = "didCompleteOnboarding"
     public static let completedWelcomeGuideVersion = "completedWelcomeGuideVersion"
+    public static let lastSeenWhatsNewVersion = "lastSeenWhatsNewVersion"
     public static let translationPanelSize = "SelectionActionWindowController.translationPanelSize"
     public static let lastWritingPromptModeID = "lastWritingPromptModeID"
     public static let lastAutomaticUpdateCheckDate = "lastAutomaticUpdateCheckDate"
