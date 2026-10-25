@@ -123,6 +123,11 @@ final class SettingsWindowController: NSWindowController {
         model.isMigrationWorkflowIdle
     }
 
+    /// The welcome guide edits the same settings, so the Settings window never saves a stale copy.
+    var settingsModel: SettingsViewModel {
+        model
+    }
+
     init(
         historyStore: any HistoryStore = JSONLHistoryStore(),
         migrationPresentationModel: LegacyMigrationPresentationModel
