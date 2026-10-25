@@ -36,7 +36,7 @@ Inklet 仅通过 GitHub Releases 检查更新。正式版大约每 24 小时从 
 2. 点击菜单栏里的 Inklet 图标，打开 Settings。
 3. 按 macOS 提示授予 Accessibility 权限。Inklet 用这一个通用权限读取选区、执行已配置的复制备用流程、回到上一个应用并粘贴确认后的结果。系统设置打开期间 Inklet 会留在后台；关闭系统设置后 Inklet 会返回 General 设置页。
 4. 在 General 中选择服务商并填写它的 API key。默认的 OpenAI 用一把 key 处理写作、实时听写、选区翻译和发音。选择其他服务商时，写作和选区翻译使用该服务商；实时听写和发音仍需要在单独的可选字段中填写 OpenAI API key。
-5. 在 Writing Assistant 中配置模型、写作快捷键、生成参数、Prompt 模式、听写长按快捷键和麦克风。高级听写只提供恢复模型，不提供端点设置；恢复端点不可编辑。实时模型由 Inklet 固定。
+5. 在 Writing Assistant 中配置模型、写作快捷键、生成参数和 Prompt 模式。实时听写有单独的设置页，可以开启或关闭，并选择长按快捷键和麦克风。高级听写只提供恢复模型，不提供端点设置；恢复端点不可编辑。实时模型由 Inklet 固定。
 6. 可选：在 Selection Assistant 中配置翻译语言、强制取词模式、AI 发音声音和发音速度，并在设置中试听该声音。
 7. 第一次有效长按听写快捷键时授予 Microphone 权限。只打开 Inklet、查看 Settings，或在原文编辑器之外按快捷键都不会请求权限。
 
@@ -61,7 +61,7 @@ Inklet 仅通过 GitHub Releases 检查更新。正式版大约每 24 小时从 
 6. 检查并编辑听写草稿。听写本身不会运行 Prompt 模式，也不会把文本插入其他 App。
 7. **准备好后再按 Return** 运行已确认的 Prompt 模式；只有要插入结果时才再按一次 Return。
 
-听写快捷键仅在原文编辑器内生效，并且只支持长按。你可以在 Settings 中把修饰键改为 Right Command、Left Option、Left Command，或直接关闭。Escape、焦点丢失、关闭浮窗或开始新的原文会话都会取消听写并恢复原草稿。
+听写快捷键仅在原文编辑器内生效，并且只支持长按。你可以在 Settings → 实时听写中把修饰键改为 Right Command、Left Option、Left Command，或直接关闭实时听写。Escape、焦点丢失、关闭浮窗或开始新的原文会话都会取消听写并恢复原草稿。
 
 ## 功能
 
@@ -137,7 +137,7 @@ swift test
 ## 快捷键
 
 - `Option+Space`：打开写作 popover。
-- `Right Option`：写作助手原文编辑器处于活动状态时长按听写。可在 Settings 中修改修饰键或关闭；短按始终不执行操作。
+- `Right Option`：写作助手原文编辑器处于活动状态时长按听写。可在 Settings → 实时听写中修改修饰键或关闭实时听写；短按始终不执行操作。
 - 模式启动器中的 `↑` / `↓`：在按模糊匹配度排序的 Prompt 模式之间移动高亮。
 - 模式启动器中的 `Tab`、`Return` 或小键盘 `Enter`：确认高亮的 Prompt 模式并聚焦源文本编辑器。输入法正在组合文字时，Return 仍用于确认文字或候选项；配合 Command、Shift、Option 或 Control 的 Return 不会确认模式。
 - 编辑器中的 `Enter`：处理源文本；插入由当前模式生成的结果；如果可见结果由之前的模式生成，则用刚确认的新模式重新生成。

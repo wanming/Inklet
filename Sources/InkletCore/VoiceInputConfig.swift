@@ -12,22 +12,33 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
         case disabled
 
         public var id: String { rawValue }
+
+        /// Turning dictation off is a separate switch, so Settings offers only real keys.
+        public static let settingsCases: [Self] = [.rightOption, .rightCommand, .leftOption, .leftCommand]
     }
 
+    public var isEnabled: Bool
     public var shortcut: Shortcut
     public private(set) var speechEndpoint: String
     public var speechModel: String
     public var microphoneDeviceID: String?
 
     public init(
+        isEnabled: Bool = true,
         shortcut: Shortcut,
         speechModel: String,
         microphoneDeviceID: String?
     ) {
+        self.isEnabled = isEnabled
         self.shortcut = shortcut
         self.speechEndpoint = Self.defaultSpeechEndpoint
         self.speechModel = speechModel
         self.microphoneDeviceID = microphoneDeviceID
+    }
+
+    /// The shortcut dictation should listen for, or `.disabled` while dictation is turned off.
+    public var activeShortcut: Shortcut {
+        isEnabled ? shortcut : .disabled
     }
 
     public static func defaultConfig() -> VoiceInputConfig {
@@ -39,6 +50,7 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
+        case isEnabled
         case shortcut
         case speechEndpoint
         case speechModel
@@ -48,7 +60,11 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let defaults = Self.defaultConfig()
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        shortcut = try container.decodeIfPresent(Shortcut.self, forKey: .shortcut) ?? defaults.shortcut
+        let decodedShortcut = try container.decodeIfPresent(Shortcut.self, forKey: .shortcut) ?? defaults.shortcut
+        // Older configs turned dictation off by choosing the Disabled shortcut.
+        let decodedIsEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        isEnabled = decodedIsEnabled && decodedShortcut != .disabled
+        shortcut = decodedShortcut == .disabled ? defaults.shortcut : decodedShortcut
         _ = try container.decodeIfPresent(String.self, forKey: .speechEndpoint)
         speechEndpoint = Self.defaultSpeechEndpoint
         speechModel = try container.decodeIfPresent(String.self, forKey: .speechModel)
@@ -58,6 +74,7 @@ public struct VoiceInputConfig: Codable, Equatable, Sendable {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(isEnabled, forKey: .isEnabled)
         try container.encode(shortcut, forKey: .shortcut)
         try container.encode(Self.defaultSpeechEndpoint, forKey: .speechEndpoint)
         try container.encode(speechModel, forKey: .speechModel)

@@ -34,6 +34,7 @@ private extension SelectionForceSelectionMode {
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general = "General"
     case writeAssistant = "Write Assistant"
+    case dictation = "Live Dictation"
     case selectionAssistant = "Selection Assistant"
     case history = "History"
     case promptModes = "Prompt Modes"
@@ -45,6 +46,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: L10n.text("settings.section.general")
         case .writeAssistant: L10n.text("settings.section.writeAssistant")
+        case .dictation: L10n.text("settings.section.dictation")
         case .selectionAssistant: L10n.text("settings.section.selectionAssistant")
         case .history: L10n.text("settings.section.history")
         case .promptModes: L10n.text("settings.section.promptModes")
@@ -56,6 +58,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: "gearshape"
         case .writeAssistant: "pencil.and.scribble"
+        case .dictation: "mic"
         case .selectionAssistant: "text.viewfinder"
         case .history: "clock.arrow.circlepath"
         case .promptModes: "slider.horizontal.3"
@@ -254,6 +257,13 @@ struct SettingsView: View {
                 case .writeAssistant:
                     writeAssistantPanel
                         .disabled(model.isMigrationMaintenanceActive)
+                case .dictation:
+                    ScrollView {
+                        dictationSettingsPanel
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 20)
+                    }
+                    .disabled(model.isMigrationMaintenanceActive)
                 case .selectionAssistant:
                     ScrollView {
                         selectionActionsPanel
@@ -313,6 +323,8 @@ struct SettingsView: View {
             L10n.text("settings.description.general")
         case .writeAssistant:
             L10n.text("settings.description.writeAssistant")
+        case .dictation:
+            L10n.text("settings.description.dictation")
         case .selectionAssistant:
             L10n.text("settings.description.selectionAssistant")
         case .history:
@@ -584,27 +596,11 @@ struct SettingsView: View {
         }
     }
 
-    private var writingSettingsPanel: some View {
-        writeAssistantControls
-    }
-
     private var writeAssistantPanel: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                settingsGroupTitle(
-                    L10n.text("settings.group.writing"),
-                    help: L10n.text("settings.group.writing.help")
-                )
-                writingSettingsPanel
-
-                settingsGroupTitle(
-                    L10n.text("settings.group.dictation"),
-                    help: L10n.text("settings.group.dictation.help")
-                )
-                dictationSettingsPanel
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 20)
+            writeAssistantControls
+                .padding(.horizontal, 24)
+                .padding(.vertical, 20)
         }
     }
 
@@ -616,48 +612,59 @@ struct SettingsView: View {
 
         return settingsPanel {
             settingsRow(
-                L10n.text("settings.row.dictationShortcut"),
-                help: L10n.text("settings.help.dictationShortcut")
+                L10n.text("settings.row.dictationEnabled"),
+                help: L10n.text("settings.help.dictationEnabled")
             ) {
-                Picker("", selection: $model.config.voiceInput.shortcut) {
-                    ForEach(VoiceInputConfig.Shortcut.allCases) { shortcut in
-                        Text(shortcut.localizedName).tag(shortcut)
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: 320, alignment: .leading)
+                Toggle("", isOn: $model.config.voiceInput.isEnabled)
+                    .labelsHidden()
             }
 
-            settingsRow(L10n.text("settings.row.microphone"), help: L10n.text("settings.help.microphone")) {
-                Picker("", selection: selectedMicrophoneBinding) {
-                    ForEach(model.microphoneOptions) { option in
-                        Text(option.localizedName).tag(option.id)
+            Group {
+                settingsRow(
+                    L10n.text("settings.row.dictationShortcut"),
+                    help: L10n.text("settings.help.dictationShortcut")
+                ) {
+                    Picker("", selection: $model.config.voiceInput.shortcut) {
+                        ForEach(VoiceInputConfig.Shortcut.settingsCases) { shortcut in
+                            Text(shortcut.localizedName).tag(shortcut)
+                        }
                     }
+                    .labelsHidden()
+                    .frame(maxWidth: 320, alignment: .leading)
                 }
-                .labelsHidden()
-                .frame(maxWidth: 320, alignment: .leading)
-            }
 
-            DisclosureGroup {
-                VStack(alignment: .leading, spacing: 12) {
-                    settingsRow(
-                        L10n.text("settings.row.fallbackSpeechModel"),
-                        help: L10n.text("settings.help.fallbackSpeechModel")
-                    ) {
-                        TextField(
-                            VoiceInputConfig.defaultSpeechModel,
-                            text: $model.config.voiceInput.speechModel
-                        )
-                        .textFieldStyle(.roundedBorder)
+                settingsRow(L10n.text("settings.row.microphone"), help: L10n.text("settings.help.microphone")) {
+                    Picker("", selection: selectedMicrophoneBinding) {
+                        ForEach(model.microphoneOptions) { option in
+                            Text(option.localizedName).tag(option.id)
+                        }
                     }
+                    .labelsHidden()
+                    .frame(maxWidth: 320, alignment: .leading)
                 }
-                .padding(.top, 10)
-            } label: {
-                Text(L10n.text("settings.group.dictationAdvanced"))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(InkletTheme.textPrimary)
+
+                DisclosureGroup {
+                    VStack(alignment: .leading, spacing: 12) {
+                        settingsRow(
+                            L10n.text("settings.row.fallbackSpeechModel"),
+                            help: L10n.text("settings.help.fallbackSpeechModel")
+                        ) {
+                            TextField(
+                                VoiceInputConfig.defaultSpeechModel,
+                                text: $model.config.voiceInput.speechModel
+                            )
+                            .textFieldStyle(.roundedBorder)
+                        }
+                    }
+                    .padding(.top, 10)
+                } label: {
+                    Text(L10n.text("settings.group.dictationAdvanced"))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(InkletTheme.textPrimary)
+                }
+                .tint(InkletTheme.textSecondary)
             }
-            .tint(InkletTheme.textSecondary)
+            .disabled(!model.config.voiceInput.isEnabled)
         }
     }
 
@@ -1089,7 +1096,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 shortcutLine(keys: [model.config.hotkey], title: L10n.text("settings.quickStart.open"), keyWidth: 102, keyAlignment: .trailing)
                 shortcutLine(keys: ["⌘", "↵"], title: L10n.text("settings.quickStart.original"), keyWidth: 102, keyAlignment: .trailing)
-                if model.config.voiceInput.shortcut != .disabled {
+                if model.config.voiceInput.activeShortcut != .disabled {
                     shortcutLine(
                         keys: voiceShortcutKeys,
                         title: L10n.text("settings.quickStart.voice.pressAndHold"),
@@ -1360,20 +1367,6 @@ struct SettingsView: View {
             content()
         }
         .padding(0)
-        .frame(maxWidth: 580, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func settingsGroupTitle(_ title: String, help: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(InkletTheme.textPrimary)
-            Text(help)
-                .font(.system(size: 11))
-                .foregroundStyle(InkletTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
         .frame(maxWidth: 580, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
