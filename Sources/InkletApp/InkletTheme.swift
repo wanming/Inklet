@@ -37,6 +37,8 @@ extension AppAppearance {
     }
 }
 
+// Earlier tokens. New UI uses the tokens in InkletDesignTokens.swift; these are
+// removed as each surface migrates (docs/DESIGN.md, "Migration from the earlier style").
 enum InkletTheme {
     static let cornerRadius: CGFloat = 12
     static let controlRadius: CGFloat = 8
