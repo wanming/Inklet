@@ -162,7 +162,7 @@ final class LocalModelTests: XCTestCase {
 
     func testBuiltInCatalogPinsDownloadsAndRecommendsByMemory() {
         let gigabyte: UInt64 = 1_073_741_824
-        XCTAssertEqual(BuiltInModel.all.map(\.id), ["qwen3.5-4b", "gemma-4-e4b"])
+        XCTAssertEqual(BuiltInModel.all.map(\.id), ["gemma-4-e4b", "qwen3.5-4b"])
         XCTAssertEqual(BuiltInModel.recommended(forPhysicalMemoryBytes: 8 * gigabyte), .qwen35_4B)
         XCTAssertEqual(BuiltInModel.recommended(forPhysicalMemoryBytes: 16 * gigabyte), .gemma4E4B)
         XCTAssertEqual(
@@ -174,6 +174,49 @@ final class LocalModelTests: XCTestCase {
             XCTAssertEqual(model.revision.count, 40, model.id)
             XCTAssertGreaterThan(model.sizeBytes, 1_000_000_000, model.id)
         }
+    }
+
+    func testNewInstallStartsWithTheBuiltInModelForThisMac() throws {
+        let gigabyte: UInt64 = 1_073_741_824
+        func initialConfig(
+            hasSavedConfig: Bool = false,
+            hasSavedAPIKey: Bool = false,
+            didCompleteOnboarding: Bool = false,
+            hasPendingMigration: Bool = false,
+            isEngineAvailable: Bool = true,
+            memoryGB: UInt64 = 16
+        ) -> AppConfig? {
+            BuiltInFirstLaunch.initialConfig(
+                hasSavedConfig: hasSavedConfig,
+                hasSavedAPIKey: hasSavedAPIKey,
+                didCompleteOnboarding: didCompleteOnboarding,
+                hasPendingMigration: hasPendingMigration,
+                isEngineAvailable: isEngineAvailable,
+                physicalMemoryBytes: memoryGB * gigabyte
+            )
+        }
+
+        let config = try XCTUnwrap(initialConfig())
+        XCTAssertEqual(config.providerID, LLMProviderPreset.builtIn.id)
+        XCTAssertEqual(config.model, BuiltInModel.gemma4E4B.id)
+        XCTAssertEqual(initialConfig(memoryGB: 8)?.model, BuiltInModel.qwen35_4B.id)
+
+        XCTAssertNil(initialConfig(hasSavedConfig: true))
+        XCTAssertNil(initialConfig(hasSavedAPIKey: true))
+        XCTAssertNil(initialConfig(didCompleteOnboarding: true))
+        XCTAssertNil(initialConfig(hasPendingMigration: true))
+        XCTAssertNil(initialConfig(isEngineAvailable: false))
+    }
+
+    func testConfigStoreReportsWhetherAConfigWasSaved() throws {
+        let suiteName = "LocalModelTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = UserDefaultsConfigStore(userDefaults: defaults)
+
+        XCTAssertFalse(store.hasSavedConfig)
+        try store.save(AppConfig.defaultConfig())
+        XCTAssertTrue(store.hasSavedConfig)
     }
 
     func testChoosingBuiltInPrefersADownloadedModel() {

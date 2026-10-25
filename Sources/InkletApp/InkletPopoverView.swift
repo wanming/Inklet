@@ -35,6 +35,7 @@ struct InkletPopoverView: View {
     private let actionBarHeight: CGFloat = 36
     private let dividerHeight: CGFloat = 1
     private let staleResultBannerHeight: CGFloat = 24
+    private let builtInModelStripHeight: CGFloat = 40
     private let resultCopyButtonInset: CGFloat = 30
     private let streamingResultEndID = "streamingResultEnd"
     private var isBusy: Bool {
@@ -95,6 +96,7 @@ struct InkletPopoverView: View {
             + inputHeight
             + (displayedResultText.isEmpty ? 0 : dividerHeight + resultPanelHeight)
             + (model.errorMessage == nil ? 0 : dividerHeight + min(statusMeasuredHeight, 120))
+            + (model.builtInModelDownloadStatusText == nil ? 0 : dividerHeight + builtInModelStripHeight)
             + dividerHeight
             + max(actionBarHeight, actionBarMeasuredHeight)
     }
@@ -171,6 +173,7 @@ struct InkletPopoverView: View {
             commandInput
             resultPanel
             statusStrip
+            builtInModelStrip
             Divider().opacity(0.45)
             actionBar
         }
@@ -336,6 +339,41 @@ struct InkletPopoverView: View {
             }
             .frame(height: min(statusMeasuredHeight, 120))
             .background(Color.red.opacity(0.13))
+        }
+    }
+
+    @ViewBuilder
+    private var builtInModelStrip: some View {
+        if let state = model.builtInModelDownloadState, let statusText = model.builtInModelDownloadStatusText {
+            Divider().opacity(0.45)
+            HStack(spacing: 10) {
+                switch state {
+                case .downloading(let fraction):
+                    ProgressView(value: fraction)
+                        .frame(width: 72)
+                case .verifying:
+                    ProgressView()
+                        .controlSize(.small)
+                case .notDownloaded, .ready, .failed:
+                    Image(systemName: "arrow.down.circle")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(InkletTheme.primary.opacity(0.82))
+                }
+                Text(statusText)
+                    .font(.system(size: 11))
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let actionTitle = model.builtInModelDownloadActionTitle {
+                    Button(actionTitle) {
+                        model.downloadBuiltInModel()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+            }
+            .padding(.horizontal, 14)
+            .frame(height: builtInModelStripHeight)
         }
     }
 

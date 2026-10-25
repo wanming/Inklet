@@ -20,6 +20,8 @@ final class InkletPopoverViewModel: ObservableObject {
     @Published var appearance: AppAppearance
     @Published var voiceShortcutHint: VoiceInputConfig.Shortcut?
     @Published private(set) var dictationPhase: WritingDictationCoordinator.Phase = .idle
+    /// Set while the selected built-in model can't run yet, so the popover shows its download.
+    @Published private(set) var builtInModelDownloadState: BuiltInModelDownloadState?
 
     var onHidePopover: (() -> Void)?
     var onFocusPopover: (() -> Void)?
@@ -53,6 +55,39 @@ final class InkletPopoverViewModel: ObservableObject {
 
     var currentModelName: String {
         LLMProviderPreset.preset(id: config.providerID).displayModelName(config.model)
+    }
+
+    var builtInModelDownloadStatusText: String? {
+        guard let state = builtInModelDownloadState, let builtInModel = BuiltInModel.model(id: config.model) else {
+            return nil
+        }
+        switch state {
+        case .notDownloaded:
+            return L10n.format(
+                "popover.localModel.needsDownload",
+                builtInModel.displayName,
+                builtInModel.localizedDownloadSize
+            )
+        case .downloading(let fraction):
+            return L10n.format("popover.localModel.downloading", builtInModel.displayName, fraction * 100)
+        case .verifying:
+            return L10n.format("popover.localModel.verifying", builtInModel.displayName)
+        case .ready:
+            return nil
+        case .failed(let message):
+            return message
+        }
+    }
+
+    var builtInModelDownloadActionTitle: String? {
+        switch builtInModelDownloadState {
+        case .notDownloaded:
+            L10n.text("settings.localModel.download")
+        case .failed:
+            L10n.text("settings.localModel.retry")
+        case .downloading, .verifying, .ready, nil:
+            nil
+        }
     }
 
     var currentVoiceInputConfig: VoiceInputConfig {
@@ -126,6 +161,7 @@ final class InkletPopoverViewModel: ObservableObject {
     private var sourceDictationPresentationSnapshot: SourceDictationPresentationSnapshot?
     private var isRestoringSourceDictationPresentation = false
     private var languageCancellable: AnyCancellable?
+    private var builtInModelDownloadsCancellable: AnyCancellable?
     private var dictationErrorMessage: String?
 
     init(
@@ -167,6 +203,12 @@ final class InkletPopoverViewModel: ObservableObject {
             .sink { [weak self] _ in
                 self?.refreshLocalizedContent()
             }
+        refreshBuiltInModelDownloadState(BuiltInModelDownloads.shared.states)
+        builtInModelDownloadsCancellable = BuiltInModelDownloads.shared.$states
+            .dropFirst()
+            .sink { [weak self] states in
+                self?.refreshBuiltInModelDownloadState(states)
+            }
     }
 
     private func refreshLocalizedContent() {
@@ -197,6 +239,7 @@ final class InkletPopoverViewModel: ObservableObject {
             config: config
         )
         modes = Self.resolvedVisibleModes(from: config)
+        refreshBuiltInModelDownloadState(BuiltInModelDownloads.shared.states)
         warmUpLocalModelIfNeeded()
         popoverSession = WritingPopoverSessionState(selectedModeID: selectedModeID)
         modePickerState = WritingModePickerState(
@@ -257,6 +300,21 @@ final class InkletPopoverViewModel: ObservableObject {
         Task.detached(priority: .utility) {
             await provider.warmUp(model: model)
         }
+    }
+
+    /// `states` is passed in because the published value is sent before the store holds it.
+    private func refreshBuiltInModelDownloadState(_ states: [String: BuiltInModelDownloadState]) {
+        guard config.resolvedProviderPreset.isBuiltIn, let builtInModel = BuiltInModel.model(id: config.model) else {
+            builtInModelDownloadState = nil
+            return
+        }
+        let state = states[builtInModel.id] ?? .notDownloaded
+        builtInModelDownloadState = state == .ready ? nil : state
+    }
+
+    func downloadBuiltInModel() {
+        guard let builtInModel = BuiltInModel.model(id: config.model) else { return }
+        BuiltInModelDownloads.shared.download(builtInModel)
     }
 
     private func refreshVoiceShortcutHint() {
@@ -446,6 +504,10 @@ final class InkletPopoverViewModel: ObservableObject {
 
     func submit() {
         guard !isBusy else {
+            return
+        }
+        // Until the built-in model is downloaded, the download strip says why nothing is generated.
+        if builtInModelDownloadState != nil, resultText.isEmpty || isResultStale {
             return
         }
 

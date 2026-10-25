@@ -47,7 +47,7 @@ final class LLMProviderTests: XCTestCase {
         XCTAssertEqual(defaults["openrouter"], "openai/gpt-5.4-mini")
         XCTAssertEqual(defaults["custom-openai-compatible"], "gpt-5-mini")
         XCTAssertEqual(defaults["ollama"], "qwen3.5:4b")
-        XCTAssertEqual(defaults["inklet-built-in"], "qwen3.5-4b")
+        XCTAssertEqual(defaults["inklet-built-in"], "gemma-4-e4b")
         XCTAssertTrue(LLMProviderPreset.all.allSatisfy { !$0.defaultModel.isEmpty })
     }
 

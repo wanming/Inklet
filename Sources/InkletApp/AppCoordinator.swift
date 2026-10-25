@@ -105,6 +105,11 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         let apiKeyStore = LocalAPIKeyStore()
         let migrationPresentationModel = LegacyMigrationPresentationModel(outcome: migrationOutcome)
         let accessibilityPermissionService = AccessibilityPermissionService()
+        AppCoordinator.startWithBuiltInModelIfFirstLaunch(
+            configStore: configStore,
+            apiKeyStore: apiKeyStore,
+            migrationOutcome: migrationOutcome
+        )
 
         self.migrationOutcome = migrationOutcome
         self.migrator = migrator
@@ -599,6 +604,39 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
             registerConfiguredHotkey()
         }
         refreshMigrationImportEligibility()
+    }
+
+    /// A new install starts with the built-in model and downloads it right away, so the first writing
+    /// popover shows the download's progress instead of asking for an API key. This runs before the
+    /// settings and popover models load the config.
+    private static func startWithBuiltInModelIfFirstLaunch(
+        configStore: UserDefaultsConfigStore,
+        apiKeyStore: LocalAPIKeyStore,
+        migrationOutcome: LegacySandboxMigrationOutcome
+    ) {
+        guard !configStore.hasSavedConfig else { return }
+        let hasSavedAPIKey = LLMProviderPreset.all.contains { preset in
+            apiKeyStore.loadAPIKey(forProviderID: preset.id)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty == false
+        }
+        guard let config = BuiltInFirstLaunch.initialConfig(
+            hasSavedConfig: false,
+            hasSavedAPIKey: hasSavedAPIKey,
+            didCompleteOnboarding: UserDefaults.standard.bool(forKey: InkletPreferenceKeys.didCompleteOnboarding),
+            hasPendingMigration: migrationOutcome.hasIncompleteComponents,
+            isEngineAvailable: BuiltInModelServer.isEngineAvailable,
+            physicalMemoryBytes: ProcessInfo.processInfo.physicalMemory
+        ),
+            let model = BuiltInModel.model(id: config.model),
+            (try? configStore.save(config)) != nil
+        else {
+            return
+        }
+        let downloads = BuiltInModelDownloads.shared
+        if !downloads.isInstalled(model) {
+            downloads.download(model)
+        }
     }
 
     private func showPermissionSettingsIfNeeded() {

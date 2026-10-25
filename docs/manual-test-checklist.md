@@ -150,6 +150,7 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 
 ## Local Models
 
+- New install on Apple silicon (reset local state and move downloaded models aside): confirm Inklet starts with **Built-in** and the model for this Mac's memory, starts downloading on first launch, and the writing popover shows the download's progress, then transforms text once it finishes. With an API key already saved, confirm the provider stays as it was.
 - Built-in on Apple silicon: choose **Built-in**, confirm the recommended model matches this Mac's memory, download it, cancel midway, download again, and confirm it resumes rather than restarting.
 - After the download shows **Ready**, transform text and translate a selection with Wi-Fi turned off. The first request may take longer while the model loads.
 - Switch between Qwen3.5 4B and Gemma 4 E4B, delete one model, and confirm writing then asks you to download it.

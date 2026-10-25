@@ -276,6 +276,10 @@ public struct UserDefaultsConfigStore: ConfigStore {
         self.decoder = decoder
     }
 
+    public var hasSavedConfig: Bool {
+        userDefaults.data(forKey: key) != nil
+    }
+
     public func load() throws -> AppConfig {
         guard let data = userDefaults.data(forKey: key) else {
             return AppConfig.defaultConfig()

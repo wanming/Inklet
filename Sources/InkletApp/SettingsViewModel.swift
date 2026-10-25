@@ -47,8 +47,8 @@ final class SettingsViewModel: ObservableObject {
     private var pronunciationPreviewTaskID: UUID?
     private var modelCatalogRefreshTask: Task<Void, Never>?
     private var modelCatalogRefreshTaskID: UUID?
-    private let builtInModelStore: BuiltInModelStore
-    private var builtInModelDownloadTasks: [String: Task<Void, Never>] = [:]
+    private let builtInModelDownloads: BuiltInModelDownloads
+    private var builtInModelDownloadsCancellable: AnyCancellable?
     private var localServerRefreshTask: Task<Void, Never>?
     private var savedConfig: AppConfig
     private var savedProviderAPIKey: String
@@ -63,7 +63,7 @@ final class SettingsViewModel: ObservableObject {
         modelCatalogService: ModelCatalogService = ModelCatalogService(),
         historyStore: any HistoryStore = JSONLHistoryStore(),
         microphoneDeviceCatalog: MicrophoneDeviceCatalog = MicrophoneDeviceCatalog(),
-        builtInModelStore: BuiltInModelStore = .current()
+        builtInModelDownloads: BuiltInModelDownloads? = nil
     ) {
         let loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         self.configStore = configStore
@@ -71,10 +71,9 @@ final class SettingsViewModel: ObservableObject {
         self.modelCatalogService = modelCatalogService
         self.historyStore = historyStore
         self.microphoneDeviceCatalog = microphoneDeviceCatalog
-        self.builtInModelStore = builtInModelStore
-        self.builtInModelStates = Dictionary(uniqueKeysWithValues: BuiltInModel.all.map { model in
-            (model.id, builtInModelStore.isInstalled(model) ? .ready : .notDownloaded)
-        })
+        let builtInModelDownloads = builtInModelDownloads ?? .shared
+        self.builtInModelDownloads = builtInModelDownloads
+        self.builtInModelStates = builtInModelDownloads.states
         self.localServerStatus = nil
         self.pronunciationPreviewPlaybackService = SpeechPlaybackService()
         self.config = loadedConfig
@@ -110,6 +109,12 @@ final class SettingsViewModel: ObservableObject {
             self?.pronunciationPreviewState = nil
             self?.refreshMigrationWorkflowIdle()
         }
+        builtInModelDownloadsCancellable = builtInModelDownloads.$states
+            .dropFirst()
+            .sink { [weak self] states in
+                self?.builtInModelStates = states
+                self?.refreshMigrationWorkflowIdle()
+            }
         installAutoSave()
     }
 
@@ -162,7 +167,7 @@ final class SettingsViewModel: ObservableObject {
         localServerStatus = nil
         config.providerID = preset.id
         config.model = preset.isBuiltIn
-            ? BuiltInModel.preferred(recommended: recommendedBuiltInModel) { builtInModelStore.isInstalled($0) }.id
+            ? BuiltInModel.preferred(recommended: recommendedBuiltInModel) { builtInModelDownloads.isInstalled($0) }.id
             : preset.defaultModel
         save()
         if isLocalServerProvider {
@@ -202,60 +207,23 @@ final class SettingsViewModel: ObservableObject {
     }
 
     func downloadBuiltInModel(_ builtInModel: BuiltInModel) {
-        guard !isMigrationMaintenanceActive, builtInModelDownloadTasks[builtInModel.id] == nil else { return }
-        let store = builtInModelStore
-        builtInModelStates[builtInModel.id] = .downloading(fraction: 0)
-        let reportProgress: BuiltInModelDownloader.ProgressHandler = { [weak self] received, total in
-            let fraction = total > 0 ? Double(received) / Double(total) : 0
-            Task { @MainActor [weak self] in
-                self?.updateBuiltInModelProgress(builtInModel, fraction: fraction)
-            }
-        }
-        let task = Task { [weak self] in
-            do {
-                try await BuiltInModelDownloader().download(builtInModel, into: store, progress: reportProgress)
-                self?.finishBuiltInModelDownload(builtInModel, state: .ready)
-            } catch is CancellationError {
-                self?.finishBuiltInModelDownload(builtInModel, state: .notDownloaded)
-            } catch let error as LocalModelError {
-                self?.finishBuiltInModelDownload(builtInModel, state: .failed(message: error.userFacingMessage))
-            } catch {
-                self?.finishBuiltInModelDownload(
-                    builtInModel,
-                    state: .failed(message: error.localizedDescription)
-                )
-            }
-        }
-        builtInModelDownloadTasks[builtInModel.id] = task
-        refreshMigrationWorkflowIdle()
+        guard !isMigrationMaintenanceActive else { return }
+        builtInModelDownloads.download(builtInModel)
     }
 
     func cancelBuiltInModelDownload(_ builtInModel: BuiltInModel) {
-        builtInModelDownloadTasks[builtInModel.id]?.cancel()
+        builtInModelDownloads.cancel(builtInModel)
     }
 
     func deleteBuiltInModel(_ builtInModel: BuiltInModel) {
-        guard !isMigrationMaintenanceActive, builtInModelDownloadTasks[builtInModel.id] == nil else { return }
+        guard !isMigrationMaintenanceActive, !builtInModelDownloads.isDownloading(builtInModel) else { return }
         let server = BuiltInModelServer.shared
         Task { await server.stop() }
         do {
-            try builtInModelStore.delete(builtInModel)
-            builtInModelStates[builtInModel.id] = .notDownloaded
+            try builtInModelDownloads.delete(builtInModel)
         } catch {
             message = L10n.format("settings.error.saveFailed", String(describing: error))
         }
-    }
-
-    private func updateBuiltInModelProgress(_ builtInModel: BuiltInModel, fraction: Double) {
-        guard builtInModelDownloadTasks[builtInModel.id] != nil else { return }
-        builtInModelStates[builtInModel.id] = fraction >= 1 ? .verifying : .downloading(fraction: fraction)
-    }
-
-    private func finishBuiltInModelDownload(_ builtInModel: BuiltInModel, state: BuiltInModelDownloadState) {
-        builtInModelDownloadTasks[builtInModel.id] = nil
-        // A cancelled download keeps its partial file, so the next download resumes.
-        builtInModelStates[builtInModel.id] = builtInModelStore.isInstalled(builtInModel) ? .ready : state
-        refreshMigrationWorkflowIdle()
     }
 
     func refreshLocalServerModels() {
@@ -760,7 +728,7 @@ final class SettingsViewModel: ObservableObject {
             autoSaveCancellable = nil
             pronunciationPreviewTasks.values.forEach { $0.cancel() }
             modelCatalogRefreshTask?.cancel()
-            builtInModelDownloadTasks.values.forEach { $0.cancel() }
+            builtInModelDownloads.cancelAll()
             localServerRefreshTask?.cancel()
             pronunciationPreviewPlaybackService.stop()
             pronunciationPreviewState = nil
@@ -776,9 +744,7 @@ final class SettingsViewModel: ObservableObject {
         for task in previewTasks {
             await task.value
         }
-        for task in Array(builtInModelDownloadTasks.values) {
-            await task.value
-        }
+        await builtInModelDownloads.waitForAll()
 
         let catalogTaskID = modelCatalogRefreshTaskID
         await modelCatalogRefreshTask?.value
@@ -795,7 +761,7 @@ final class SettingsViewModel: ObservableObject {
             && pronunciationPreviewTasks.isEmpty
             && modelCatalogRefreshTask == nil
             && !isRefreshingModelCatalog
-            && builtInModelDownloadTasks.isEmpty
+            && !builtInModelDownloads.isDownloading
     }
 
     func openAccessibilitySettings() {

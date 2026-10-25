@@ -58,9 +58,9 @@ public struct BuiltInModel: Equatable, Identifiable, Sendable {
         recommendedMemoryGB: 16
     )
 
-    public static let all: [BuiltInModel] = [.qwen35_4B, .gemma4E4B]
+    public static let all: [BuiltInModel] = [.gemma4E4B, .qwen35_4B]
 
-    public static let recommended = qwen35_4B
+    public static let recommended = gemma4E4B
 
     public static func model(id: String) -> BuiltInModel? {
         all.first { $0.id == id }
@@ -82,6 +82,33 @@ public struct BuiltInModel: Equatable, Identifiable, Sendable {
             return recommended
         }
         return all.first(where: isInstalled) ?? recommended
+    }
+}
+
+/// New installs on a Mac that can run the built-in engine start with a built-in model, so Inklet works
+/// without an API key. Anyone who already set Inklet up, or still has data to import from the sandboxed
+/// version, keeps the usual default.
+public enum BuiltInFirstLaunch {
+    public static func initialConfig(
+        hasSavedConfig: Bool,
+        hasSavedAPIKey: Bool,
+        didCompleteOnboarding: Bool,
+        hasPendingMigration: Bool,
+        isEngineAvailable: Bool,
+        physicalMemoryBytes: UInt64
+    ) -> AppConfig? {
+        guard !hasSavedConfig,
+              !hasSavedAPIKey,
+              !didCompleteOnboarding,
+              !hasPendingMigration,
+              isEngineAvailable
+        else {
+            return nil
+        }
+        var config = AppConfig.defaultConfig()
+        config.providerID = LLMProviderPreset.builtIn.id
+        config.model = BuiltInModel.recommended(forPhysicalMemoryBytes: physicalMemoryBytes).id
+        return config
     }
 }
 
