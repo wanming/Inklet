@@ -44,30 +44,37 @@ final class LocalizationSettingsLayoutTests: XCTestCase {
     }
 
     func testSidebarLabelsFitAtTheActualSettingsWidthInEveryLanguage() throws {
+        let itemWidth = SettingsLayoutMetrics.sidebarWidth - InkletTheme.Spacing.xs * 2
+        let textWidth = itemWidth - InkletTheme.Spacing.xs * 3 - SettingsLayoutMetrics.sidebarIconWidth
         for language in InterfaceLanguage.allCases where language != .system {
             try withLanguage(language) {
                 var totalHeight: CGFloat = 0
                 for section in SettingsSection.allCases {
                     let view = SettingsSidebarLabel(section: section, isSelected: true)
-                        .frame(width: 172)
+                        .frame(width: itemWidth)
                     let size = NSHostingView(rootView: view).fittingSize
                     let textBounds = (section.title as NSString).boundingRect(
-                        with: NSSize(width: 112, height: 1000),
+                        with: NSSize(width: textWidth, height: 1000),
                         options: [.usesLineFragmentOrigin, .usesFontLeading],
-                        attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .semibold)]
+                        attributes: [.font: NSFont.systemFont(ofSize: 13, weight: .medium)]
                     )
-                    XCTAssertEqual(size.width, 172, accuracy: 1, "\(language): \(section)")
-                    XCTAssertGreaterThanOrEqual(size.height, ceil(textBounds.height) + 15, "\(language): \(section)")
+                    XCTAssertEqual(size.width, itemWidth, accuracy: 1, "\(language): \(section)")
+                    XCTAssertGreaterThanOrEqual(size.height, SettingsLayoutMetrics.sidebarItemHeight, "\(language): \(section)")
+                    XCTAssertGreaterThanOrEqual(
+                        size.height,
+                        ceil(textBounds.height) + SettingsLayoutMetrics.sidebarItemVerticalPadding * 2,
+                        "\(language): \(section)"
+                    )
                     totalHeight += size.height + 2
                 }
                 XCTAssertLessThanOrEqual(totalHeight, 420, language.rawValue)
                 try LocalizationSnapshot.record(
                     VStack(spacing: 2) {
                         ForEach(SettingsSection.allCases) { section in
-                            SettingsSidebarLabel(section: section, isSelected: true)
+                            SettingsSidebarLabel(section: section, isSelected: section == .general)
                         }
                     }
-                    .frame(width: 172),
+                    .frame(width: itemWidth),
                     name: "settings-sidebar-\(language.localeIdentifier)"
                 )
             }
