@@ -38,12 +38,33 @@ final class SettingsViewSourceTests: XCTestCase {
         ))
     }
 
+    func testLiveDictationHasItsOwnSectionWithAnEnableSwitch() throws {
+        let source = try settingsViewSource()
+        let writeRange = try XCTUnwrap(source.range(of: "private var writeAssistantPanel"))
+        let dictationRange = try XCTUnwrap(source.range(
+            of: "\n    private var dictationSettingsPanel",
+            range: writeRange.upperBound..<source.endIndex
+        ))
+        let writeBlock = source[writeRange.lowerBound..<dictationRange.lowerBound]
+        let selectionRange = try XCTUnwrap(source.range(
+            of: "\n    private var selectionActionsPanel",
+            range: dictationRange.upperBound..<source.endIndex
+        ))
+        let dictationBlock = source[dictationRange.lowerBound..<selectionRange.lowerBound]
+
+        XCTAssertTrue(source.contains("case dictation = \"Live Dictation\""))
+        XCTAssertFalse(writeBlock.contains("dictationSettingsPanel"))
+        XCTAssertTrue(dictationBlock.contains("$model.config.voiceInput.isEnabled"))
+        XCTAssertTrue(dictationBlock.contains(".disabled(!model.config.voiceInput.isEnabled)"))
+        XCTAssertTrue(dictationBlock.contains("ForEach(VoiceInputConfig.Shortcut.settingsCases)"))
+        XCTAssertFalse(dictationBlock.contains("ForEach(VoiceInputConfig.Shortcut.allCases)"))
+    }
+
     func testWriteAssistantExposesRecoveryModelWithoutEditableEndpoint() throws {
         let source = try settingsViewSource()
 
         XCTAssertFalse(source.contains("case voiceWriteAssistant"))
-        XCTAssertTrue(source.contains("settings.group.writing"))
-        XCTAssertTrue(source.contains("settings.group.dictation"))
+        XCTAssertFalse(source.contains("settings.group.writing"))
         XCTAssertTrue(source.contains("$model.config.voiceInput.shortcut"))
         XCTAssertTrue(source.contains("settings.row.microphone"))
         XCTAssertTrue(source.contains("selectedMicrophoneBinding"))

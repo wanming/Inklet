@@ -8,10 +8,10 @@ final class WritingDictationLocalizationTests: XCTestCase {
     ]
 
     private let dictationKeys: Set<String> = [
-        "settings.group.writing",
-        "settings.group.writing.help",
-        "settings.group.dictation",
-        "settings.group.dictation.help",
+        "settings.section.dictation",
+        "settings.description.dictation",
+        "settings.row.dictationEnabled",
+        "settings.help.dictationEnabled",
         "settings.group.dictationAdvanced",
         "settings.row.dictationShortcut",
         "settings.help.dictationShortcut",
@@ -97,14 +97,16 @@ final class WritingDictationLocalizationTests: XCTestCase {
         "voice.error.invalidSpeechEndpoint",
         "voice.error.missingSpeechAPIKey",
         "popover.hint.voice",
+        "settings.group.writing",
+        "settings.group.dictation\"",
         "VoiceInputConfig.RecordingMode",
         "VoiceInputConfig.SpeechProfile",
         "VoiceInputConfig.PostTranscriptionAction",
     ]
 
     private let expectedEnglishValues = [
-        "settings.group.writing": "Writing",
-        "settings.group.dictation": "Dictation",
+        "settings.section.dictation": "Live Dictation",
+        "settings.row.dictationEnabled": "Enable Live Dictation",
         "settings.group.dictationAdvanced": "Advanced Dictation",
         "settings.row.dictationShortcut": "Hold shortcut",
         "settings.row.fallbackSpeechModel": "Recovery model",
@@ -119,8 +121,8 @@ final class WritingDictationLocalizationTests: XCTestCase {
     ]
 
     private let expectedSimplifiedChineseValues = [
-        "settings.group.writing": "写作",
-        "settings.group.dictation": "听写",
+        "settings.section.dictation": "实时听写",
+        "settings.row.dictationEnabled": "启用实时听写",
         "settings.group.dictationAdvanced": "高级听写",
         "settings.row.dictationShortcut": "长按快捷键",
         "settings.row.fallbackSpeechModel": "恢复转写模型",

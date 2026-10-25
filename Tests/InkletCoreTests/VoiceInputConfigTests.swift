@@ -82,6 +82,59 @@ final class VoiceInputConfigTests: XCTestCase {
         )
     }
 
+    func testDictationIsEnabledByDefault() {
+        let config = VoiceInputConfig.defaultConfig()
+
+        XCTAssertTrue(config.isEnabled)
+        XCTAssertEqual(config.activeShortcut, .rightOption)
+    }
+
+    func testTurningDictationOffKeepsTheChosenShortcut() {
+        var config = VoiceInputConfig.defaultConfig()
+        config.shortcut = .leftCommand
+        config.isEnabled = false
+
+        XCTAssertEqual(config.shortcut, .leftCommand)
+        XCTAssertEqual(config.activeShortcut, .disabled)
+    }
+
+    func testLegacyDisabledShortcutDecodesAsTurnedOffWithDefaultShortcut() throws {
+        let data = try JSONSerialization.data(withJSONObject: ["shortcut": "disabled"])
+
+        let decoded = try JSONDecoder().decode(VoiceInputConfig.self, from: data)
+
+        XCTAssertFalse(decoded.isEnabled)
+        XCTAssertEqual(decoded.shortcut, .rightOption)
+        XCTAssertEqual(decoded.activeShortcut, .disabled)
+    }
+
+    func testLegacyShortcutWithoutEnabledFlagDecodesAsTurnedOn() throws {
+        let data = try JSONSerialization.data(withJSONObject: ["shortcut": "leftOption"])
+
+        let decoded = try JSONDecoder().decode(VoiceInputConfig.self, from: data)
+
+        XCTAssertTrue(decoded.isEnabled)
+        XCTAssertEqual(decoded.activeShortcut, .leftOption)
+    }
+
+    func testEnabledFlagRoundTrips() throws {
+        var config = VoiceInputConfig.defaultConfig()
+        config.shortcut = .rightCommand
+        config.isEnabled = false
+
+        let decoded = try JSONDecoder().decode(VoiceInputConfig.self, from: JSONEncoder().encode(config))
+
+        XCTAssertEqual(decoded, config)
+    }
+
+    func testSettingsShortcutChoicesExcludeDisabled() {
+        XCTAssertFalse(VoiceInputConfig.Shortcut.settingsCases.contains(.disabled))
+        XCTAssertEqual(
+            Set(VoiceInputConfig.Shortcut.settingsCases),
+            Set(VoiceInputConfig.Shortcut.allCases).subtracting([.disabled])
+        )
+    }
+
     func testAppConfigDefaultsIncludeVoiceInputConfig() {
         let config = AppConfig.defaultConfig()
 
@@ -141,7 +194,7 @@ final class VoiceInputConfigTests: XCTestCase {
             JSONSerialization.jsonObject(with: JSONEncoder().encode(decoded)) as? [String: Any]
         )
         XCTAssertEqual(Set(object.keys), [
-            "shortcut", "speechEndpoint", "speechModel", "microphoneDeviceID"
+            "isEnabled", "shortcut", "speechEndpoint", "speechModel", "microphoneDeviceID"
         ])
     }
 }
