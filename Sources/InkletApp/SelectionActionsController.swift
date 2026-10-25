@@ -572,7 +572,7 @@ final class SelectionActionsController {
                     service: SelectionTranslationService(provider: provider),
                     cache: selectionTranslationCache
                 )
-                let translated = try await service.translate(
+                let translation = try await service.translation(
                     sourceText: sourceText,
                     targetLanguageName: targetLanguageName,
                     systemPrompt: systemPrompt,
@@ -580,6 +580,7 @@ final class SelectionActionsController {
                     providerID: providerID,
                     timeoutSeconds: config.effectiveTimeoutSeconds
                 )
+                let translated = translation.text
                 guard !Task.isCancelled, !isStopping, !isMigrationMaintenanceActive else { return }
                 try? self.historyStore.append(HistoryItem(
                     source: .selection,
@@ -593,7 +594,11 @@ final class SelectionActionsController {
                 await MainActor.run {
                     guard !self.isStopping else { return }
                     self.currentTranslationText = translated
-                    self.selectionActionWindowController.showTranslation(translated, kind: .translation)
+                    self.selectionActionWindowController.showTranslation(
+                        translated,
+                        errorMessage: translation.wasTruncated ? L10n.text("popover.warning.outputTruncated") : nil,
+                        kind: .translation
+                    )
                 }
             } catch is CancellationError {
             } catch {

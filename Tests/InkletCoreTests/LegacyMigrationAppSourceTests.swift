@@ -247,7 +247,7 @@ final class LegacyMigrationAppSourceTests: XCTestCase {
         )
         try assertTokensAppearInOrder(
             [
-                "let translated = try await service.translate",
+                "let translation = try await service.translation",
                 "guard !Task.isCancelled, !isStopping, !isMigrationMaintenanceActive else { return }",
                 "historyStore.append",
             ],
