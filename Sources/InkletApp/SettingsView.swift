@@ -410,8 +410,15 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 }
             }
+        }
+    }
 
-            settingsRow(L10n.text("settings.row.openAIAPIKey"), help: L10n.text("settings.help.openAIAPIKey.voiceOnly")) {
+    /// The OpenAI key that pronunciation and OpenAI dictation need when writing uses another provider.
+    /// It shows next to the feature that needs it instead of in General; every copy edits the same key.
+    @ViewBuilder
+    private func openAIVoiceKeyRow(help: String) -> some View {
+        if !model.usesOpenAIForWriting {
+            settingsRow(L10n.text("settings.row.openAIAPIKey"), help: help) {
                 SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $model.openAIAPIKey)
                     .textFieldStyle(.roundedBorder)
             }
@@ -786,6 +793,8 @@ struct SettingsView: View {
                 .frame(maxWidth: 320, alignment: .leading)
             }
 
+            openAIVoiceKeyRow(help: L10n.text("settings.help.openAIAPIKey.dictation"))
+
             DisclosureGroup {
                 VStack(alignment: .leading, spacing: 12) {
                     settingsRow(
@@ -983,6 +992,8 @@ struct SettingsView: View {
                 }
                 .frame(maxWidth: 320, alignment: .leading)
             }
+
+            openAIVoiceKeyRow(help: L10n.text("settings.help.openAIAPIKey.pronunciation"))
         }
     }
 
