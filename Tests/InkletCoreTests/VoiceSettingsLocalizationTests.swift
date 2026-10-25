@@ -2,9 +2,7 @@ import XCTest
 
 final class VoiceSettingsLocalizationTests: XCTestCase {
     func testHoldOnlyDictationKeepsCurrentShortcutAndLegacyHistoryLocalization() throws {
-        let packageRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let localizationURL = packageRoot.appendingPathComponent("Sources/InkletApp/InkletLocalization.swift")
-        let source = try String(contentsOf: localizationURL, encoding: .utf8)
+        let source = try LocalizationSourceFixture.source()
 
         XCTAssertEqual(countDictionaryEntries("settings.quickStart.voice.pressAndHold", in: source), 10)
         XCTAssertEqual(countDictionaryEntries("settings.history.source.voice", in: source), 10)
@@ -15,9 +13,7 @@ final class VoiceSettingsLocalizationTests: XCTestCase {
     }
 
     func testForceSelectionModeCopyExistsInAllLanguageTables() throws {
-        let packageRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let localizationURL = packageRoot.appendingPathComponent("Sources/InkletApp/InkletLocalization.swift")
-        let source = try String(contentsOf: localizationURL, encoding: .utf8)
+        let source = try LocalizationSourceFixture.source()
 
         XCTAssertTrue(source.contains(#""settings.row.forceSelectionMode": "Force Selection""#))
         XCTAssertTrue(source.contains(

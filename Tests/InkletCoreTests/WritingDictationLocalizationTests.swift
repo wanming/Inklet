@@ -230,7 +230,7 @@ final class WritingDictationLocalizationTests: XCTestCase {
     }
 
     private func localizationSource() throws -> String {
-        try sourceFile("Sources/InkletApp/InkletLocalization.swift")
+        try LocalizationSourceFixture.source()
     }
 
     private func sourceFile(_ relativePath: String) throws -> String {
@@ -243,7 +243,7 @@ final class WritingDictationLocalizationTests: XCTestCase {
 
     private func localizationTableIDs(in source: String) throws -> [String] {
         let regex = try NSRegularExpression(
-            pattern: #"^[ \t]*private[ \t]+static[ \t]+let[ \t]+([A-Za-z_][A-Za-z0-9_]*):[ \t]*\[String:[ \t]*String\][ \t]*=[ \t]*\["#,
+            pattern: #"^[ \t]*static[ \t]+let[ \t]+([A-Za-z_][A-Za-z0-9_]*):[ \t]*\[String:[ \t]*String\][ \t]*=[ \t]*\["#,
             options: .anchorsMatchLines
         )
         let sourceRange = NSRange(source.startIndex..<source.endIndex, in: source)
@@ -254,7 +254,7 @@ final class WritingDictationLocalizationTests: XCTestCase {
     }
 
     private func localizationTableSource(_ tableID: String, in source: String) throws -> String {
-        let declaration = "    private static let \(tableID): [String: String] = ["
+        let declaration = "    static let \(tableID): [String: String] = ["
         let declarationRange = try XCTUnwrap(
             source.range(of: declaration),
             "Missing localization table declaration for \(tableID)"
