@@ -123,13 +123,8 @@ struct SettingsView: View {
         }
         .frame(width: 860, height: 560)
         .environment(\.locale, Locale(identifier: localeIdentifier))
-        .background(InkletTheme.panelBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(InkletTheme.strongBorder)
-        }
-        .shadow(color: .black.opacity(0.75), radius: 48, x: 0, y: 28)
+        .background(InkletTheme.surface)
+        .ignoresSafeArea()
         .task {
             await model.refreshModelCatalogIfNeeded()
         }
@@ -183,68 +178,42 @@ struct SettingsView: View {
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 10) {
-                    PenNibShape()
-                        .stroke(style: StrokeStyle(lineWidth: 1.45, lineCap: .round, lineJoin: .round))
-                        .foregroundStyle(InkletTheme.primary)
-                        .padding(6)
-                        .frame(width: 28, height: 28)
-                        .background(InkletTheme.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(InkletTheme.primary.opacity(0.20))
-                        }
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Inklet")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(InkletTheme.textPrimary)
-                        Text(L10n.text("settings.sidebar.preferences"))
-                            .font(.system(size: 10))
-                            .foregroundStyle(InkletTheme.textTertiary)
-                    }
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(SettingsSection.allCases) { section in
+                if section == .about {
+                    Spacer(minLength: InkletTheme.Spacing.md)
                 }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 20)
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            VStack(spacing: 2) {
-                ForEach(SettingsSection.allCases) { section in
-                    Button {
-                        selectedSection = section
-                    } label: {
-                        SettingsSidebarLabel(
-                            section: section,
-                            isSelected: selectedSection == section
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .help(section.title)
+                Button {
+                    selectedSection = section
+                } label: {
+                    SettingsSidebarLabel(
+                        section: section,
+                        isSelected: selectedSection == section
+                    )
                 }
+                .buttonStyle(.plain)
+                .help(section.title)
             }
-            .padding(.horizontal, 8)
 
-            Spacer()
             Text(L10n.format("settings.version", BuildInfo.displayVersion))
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(InkletTheme.textFaint)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .font(InkletTheme.Typography.caption)
+                .foregroundStyle(InkletTheme.tertiaryLabel)
+                .padding(.horizontal, 10)
+                .padding(.top, 6)
         }
-        .frame(width: 188)
+        .padding(.horizontal, 10)
+        .padding(.top, SettingsLayoutMetrics.titlebarInset)
+        .padding(.bottom, 14)
+        .frame(width: 200, alignment: .leading)
+        .frame(maxHeight: .infinity, alignment: .top)
         .disabled(model.isMigrationMaintenanceActive)
-        .background(InkletTheme.toolbarBackground)
-        .overlay(alignment: .trailing) { Rectangle().fill(InkletTheme.subtleBorder).frame(width: 1) }
+        .background(InkletMaterialBackground(material: .sidebar))
+        .overlay(alignment: .trailing) { Rectangle().fill(InkletTheme.hairline).frame(width: 1) }
     }
 
     private var detail: some View {
         VStack(spacing: 0) {
             detailHeader
-            Divider().opacity(0.12)
 
             Group {
                 switch selectedSection {
@@ -288,33 +257,26 @@ struct SettingsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-            Divider().opacity(0.12)
             footer
         }
     }
 
     private var detailHeader: some View {
-        HStack {
+        VStack(alignment: .leading, spacing: 4) {
             Text(selectedSection.title)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(InkletTheme.textPrimary)
-            Spacer()
-            Button {
-                NSApp.keyWindow?.close()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(InkletTheme.textSecondary)
-                    .frame(width: 26, height: 26)
-                    .background(Color.white.opacity(0.001), in: RoundedRectangle(cornerRadius: 8))
-            }
-            .buttonStyle(.plain)
-            .help(L10n.text("popover.hint.close"))
-            .accessibilityLabel(L10n.text("popover.hint.close"))
+                .font(InkletTheme.Typography.pageTitle)
+                .tracking(-0.2)
+                .foregroundStyle(InkletTheme.label)
+            Text(sectionDescription)
+                .font(InkletTheme.Typography.body)
+                .foregroundStyle(InkletTheme.secondaryLabel)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 18)
-        .padding(.bottom, 15)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, InkletTheme.Spacing.xl)
+        .padding(.top, InkletTheme.Spacing.xxl)
+        .padding(.bottom, InkletTheme.Spacing.md)
     }
 
     private var sectionDescription: String {
@@ -1123,48 +1085,34 @@ struct SettingsView: View {
 
     private var promptModesPanel: some View {
         HStack(alignment: .top, spacing: 0) {
-            VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: InkletTheme.Spacing.xs) {
                 PromptModeTableView(
                     modes: model.orderedPromptModes,
                     selectedModeID: $model.selectedPromptModeID,
-                    canDelete: model.config.promptModes.count > 1,
                     onMove: { source, destination in
                         model.movePromptModes(from: IndexSet(integer: source), to: destination)
-                    },
-                    onToggleVisibility: { modeID in
-                        model.togglePromptModeVisibility(modeID: modeID)
-                    },
-                    onDelete: { modeID in
-                        promptModePendingDeletionID = modeID
                     }
                 )
-                .padding(.top, 10)
-                .frame(maxWidth: .infinity)
-                .background(InkletTheme.toolbarBackground)
-                Divider().opacity(0.12)
+                .frame(height: min(
+                    CGFloat(model.orderedPromptModes.count) * PromptModeTableView.rowPitch,
+                    SettingsLayoutMetrics.promptModeListMaxHeight
+                ))
+
                 Button {
                     model.addPromptMode()
                 } label: {
                     Label(L10n.text("settings.mode.add"), systemImage: "plus")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(InkletTheme.textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(style: StrokeStyle(lineWidth: 1, dash: [4]))
-                                .foregroundStyle(InkletTheme.subtleBorder)
-                        }
+                        .foregroundStyle(InkletTheme.accentText)
                 }
-                .buttonStyle(.plain)
-                .padding(10)
-                .frame(width: 236)
+                .buttonStyle(InkletButtonStyle(kind: .ghost, size: .small))
             }
-            .frame(minWidth: 236, idealWidth: 236, maxWidth: 236, maxHeight: .infinity, alignment: .top)
-            .fixedSize(horizontal: true, vertical: false)
-            .clipped()
-            .overlay(alignment: .trailing) { Rectangle().fill(InkletTheme.subtleBorder).frame(width: 1) }
+            .padding(.leading, InkletTheme.Spacing.md)
+            .frame(width: SettingsLayoutMetrics.promptModeListWidth, alignment: .topLeading)
+            .frame(maxHeight: .infinity, alignment: .top)
+
+            InkletTheme.hairline
+                .frame(width: 1)
+                .padding(.bottom, InkletTheme.Spacing.xs)
 
             if let index = model.selectedPromptModeIndex {
                 ScrollView {
@@ -1175,44 +1123,59 @@ struct SettingsView: View {
                 .layoutPriority(1)
             } else {
                 Text(L10n.text("settings.mode.pick"))
-                    .foregroundStyle(.secondary)
+                    .font(InkletTheme.Typography.body)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
                     .frame(maxWidth: .infinity, minHeight: 280)
             }
         }
     }
 
     private func promptModeDetail(index: Int) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(spacing: 11) {
-                settingsRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
-                    TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
-                        .textFieldStyle(.plain)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .modifier(InkletFieldModifier())
-                }
-            }
+        let modeID = model.config.promptModes[index].id
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(L10n.text("settings.row.name"))
+                .font(InkletTheme.Typography.fieldLabel)
+                .foregroundStyle(InkletTheme.secondaryLabel)
+            TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
+                .textFieldStyle(.plain)
+                .font(InkletTheme.Typography.body)
+                .padding(.horizontal, 10)
+                .frame(height: InkletTheme.ControlHeight.large)
+                .modifier(InkletFieldModifier())
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.text("settings.row.systemPrompt"))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(InkletTheme.textPrimary)
-
-                SettingsPromptTextView(text: $model.config.promptModes[index].systemPrompt)
-                    .frame(height: 164)
-                    .padding(10)
-                    .modifier(InkletFieldModifier())
-            }
+            Text(L10n.text("settings.row.systemPrompt"))
+                .font(InkletTheme.Typography.fieldLabel)
+                .foregroundStyle(InkletTheme.secondaryLabel)
+                .padding(.top, InkletTheme.Spacing.sm)
+            SettingsPromptTextView(text: $model.config.promptModes[index].systemPrompt)
+                .frame(height: 172)
+                .padding(10)
+                .modifier(InkletFieldModifier())
 
             settingsToggle(
                 title: L10n.text("settings.mode.visibleInMenu"),
                 subtitle: L10n.text("settings.mode.visibleInMenuHelp"),
-                isOn: model.promptModeVisibilityBinding(modeID: model.config.promptModes[index].id)
+                isOn: model.promptModeVisibilityBinding(modeID: modeID)
             )
-            .padding(.top, 2)
+            .padding(.horizontal, InkletTheme.Spacing.sm)
+            .padding(.vertical, InkletTheme.Spacing.xs)
+            .frame(minHeight: InkletTheme.ControlHeight.bar)
+            .inkletCard()
+            .padding(.top, InkletTheme.Spacing.sm)
+
+            Button {
+                promptModePendingDeletionID = modeID
+            } label: {
+                Label(L10n.text("settings.mode.delete"), systemImage: "trash")
+                    .foregroundStyle(InkletTheme.statusError)
+            }
+            .buttonStyle(InkletButtonStyle(kind: .ghost, size: .small))
+            .disabled(model.config.promptModes.count <= 1)
+            .padding(.leading, -10)
+            .padding(.top, InkletTheme.Spacing.sm)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
+        .padding(.horizontal, InkletTheme.Spacing.xl)
+        .padding(.bottom, InkletTheme.Spacing.md)
     }
 
     private var systemPermissionsPanel: some View {
@@ -1558,20 +1521,19 @@ struct SettingsView: View {
     private var footer: some View {
         HStack(spacing: 12) {
             if !model.message.isEmpty {
-                Label(model.message, systemImage: isSuccessMessage ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                    .font(.footnote)
-                    .foregroundStyle(isSuccessMessage ? InkletTheme.success : .red)
+                Label(model.message, systemImage: isSuccessMessage ? "checkmark.circle" : "exclamationmark.circle")
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(isSuccessMessage ? InkletTheme.statusSuccess : InkletTheme.statusError)
                     .lineLimit(2)
             } else {
                 Text(L10n.text("settings.footer.pending"))
-                    .font(.footnote)
-                    .foregroundStyle(InkletTheme.textFaint)
+                    .font(InkletTheme.Typography.caption)
+                    .foregroundStyle(InkletTheme.tertiaryLabel)
             }
             Spacer()
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 14)
-        .background(InkletTheme.toolbarBackground)
+        .padding(.horizontal, InkletTheme.Spacing.xl)
+        .padding(.vertical, InkletTheme.Spacing.sm)
     }
 
     private func settingsPanel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -1591,16 +1553,16 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(InkletTheme.textPrimary)
+                    .font(InkletTheme.Typography.fieldLabel)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
                 Spacer()
             }
             content()
                 .frame(maxWidth: .infinity, alignment: .leading)
             if !help.isEmpty {
                 Text(help)
-                    .font(.system(size: 11))
-                    .foregroundStyle(InkletTheme.textSecondary)
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.tertiaryLabel)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -1670,14 +1632,15 @@ struct SettingsView: View {
     }
 
     private func settingsToggle(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
+        HStack(spacing: InkletTheme.Spacing.md) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(InkletTheme.textPrimary)
+                    .font(InkletTheme.Typography.body)
+                    .foregroundStyle(InkletTheme.label)
                 Text(subtitle)
-                    .font(.system(size: 11))
-                    .foregroundStyle(InkletTheme.textSecondary)
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
             Toggle("", isOn: isOn)
@@ -1690,27 +1653,39 @@ struct SettingsView: View {
 struct SettingsSidebarLabel: View {
     let section: SettingsSection
     let isSelected: Bool
+    @State private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 10) {
             Image(systemName: section.icon)
+                .font(.system(size: InkletTheme.IconSize.regular))
+                .foregroundStyle(isSelected ? InkletTheme.accentText : InkletTheme.secondaryLabel)
                 .frame(width: 18)
             Text(section.title)
+                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(InkletTheme.label)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
-        .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
-        .foregroundStyle(isSelected ? InkletTheme.primary.opacity(0.95) : InkletTheme.textSecondary)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, InkletTheme.Spacing.xs)
         .background(
-            isSelected ? InkletTheme.primary.opacity(0.12) : Color.clear,
-            in: RoundedRectangle(cornerRadius: 12)
+            isSelected ? InkletTheme.fillHover : isHovered ? InkletTheme.fill : Color.clear,
+            in: RoundedRectangle(cornerRadius: InkletTheme.Radius.small)
         )
+        .contentShape(RoundedRectangle(cornerRadius: InkletTheme.Radius.small))
+        .onHover { isHovered = $0 }
+        .animation(InkletTheme.Motion.fast, value: isHovered)
     }
 }
 
 enum SettingsLayoutMetrics {
+    /// Room under the transparent titlebar for the traffic lights.
+    static let titlebarInset: CGFloat = 52
+    /// Wide enough for a mode name such as "To Simple and Correct English" at 13 pt semibold.
+    static let promptModeListWidth: CGFloat = 256
+    static let promptModeListMaxHeight: CGFloat = 330
+
     static var migrationActionWidth: CGFloat {
         let font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         let titles = [

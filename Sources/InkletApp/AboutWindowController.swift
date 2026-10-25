@@ -49,42 +49,41 @@ final class AboutWindowController: NSWindowController {
 
 struct AboutView: View {
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: InkletTheme.Spacing.md) {
             PenNibShape()
                 .stroke(style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
-                .foregroundStyle(InkletTheme.primary)
+                .foregroundStyle(InkletTheme.accentText)
                 .padding(18)
                 .frame(width: 76, height: 76)
-                .background(InkletTheme.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(InkletTheme.primary.opacity(0.20))
-                }
+                .background(InkletTheme.accentSoft, in: RoundedRectangle(cornerRadius: 20))
 
-            VStack(spacing: 5) {
+            VStack(spacing: InkletTheme.Spacing.xxs) {
                 Text("Inklet")
-                    .font(.title2)
-                    .bold()
+                    .font(InkletTheme.Typography.pageTitle)
+                    .tracking(-0.2)
+                    .foregroundStyle(InkletTheme.label)
                 Text(L10n.format("settings.version", BuildInfo.displayVersion))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(InkletTheme.Typography.caption)
+                    .foregroundStyle(InkletTheme.tertiaryLabel)
             }
 
             Text(L10n.text("about.tagline"))
-                .font(.headline)
+                .font(InkletTheme.Typography.body)
+                .foregroundStyle(InkletTheme.secondaryLabel)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 320)
 
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 16) { links }
-                VStack(spacing: 8) { links }
+                HStack(spacing: InkletTheme.Spacing.md) { links }
+                VStack(spacing: InkletTheme.Spacing.xs) { links }
             }
-            .font(.callout)
+            .font(InkletTheme.Typography.control)
+            .tint(InkletTheme.accentText)
 
             Text("© 2026 Inklet")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+                .font(InkletTheme.Typography.caption)
+                .foregroundStyle(InkletTheme.tertiaryLabel)
         }
         .padding(28)
         .frame(width: 380)

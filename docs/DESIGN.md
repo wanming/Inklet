@@ -11,6 +11,17 @@ Visual reference (light and dark, every surface): [Inklet design language canvas
 3. **Native first.** macOS materials, SF Pro, SF Symbols, system focus, menus and window behaviour. Inklet should feel like part of macOS, not a web page in a panel.
 4. **Roomy, not big.** A 4 pt grid with 16–20 pt edges gives air. No text below 11 pt, no control below 24 pt.
 5. **Calm motion.** Short, springy transitions that explain a change of state. Fade only when Reduce Motion is on.
+6. **Refined by subtraction.** Premium comes from what is left out, not from effects. When a view feels busy, remove a line, a color or a control before adding anything (see Refinement rules).
+
+## Refinement rules
+
+Approved with the Settings refinement pass ("Refinement pass" board on the canvas). They apply to every surface.
+
+1. **Neutral selection.** A selected sidebar item or list row is a neutral fill (`fillHover`) or a raised card with bold text; only its icon takes `accentText`. Solid accent blocks are for the primary button and switches.
+2. **Fewer lines, more layers.** Separate groups with spacing and the surface ladder (`surface`, `surfaceRaised`, `surfaceSunken`), not with dividers, dashed boxes or outlines around everything. A hairline is allowed where two scrolling regions meet.
+3. **Clear type hierarchy.** One `pageTitle` per pane, `fieldLabel` (12 semibold, `secondaryLabel`) above fields, `body` for content. Headings are not all bold.
+4. **Actions on demand.** Rows show their content; drag handles appear on hover, and destructive or secondary actions for the selected item live in its detail area. Don't repeat a control (for example a visibility icon in the row and a switch in the detail).
+5. **Native window chrome.** Windows use the system titlebar, traffic lights, corners and shadow. No custom close buttons.
 
 ## Color
 
@@ -50,12 +61,13 @@ SF Pro through `InkletTheme.Typography`. Nothing is smaller than 11 pt.
 
 | Token | Size / line | Weight | Use |
 | --- | --- | --- | --- |
-| `pageTitle` | 20 / 26 | semibold | Settings pane title |
+| `pageTitle` | 22 / 28, tracking −0.2 | semibold | Settings pane title, About title |
 | `title` | 15 / 20 | semibold | Section and panel titles |
 | `editor` | 15 / 21 (`editorLineSpacing` 3 when measuring) | regular | The user's text in editors and results |
 | `control` | 13 / 18 | medium | Buttons, menu items, mode names |
 | `body` | 13 / 18 | regular | Row labels, interface text |
 | `help` | 12 / 16 | regular | Help under a setting, descriptions, banners |
+| `fieldLabel` | 12 / 16 | semibold, `secondaryLabel` | The label above a field or a group |
 | `caption` | 11 / 14 | medium | Shortcut hints, badges, small headers |
 | `keycap` | 11 | medium, monospaced | Key labels inside keycaps |
 
@@ -104,6 +116,9 @@ Read `@Environment(\.accessibilityReduceMotion)` and pass it to `appear(reduceMo
 | Mode chip | (popover header) | 28 pt, radius 8, `fill` background; mode icon in `accentText`, name in `control` semibold, chevron. Opens the mode picker. |
 | Card | `.inkletCard()` | Settings groups and the result card. Rows inside are separated by `InkletRowDivider`. |
 | List row | `InkletRowBackground` | 40 pt rows in the mode picker. Selected: `accentSoft` with an `accentText` icon. Hover: `fill`. |
+| Settings sidebar item | `SettingsSidebarLabel` | 8 pt vertical padding, radius 6, `secondaryLabel` icon. Selected: `fillHover`, semibold, `accentText` icon. Hover: `fill`. |
+| Editable list row | `PromptModeTableView` | 34 pt rows, name only. Selected: `surfaceRaised` card with a hairline and a 1 pt shadow, semibold. Hover: `fill` and the drag handle. Hidden items: `tertiaryLabel` name and an eye-slash mark. |
+| Field | `InkletFieldModifier` | `surfaceRaised`, radius 6, `strokeStrong` border, `accent` border when focused. 32 pt for single-line fields. |
 | Status banner | `InkletStatusBanner(tone:message:action:)` | Neutral `surfaceSunken`, tone icon, message in `label`, one inline action that resolves the problem (Open Settings, Retry, Copy). |
 | Floating panel | `.inkletFloatingPanel()` | See Elevation. |
 | Material | `InkletMaterialBackground(material:)` | `.popover` for floating panels, `.sidebar` for the settings sidebar. |
@@ -120,7 +135,11 @@ Interaction states follow `AGENTS.md` § Interaction Details: loading replaces t
 
 **Translation card** (floating, 300 wide by default, resizable, radius 12). Translated text in 14 pt with 3 pt line spacing directly on the surface; a toolbar under a hairline with the copy icon button on the left and the original and translated audio buttons on the right. Errors show a warning icon, the message in `body`, and a Retry button. Planned: the target language as a menu in the toolbar.
 
-**Settings** (target; not migrated yet, native titled window). A 210 pt sidebar on the sidebar material with 30 pt items; the selected item uses the `accent` fill with `onAccent` text. The pane has a `pageTitle`, then grouped cards: each row is at least 44 pt, label in `body` with optional `help` below on the left, control on the right, rows separated by inset hairlines. Section order: General, Write Assistant, Prompt Modes, Selection Assistant, History, About. Expert options go in an Advanced disclosure at the end of a pane.
+**Settings** (860 × 560, native titled window with a transparent titlebar and the system traffic lights). A 200 pt sidebar on the `.sidebar` material, starting 52 pt down to clear the traffic lights; About sits at the bottom above a one-line version in `caption`. The pane opens with the `pageTitle` and the section description in `body` `secondaryLabel`, 32 pt from the top, with no divider under it. Fields use `fieldLabel` above and `help` in `tertiaryLabel` below; switches sit on the right of a `body` title and `help` subtitle. The footer is a single `caption` line ("Changes save automatically") with no bar behind it. Target for the panes that still use the earlier layout: grouped cards where each row is at least 44 pt, label on the left, control on the right, rows separated by inset hairlines; expert options in an Advanced disclosure at the end of a pane.
+
+**Prompt modes** (Settings pane). A 256 pt column with the mode list (name only, see Editable list row) and a ghost "Add mode" button in `accentText` right under the last row, then a hairline, then the detail: name field, prompt editor, the "Show in menu" switch in a card, and a ghost "Delete mode" button in `statusError` at the bottom. Long names show in full on hover.
+
+**About** (380 wide, native window). The pen nib on a 76 pt `accentSoft` tile, "Inklet" in `pageTitle`, version in `caption`, tagline in `body` `secondaryLabel`, links in `control` `accentText`, copyright in `caption`.
 
 ## Do and don't
 
@@ -139,7 +158,9 @@ Interaction states follow `AGENTS.md` § Interaction Details: loading replaces t
 
 ## Migration from the earlier style
 
-The tokens above were introduced alongside the earlier ones. Surfaces move over one at a time, and the earlier tokens in `InkletTheme.swift` are removed once nothing uses them.
+The tokens above were introduced alongside the earlier ones. The earlier names in `InkletTheme.swift` now return the new palette (for example `textSecondary` returns `secondaryLabel`), so surfaces that still use them already get the new colors. Surfaces move to the new names and components one at a time, and the earlier names are removed once nothing uses them.
+
+Status: the writing popover, mode picker, selection bar, translation card, Settings window chrome (sidebar, header, footer, field helpers), Prompt modes and About are migrated. The other Settings panes, the welcome guide and What's New use the new colors through the earlier names, and move to the card layout next.
 
 | Earlier | Now |
 | --- | --- |
@@ -157,4 +178,3 @@ The tokens above were introduced alongside the earlier ones. Surfaces move over 
 | `.shadow(color: .black.opacity(0.75), radius: 48, …)` | `.inkletFloatingPanel()` |
 | 8–10 pt labels | `Typography.caption` (11 pt) |
 
-Migrated: the writing popover, the mode picker, the selection bar and the translation card. Next: Settings and About, after the open Settings changes land, to avoid conflicts.

@@ -242,7 +242,7 @@ extension InkletTheme {
         static let minimumSize: CGFloat = 11
 
         /// Settings pane titles.
-        static var pageTitle: Font { .system(size: 20, weight: .semibold) }
+        static var pageTitle: Font { .system(size: 22, weight: .semibold) }
         /// Section and panel titles.
         static var title: Font { .system(size: 15, weight: .semibold) }
         /// The user's text in editors and results.
@@ -256,6 +256,8 @@ extension InkletTheme {
         static var body: Font { .system(size: 13) }
         /// Help text under a setting, secondary descriptions.
         static var help: Font { .system(size: 12) }
+        /// The small label above a field or group, in `secondaryLabel`.
+        static var fieldLabel: Font { .system(size: 12, weight: .semibold) }
         /// Shortcut hints, badges, section headers in small panels.
         static var caption: Font { .system(size: 11, weight: .medium) }
         /// Key labels inside keycaps.

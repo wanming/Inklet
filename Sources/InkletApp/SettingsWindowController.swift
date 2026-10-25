@@ -3,50 +3,10 @@ import Combine
 import SwiftUI
 import InkletCore
 
+/// A native titled window with a transparent titlebar: the system draws the traffic lights,
+/// rounded corners and shadow, and the titlebar strip drags the window.
 @MainActor
 private final class SettingsWindow: NSWindow {
-    private struct SettingsWindowDragState {
-        let initialMouseLocation: NSPoint
-        let initialWindowOrigin: NSPoint
-    }
-
-    private var dragState: SettingsWindowDragState?
-
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
-
-    override func sendEvent(_ event: NSEvent) {
-        switch event.type {
-        case .leftMouseDown:
-            if isDraggableHeaderPoint(event.locationInWindow) {
-                dragState = SettingsWindowDragState(
-                    initialMouseLocation: NSEvent.mouseLocation,
-                    initialWindowOrigin: frame.origin
-                )
-                return
-            }
-        case .leftMouseDragged:
-            if let dragState {
-                let mouseLocation = NSEvent.mouseLocation
-                let newOrigin = NSPoint(
-                    x: dragState.initialWindowOrigin.x + mouseLocation.x - dragState.initialMouseLocation.x,
-                    y: dragState.initialWindowOrigin.y + mouseLocation.y - dragState.initialMouseLocation.y
-                )
-                setFrameOrigin(newOrigin)
-                return
-            }
-        case .leftMouseUp:
-            if dragState != nil {
-                dragState = nil
-                return
-            }
-        default:
-            break
-        }
-
-        super.sendEvent(event)
-    }
-
     override func cancelOperation(_ sender: Any?) {
         close()
     }
@@ -58,42 +18,6 @@ private final class SettingsWindow: NSWindow {
         }
 
         close()
-    }
-
-    private func isDraggableHeaderPoint(_ point: NSPoint) -> Bool {
-        point.y >= frame.height - SettingsWindowDragMetrics.draggableHeaderHeight
-            && point.x < frame.width - SettingsWindowDragMetrics.closeButtonExclusionWidth
-    }
-}
-
-private enum SettingsWindowDragMetrics {
-    static let draggableHeaderHeight: CGFloat = 68
-    static let closeButtonExclusionWidth: CGFloat = 64
-}
-
-@MainActor
-private final class RoundedSettingsHostingView<Content: View>: NSHostingView<Content> {
-    private let cornerRadius: CGFloat = 16
-
-    override var mouseDownCanMoveWindow: Bool { false }
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        configureLayer()
-    }
-
-    override func layout() {
-        super.layout()
-        configureLayer()
-    }
-
-    private func configureLayer() {
-        wantsLayer = true
-        guard let layer else { return }
-        layer.backgroundColor = NSColor.clear.cgColor
-        layer.cornerRadius = cornerRadius
-        layer.cornerCurve = .continuous
-        layer.masksToBounds = true
     }
 }
 
@@ -140,17 +64,16 @@ final class SettingsWindowController: NSWindowController {
         self.migrationPresentationModel = migrationPresentationModel
         let window = SettingsWindow(
             contentRect: NSRect(x: 0, y: 0, width: 860, height: 560),
-            styleMask: [.borderless],
+            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = L10n.text("settings.window.title")
-        window.backgroundColor = .clear
-        window.isOpaque = false
-        window.hasShadow = true
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = false
         window.hidesOnDeactivate = false
-        window.contentView = RoundedSettingsHostingView(rootView: EmptyView())
+        window.contentView = NSHostingView(rootView: EmptyView())
         window.isReleasedWhenClosed = false
 
         super.init(window: window)
@@ -207,7 +130,7 @@ final class SettingsWindowController: NSWindowController {
         window?.title = L10n.text("settings.window.title")
         let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
         window?.appearance = config.appearance.nsAppearance
-        window?.contentView = RoundedSettingsHostingView(
+        window?.contentView = NSHostingView(
             rootView: SettingsView(
                 model: model,
                 migrationPresentationModel: migrationPresentationModel,
