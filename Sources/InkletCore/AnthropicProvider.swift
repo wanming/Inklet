@@ -90,10 +90,14 @@ public struct AnthropicProvider: LLMProvider {
         )
     }
 
+    /// The Messages API requires a cap. 32,000 is the most every current Claude model accepts, so
+    /// long rewrites aren't cut short.
+    static let maxOutputTokens = 32000
+
     public static func makeRequestBody(for request: TransformationRequest) -> RequestBody {
         RequestBody(
             model: request.model,
-            maxTokens: 4096,
+            maxTokens: maxOutputTokens,
             system: request.systemPrompt,
             messages: [
                 RequestBody.Message(

@@ -21,7 +21,9 @@ public actor BuiltInModelServer {
     static let defaultIdleUnloadSeconds = 300
     /// Macs with at least this much memory keep the model loaded, so it answers without a reload.
     public static let keepsModelLoadedMemoryGB: UInt64 = 24
-    static let contextTokens = 8192
+    /// Room for a long document and its rewrite in one request. Both built-in writing models
+    /// support far longer contexts; this keeps the memory the context takes modest.
+    static let contextTokens = 32768
 
     private struct Running {
         var process: Process

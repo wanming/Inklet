@@ -47,7 +47,7 @@ final class LocalModelTests: XCTestCase {
         let cloudBody = ChatCompletionProvider.makeRequestBody(for: injection)
 
         XCTAssertEqual(body.messages[0].content, ChatCompletionProvider.sourceTextGuard + "\n\nRewrite clearly.")
-        XCTAssertEqual(body.maxTokens, ChatCompletionProvider.localMaxTokens)
+        XCTAssertNil(body.maxTokens)
         XCTAssertNil(cloudBody.maxTokens)
         XCTAssertEqual(
             body.messages[1].content,
