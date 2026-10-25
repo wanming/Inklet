@@ -5,6 +5,7 @@ import InkletCore
 /// Reports when ⌘ is held on its own for a moment, so the writing popover can reveal every shortcut.
 /// Any other key or modifier hides them again, so ⌘ combinations such as ⌘↵ never flash the strip.
 /// The Command key used as the dictation shortcut is ignored; holding it dictates instead.
+/// Losing focus also hides them, since a ⌘ released in another app (after ⌘Tab) never reaches the monitor.
 @MainActor
 final class CommandHoldMonitor: ObservableObject {
     @Published private(set) var isRevealed = false
@@ -15,6 +16,7 @@ final class CommandHoldMonitor: ObservableObject {
     var dictationShortcut: @MainActor () -> VoiceInputConfig.Shortcut = { .disabled }
 
     private var monitor: Any?
+    private var focusLossCancellable: AnyCancellable?
     private var revealTask: Task<Void, Never>?
 
     func start() {
@@ -25,6 +27,12 @@ final class CommandHoldMonitor: ObservableObject {
             self?.handle(type: event.type, modifierFlags: event.modifierFlags)
             return event
         }
+        focusLossCancellable = NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)
+            .merge(with: NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification))
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.reset()
+            }
     }
 
     func stop() {
@@ -32,6 +40,7 @@ final class CommandHoldMonitor: ObservableObject {
             NSEvent.removeMonitor(monitor)
         }
         monitor = nil
+        focusLossCancellable = nil
         reset()
     }
 

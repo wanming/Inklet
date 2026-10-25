@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import XCTest
 @testable import Inklet
 @testable import InkletCore
@@ -49,5 +50,22 @@ final class CommandHoldMonitorTests: XCTestCase {
         monitor.reveal()
         monitor.handle(type: .keyDown, modifierFlags: leftCommand)
         XCTAssertFalse(monitor.isRevealed)
+    }
+
+    func testLosingFocusHidesShortcuts() {
+        let monitor = CommandHoldMonitor()
+        monitor.start()
+        defer { monitor.stop() }
+        monitor.reveal()
+
+        let hidden = expectation(description: "Shortcuts hide when Inklet resigns active")
+        let cancellable = monitor.$isRevealed.dropFirst().sink { isRevealed in
+            if !isRevealed {
+                hidden.fulfill()
+            }
+        }
+        NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: nil)
+        wait(for: [hidden], timeout: 2)
+        cancellable.cancel()
     }
 }
