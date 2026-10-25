@@ -226,6 +226,8 @@ extension L10n {
         "error.emptySource": "Digite texto para transformar.",
         "error.emptyResponse": "O modelo retornou uma resposta vazia.",
         "error.timeout": "A solicitação expirou. Tente novamente.",
+        "error.contextTooLong": "O texto é longo demais para este modelo. Tente um texto mais curto ou um modelo com contexto maior.",
+        "popover.warning.outputTruncated": "A resposta atingiu o limite de tamanho do modelo e foi cortada. Tente um texto mais curto ou divida-o em partes.",
         "error.networkConnectionLost": "A conexão de rede foi interrompida. Tente novamente.",
         "error.provider.urlInvalid": "A solicitação %@ falhou: URL inválida",
         "error.provider.httpUnknown": "A solicitação %@ falhou: HTTP unknown",

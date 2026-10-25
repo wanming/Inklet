@@ -226,6 +226,8 @@ extension L10n {
         "error.emptySource": "변환할 텍스트를 입력하세요",
         "error.emptyResponse": "모델이 빈 응답을 반환했습니다",
         "error.timeout": "요청 시간이 초과되었습니다. 다시 시도하세요",
+        "error.contextTooLong": "텍스트가 너무 길어 이 모델로 처리할 수 없습니다. 더 짧게 줄이거나 더 긴 컨텍스트를 지원하는 모델을 사용해 보세요.",
+        "popover.warning.outputTruncated": "응답이 모델의 길이 한도에 도달해 중간에 잘렸습니다. 텍스트를 줄이거나 나누어 처리해 보세요.",
         "error.networkConnectionLost": "네트워크 연결이 중단되었습니다. 다시 시도하세요.",
         "error.provider.urlInvalid": "%@ 요청 실패: URL이 유효하지 않습니다",
         "error.provider.httpUnknown": "%@ 요청 실패: HTTP unknown",

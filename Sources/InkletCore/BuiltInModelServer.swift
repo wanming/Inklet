@@ -21,7 +21,27 @@ public actor BuiltInModelServer {
     static let defaultIdleUnloadSeconds = 300
     /// Macs with at least this much memory keep the model loaded, so it answers without a reload.
     public static let keepsModelLoadedMemoryGB: UInt64 = 24
-    static let contextTokens = 8192
+    /// The speech model's clips are short, so it keeps a small context.
+    static let defaultContextTokens = 8192
+    /// Writing models get room for a long document and its rewrite in one request. Measured on an
+    /// M3 Max: Gemma 4 E4B grows from 4.7 GB at 8K to 5.1 GB at 32K and 6.7 GB at its full 128K;
+    /// Qwen3.5 4B grows from 3.1 GB at 8K to 3.9 GB at 32K but 11 GB at 256K, too much for the
+    /// 8 GB Macs it is meant for.
+    static let writingContextTokens = 32768
+    static let fullGemmaContextTokens = 131_072
+
+    static func contextTokens(forModelID modelID: String, physicalMemoryBytes: UInt64) -> Int {
+        switch modelID {
+        case BuiltInModel.gemma4E4B.id:
+            return physicalMemoryBytes >= keepsModelLoadedMemoryGB * 1_073_741_824
+                ? fullGemmaContextTokens
+                : writingContextTokens
+        case BuiltInModel.qwen35_4B.id:
+            return writingContextTokens
+        default:
+            return defaultContextTokens
+        }
+    }
 
     private struct Running {
         var process: Process
@@ -169,6 +189,10 @@ public actor BuiltInModelServer {
             modelID: model.id,
             port: port,
             apiKey: apiKey,
+            contextTokens: Self.contextTokens(
+                forModelID: model.id,
+                physicalMemoryBytes: ProcessInfo.processInfo.physicalMemory
+            ),
             idleUnloadSeconds: Self.idleUnloadSeconds(
                 forPhysicalMemoryBytes: ProcessInfo.processInfo.physicalMemory,
                 keepsModelLoadedMemoryGB: keepsModelLoadedMemoryGB
@@ -206,6 +230,7 @@ public actor BuiltInModelServer {
         modelID: String,
         port: Int,
         apiKey: String,
+        contextTokens: Int = defaultContextTokens,
         idleUnloadSeconds: Int? = defaultIdleUnloadSeconds
     ) -> [String] {
         var flags = [

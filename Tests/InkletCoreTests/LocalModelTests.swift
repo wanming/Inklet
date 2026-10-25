@@ -47,7 +47,7 @@ final class LocalModelTests: XCTestCase {
         let cloudBody = ChatCompletionProvider.makeRequestBody(for: injection)
 
         XCTAssertEqual(body.messages[0].content, ChatCompletionProvider.sourceTextGuard + "\n\nRewrite clearly.")
-        XCTAssertEqual(body.maxTokens, ChatCompletionProvider.localMaxTokens)
+        XCTAssertEqual(body.maxTokens, 4096)
         XCTAssertNil(cloudBody.maxTokens)
         XCTAssertEqual(
             body.messages[1].content,
@@ -259,6 +259,34 @@ final class LocalModelTests: XCTestCase {
 
         try store.delete(model)
         XCTAssertFalse(store.isInstalled(model))
+    }
+
+    func testLocalOutputCapGrowsWithTheSourceText() {
+        XCTAssertEqual(ChatCompletionProvider.localMaxTokens(forSourceText: "Short note"), 4096)
+        let longText = String(repeating: "长", count: 10_000)
+        XCTAssertEqual(ChatCompletionProvider.localMaxTokens(forSourceText: longText), 30_000)
+
+        var longRequest = request
+        longRequest.sourceText = longText
+        XCTAssertEqual(ChatCompletionProvider.makeRequestBody(for: longRequest, guardsSourceText: true).maxTokens, 30_000)
+        XCTAssertNil(ChatCompletionProvider.makeRequestBody(for: longRequest).maxTokens)
+    }
+
+    func testBuiltInContextFitsEachModelAndMac() {
+        let gigabyte: UInt64 = 1_073_741_824
+        XCTAssertEqual(BuiltInModelServer.contextTokens(forModelID: "gemma-4-e4b", physicalMemoryBytes: 36 * gigabyte), 131_072)
+        XCTAssertEqual(BuiltInModelServer.contextTokens(forModelID: "gemma-4-e4b", physicalMemoryBytes: 16 * gigabyte), 32_768)
+        XCTAssertEqual(BuiltInModelServer.contextTokens(forModelID: "qwen3.5-4b", physicalMemoryBytes: 36 * gigabyte), 32_768)
+        XCTAssertEqual(BuiltInModelServer.contextTokens(forModelID: "qwen3-asr-0.6b-weights", physicalMemoryBytes: 36 * gigabyte), 8192)
+
+        let arguments = BuiltInModelServer.arguments(
+            modelPath: "/models/gemma.gguf",
+            modelID: "gemma-4-e4b",
+            port: 52_000,
+            apiKey: "secret",
+            contextTokens: 131_072
+        )
+        XCTAssertEqual(value(after: "--ctx-size", in: arguments), "131072")
     }
 
     func testBuiltInServerListensOnlyOnLoopbackWithAKeyAndThinkingOff() throws {

@@ -226,6 +226,8 @@ extension L10n {
         "error.emptySource": "Text zum Umwandeln eingeben.",
         "error.emptyResponse": "Das Modell hat eine leere Antwort zurückgegeben.",
         "error.timeout": "Anfrage abgelaufen. Bitte erneut versuchen.",
+        "error.contextTooLong": "Der Text ist für dieses Modell zu lang. Bitte kürzen oder ein Modell mit längerem Kontext wählen.",
+        "popover.warning.outputTruncated": "Die Antwort hat die Längengrenze des Modells erreicht und wurde abgeschnitten. Bitte den Text kürzen oder aufteilen.",
         "error.networkConnectionLost": "Die Netzwerkverbindung wurde unterbrochen. Bitte erneut versuchen.",
         "error.provider.urlInvalid": "%@ Anfrage fehlgeschlagen: ungültige URL",
         "error.provider.httpUnknown": "%@ Anfrage fehlgeschlagen: HTTP unknown",
