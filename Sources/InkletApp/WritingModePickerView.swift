@@ -234,7 +234,7 @@ func writingModeIconName(for modeID: String) -> String {
         "sparkles"
     case PromptMode.translateToEnglishID, PromptMode.chineseToEnglishID:
         "globe.asia.australia"
-    case PromptMode.chineseSummaryID:
+    case PromptMode.summaryID:
         "text.alignleft"
     case PromptMode.polishEnglishID, PromptMode.improveWritingID:
         "wand.and.stars"

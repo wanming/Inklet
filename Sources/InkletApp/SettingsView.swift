@@ -1185,7 +1185,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(spacing: 11) {
                 settingsRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
-                    TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
+                    TextField(L10n.text("settings.row.name"), text: model.promptModeNameBinding(modeID: model.config.promptModes[index].id))
                         .textFieldStyle(.plain)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
@@ -1202,6 +1202,11 @@ struct SettingsView: View {
                     .frame(height: 164)
                     .padding(10)
                     .modifier(InkletFieldModifier())
+
+                Text(L10n.text("settings.help.systemPrompt"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             settingsToggle(

@@ -649,6 +649,24 @@ final class SettingsViewModel: ObservableObject {
         save()
     }
 
+    /// Shows a built-in mode's translated name; typing a different name makes it the user's own.
+    func promptModeNameBinding(modeID: String) -> Binding<String> {
+        Binding(
+            get: { [weak self] in
+                self?.config.promptModes.first(where: { $0.id == modeID })?.localizedName ?? ""
+            },
+            set: { [weak self] newValue in
+                guard let self,
+                      let index = self.config.promptModes.firstIndex(where: { $0.id == modeID }),
+                      self.config.promptModes[index].localizedName != newValue
+                else {
+                    return
+                }
+                self.config.promptModes[index].name = newValue
+            }
+        )
+    }
+
     func promptModeVisibilityBinding(modeID: String) -> Binding<Bool> {
         Binding(
             get: { [weak self] in

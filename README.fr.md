@@ -50,7 +50,7 @@ Avec du texte :
 
 1. Placez le focus dans un champ de texte d’une autre app.
 2. Appuyez sur `Option+Space`.
-3. Recherchez un mode de prompt par correspondance approximative (par exemple, `ts` peut trouver `To Chinese Summary`), utilisez `Up` / `Down` pour le mettre en évidence, puis appuyez sur `Tab` ou `Enter` pour valider le mode.
+3. Recherchez un mode de prompt par correspondance approximative (par exemple, `res` peut trouver `Résumer`), utilisez `Up` / `Down` pour le mettre en évidence, puis appuyez sur `Tab` ou `Enter` pour valider le mode.
 4. Tapez ou collez votre texte brut.
 5. Appuyez sur `Enter` pour le transformer. Le résultat s’affiche au fur et à mesure de sa génération ; appuyez sur `Escape` pour l’arrêter.
 6. Appuyez de nouveau sur `Enter` pour insérer le résultat, ou sur `Shift+Command+C` (ou cliquez sur le bouton de copie du résultat) pour le copier.
@@ -76,9 +76,9 @@ Le raccourci de dictée ne fonctionne que dans l’éditeur source et uniquement
 - Lit directement le texte sélectionné et peut lire, depuis le résultat de traduction, le texte original comme le texte traduit.
 - Vous laisse choisir les boutons du menu de sélection et leur ordre, dans **Réglages** › **Assistant de sélection** › **Boutons du menu**. **Traduire**, **Prononcer** et n’importe quel mode de prompt peuvent devenir un bouton ; jusqu’à quatre s’affichent à la fois, les autres sont regroupés sous **Plus**. Un bouton de mode de prompt exécute ce mode sur le texte sélectionné et affiche le résultat dans le panneau avec des commandes de copie et de lecture.
 - Transforme le texte avec des modes de prompt intégrés :
-  - To Simple and Correct English
-  - To Chinese Summary
-  - Voice Cleanup
+  - En anglais simple et correct
+  - Résumer (dans votre langue de traduction, qui suit par défaut la langue de l’interface)
+  - Nettoyage vocal
 - Affiche le résultat dans le popover au fur et à mesure de sa génération, puis l’insère dans l’app qui avait le focus ou le copie avec le bouton de copie du résultat.
 - Utilise un seul chemin de sélection, indépendant de l’app et fondé d’abord sur l’Accessibilité. Les actions de sélection automatiques demandent d’abord la sélection à l’Accessibilité de macOS, puis n’utilisent le repli configuré via un presse-papiers temporaire que si la **Sélection forcée** l’autorise. Chaque lecture reste liée au processus source capturé et s’annule si ce processus se termine ou perd le focus.
 - Laisse le `Command+C` simulé désactivé par défaut. La copie par le menu reste le repli sûr de la **Sélection forcée** ; vous pouvez activer explicitement la copie simulée comme repli avancé pour les apps sans menu Copier utilisable, mais elle peut perturber les jeux, les bureaux à distance ou les machines virtuelles.

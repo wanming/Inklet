@@ -746,7 +746,7 @@ final class InkletPopoverViewModel: ObservableObject {
         let mode = PromptModeStore(modes: modes).resolve(
             modeID: resolvedModeID,
             sourceText: source
-        )
+        ).resolvingLanguages(config.promptLanguages)
         let transformationModeID = mode.id
         let model = config.model
         let timeoutSeconds = config.effectiveTimeoutSeconds

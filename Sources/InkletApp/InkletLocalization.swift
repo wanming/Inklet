@@ -146,21 +146,33 @@ extension Notification.Name {
 }
 
 extension PromptMode {
+    /// Built-in modes show a translated name until the user renames them.
     var localizedName: String {
+        guard PromptModeStore.isDefaultName(name, modeID: id) else {
+            return name
+        }
         switch id {
-        case PromptMode.translateToEnglishID,
-             PromptMode.chineseSummaryID,
-             PromptMode.improveWritingID,
-             PromptMode.makeConciseID,
-             PromptMode.professionalToneID,
-             PromptMode.friendlyReplyID,
-             PromptMode.customPromptID:
-            name
+        case PromptMode.translateToEnglishID:
+            return L10n.text("prompt.translateToEnglish.name")
+        case PromptMode.summaryID:
+            return L10n.text("prompt.summary.name")
+        case PromptMode.voiceCleanupID:
+            return L10n.text("prompt.voiceCleanup.name")
         default:
-            name
+            return name
         }
     }
+}
 
+extension AppConfig {
+    /// "My language" follows the selection translation language, which defaults to the interface language.
+    var promptLanguages: PromptLanguages {
+        PromptLanguages(
+            myLanguage: selectionActions.translationLanguage.resolvedPromptTargetName(
+                interfaceLanguageCode: L10n.resolvedLanguage.localeIdentifier
+            )
+        )
+    }
 }
 
 extension VoiceInputConfig.Shortcut {

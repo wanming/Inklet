@@ -25,25 +25,25 @@ final class SelectionMenuButtonsTests: XCTestCase {
     func testEnablingPromptModeAddsItToMenu() {
         var config = SelectionActionsConfig.defaultConfig()
 
-        config.setMenuButton(.promptMode(PromptMode.chineseSummaryID), isEnabled: true, promptModes: modes)
+        config.setMenuButton(.promptMode(PromptMode.summaryID), isEnabled: true, promptModes: modes)
 
         XCTAssertEqual(
             config.enabledMenuButtons(promptModes: modes).map(\.action),
-            [.translate, .pronounce, .promptMode(PromptMode.chineseSummaryID)]
+            [.translate, .pronounce, .promptMode(PromptMode.summaryID)]
         )
     }
 
     func testMovingButtonsChangesOrder() {
         var config = SelectionActionsConfig.defaultConfig()
-        config.setMenuButton(.promptMode(PromptMode.chineseSummaryID), isEnabled: true, promptModes: modes)
+        config.setMenuButton(.promptMode(PromptMode.summaryID), isEnabled: true, promptModes: modes)
         let summaryIndex = config.menuButtons(promptModes: modes)
-            .firstIndex { $0.action == .promptMode(PromptMode.chineseSummaryID) }!
+            .firstIndex { $0.action == .promptMode(PromptMode.summaryID) }!
 
         config.moveMenuButtons(from: IndexSet(integer: summaryIndex), to: 0, promptModes: modes)
 
         XCTAssertEqual(
             config.enabledMenuButtons(promptModes: modes).map(\.action),
-            [.promptMode(PromptMode.chineseSummaryID), .translate, .pronounce]
+            [.promptMode(PromptMode.summaryID), .translate, .pronounce]
         )
     }
 

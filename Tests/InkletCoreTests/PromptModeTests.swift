@@ -11,13 +11,39 @@ final class PromptModeTests: XCTestCase {
 
         XCTAssertEqual(store.visibleModes.map(\.name), [
             "To Simple and Correct English",
-            "To Chinese Summary"
+            "Summarize"
         ])
         XCTAssertEqual(store.visibleModes.map(\.id), [
             PromptMode.translateToEnglishID,
-            PromptMode.chineseSummaryID
+            PromptMode.summaryID
         ])
         XCTAssertFalse(store.visibleModes.contains { $0.id == PromptMode.autoID })
+    }
+
+    func testDefaultSummaryWritesInTheUsersOwnLanguage() throws {
+        let mode = try XCTUnwrap(PromptModeStore.defaultStore().mode(id: PromptMode.summaryID))
+
+        XCTAssertTrue(mode.systemPrompt.contains(PromptLanguages.myLanguagePlaceholder))
+        XCTAssertFalse(mode.systemPrompt.contains("Chinese"))
+
+        let japanese = mode.resolvingLanguages(PromptLanguages(myLanguage: "Japanese"))
+        XCTAssertTrue(japanese.systemPrompt.contains("concise, natural Japanese."))
+        XCTAssertFalse(japanese.systemPrompt.contains(PromptLanguages.myLanguagePlaceholder))
+        XCTAssertEqual(japanese.id, mode.id)
+        XCTAssertEqual(japanese.name, mode.name)
+    }
+
+    func testResolvingLanguagesLeavesPromptsWithoutPlaceholdersUnchanged() throws {
+        let mode = try XCTUnwrap(PromptModeStore.defaultStore().mode(id: PromptMode.translateToEnglishID))
+
+        XCTAssertEqual(mode.resolvingLanguages(PromptLanguages(myLanguage: "German")), mode)
+    }
+
+    func testOnlyUnchangedBuiltInNamesCountAsDefaultNames() {
+        XCTAssertTrue(PromptModeStore.isDefaultName("Summarize", modeID: PromptMode.summaryID))
+        XCTAssertTrue(PromptModeStore.isDefaultName("Voice Cleanup", modeID: PromptMode.voiceCleanupID))
+        XCTAssertFalse(PromptModeStore.isDefaultName("My Summary", modeID: PromptMode.summaryID))
+        XCTAssertFalse(PromptModeStore.isDefaultName("Summarize", modeID: "custom-mode"))
     }
 
     func testBuiltInModesDoNotAdvertiseNumericShortcuts() {
@@ -46,9 +72,9 @@ final class PromptModeTests: XCTestCase {
     func testResolveReturnsSelectedModeWhenAvailable() {
         let store = PromptModeStore.defaultStore()
 
-        let mode = store.resolve(modeID: PromptMode.chineseSummaryID, sourceText: "Please summarize this.")
+        let mode = store.resolve(modeID: PromptMode.summaryID, sourceText: "Please summarize this.")
 
-        XCTAssertEqual(mode.id, PromptMode.chineseSummaryID)
+        XCTAssertEqual(mode.id, PromptMode.summaryID)
     }
 
     func testResolveFallsBackToFirstVisibleModeForMissingMode() {

@@ -411,13 +411,9 @@ extension L10n {
         "error.provider.prefix": "%@ request failed: %@",
         "hotkey.error.unsupported": "Unsupported hotkey “%@”. Supported: ⌥Space, Option+Space, Alt+Space, ⌘Space, Command+Space, Cmd+Space.",
         "hotkey.error.registrationFailed": "Hotkey registration failed (%d).",
-        "prompt.simpleCorrectEnglish.description": "Rewrite or translate into simple, correct English",
-        "prompt.chineseSummary.description": "Summarize any text into concise Simplified Chinese",
-        "prompt.translateToEnglish.description": "Rewrite or translate into simple, correct English",
-        "prompt.improveWriting.description": "Improve writing while keeping the original language",
-        "prompt.makeConcise.description": "Shorten text while keeping the original language and key points",
-        "prompt.professionalTone.description": "Rewrite with a clearer, more professional tone",
-        "prompt.friendlyReply.description": "Rewrite as a natural, friendly reply",
-        "prompt.custom.description": "Use your custom prompt"
+        "settings.help.systemPrompt": "{myLanguage} is replaced with your Translation Language.",
+        "prompt.translateToEnglish.name": "To Simple and Correct English",
+        "prompt.summary.name": "Summarize",
+        "prompt.voiceCleanup.name": "Voice Cleanup"
     ]
 }

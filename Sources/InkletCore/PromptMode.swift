@@ -6,7 +6,8 @@ public struct PromptMode: Codable, Equatable, Identifiable, Sendable {
     public static let professionalToneID = "professional-tone"
     public static let friendlyReplyID = "friendly-reply"
     public static let customPromptID = "custom-prompt"
-    public static let chineseSummaryID = "chinese-summary"
+    // The raw value predates summaries in the user's own language; saved configs and menu buttons still use it.
+    public static let summaryID = "chinese-summary"
     public static let chineseToEnglishID = "chinese-to-english"
     public static let polishEnglishID = "polish-english"
     public static let voiceCleanupID = "voice-cleanup"
@@ -61,6 +62,30 @@ public struct PromptMode: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+/// Languages that prompts can name with placeholders, so one English prompt serves every app language.
+public struct PromptLanguages: Equatable, Sendable {
+    public static let myLanguagePlaceholder = "{myLanguage}"
+
+    /// English name of the language the user reads in, such as "Japanese".
+    public var myLanguage: String
+
+    public init(myLanguage: String) {
+        self.myLanguage = myLanguage
+    }
+
+    public func apply(to prompt: String) -> String {
+        prompt.replacingOccurrences(of: Self.myLanguagePlaceholder, with: myLanguage)
+    }
+}
+
+extension PromptMode {
+    public func resolvingLanguages(_ languages: PromptLanguages) -> PromptMode {
+        var mode = self
+        mode.systemPrompt = languages.apply(to: systemPrompt)
+        return mode
+    }
+}
+
 public struct PromptModeStore: Equatable, Sendable {
     private(set) public var modes: [PromptMode]
 
@@ -95,17 +120,18 @@ public struct PromptModeStore: Equatable, Sendable {
                 isVisible: true
             ),
             PromptMode(
-                id: PromptMode.chineseSummaryID,
-                name: "To Chinese Summary",
+                id: PromptMode.summaryID,
+                name: "Summarize",
                 description: "",
                 systemPrompt: """
-                Summarize the user's text in concise, natural Simplified Chinese.
+                Summarize the user's text in concise, natural \(PromptLanguages.myLanguagePlaceholder).
+                Write the summary in \(PromptLanguages.myLanguagePlaceholder) even when the original text is in another language.
                 Capture the key facts, decisions, dates, names, numbers, and action items.
                 Remove repetition and minor details unless they are important.
                 Use clear paragraphs or short bullet points when that improves readability.
                 Do not add information that is not in the original text.
                 Do not include explanations about the task.
-                Return only the Chinese summary.
+                Return only the summary.
                 """,
                 shortcut: nil,
                 participatesInAuto: false,
@@ -140,6 +166,11 @@ public struct PromptModeStore: Equatable, Sendable {
                 isVisible: false
             )
         ])
+    }
+
+    /// Built-in modes whose name the user has not changed show a translated name in the app.
+    public static func isDefaultName(_ name: String, modeID: String) -> Bool {
+        defaultStore().mode(id: modeID)?.name == name
     }
 
     public mutating func upsert(_ mode: PromptMode) {

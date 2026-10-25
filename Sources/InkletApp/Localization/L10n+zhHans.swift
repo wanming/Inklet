@@ -411,13 +411,9 @@ extension L10n {
         "error.provider.prefix": "%@ 请求失败：%@",
         "hotkey.error.unsupported": "暂不支持快捷键“%@”。目前支持 ⌥Space、Option+Space、Alt+Space、⌘Space、Command+Space、Cmd+Space。",
         "hotkey.error.registrationFailed": "快捷键注册失败（%d）。",
-        "prompt.simpleCorrectEnglish.description": "改写或翻译成简单、正确的英文",
-        "prompt.chineseSummary.description": "把任意文本总结成简洁中文",
-        "prompt.translateToEnglish.description": "改写或翻译成简单、正确的英文",
-        "prompt.improveWriting.description": "保持原语言，润色语法、表达和清晰度",
-        "prompt.makeConcise.description": "保持原语言，压缩文字并保留重点",
-        "prompt.professionalTone.description": "改成更职业、清楚、礼貌的语气",
-        "prompt.friendlyReply.description": "改成自然、友好、适合回复的表达",
-        "prompt.custom.description": "使用用户自定义 prompt"
+        "settings.help.systemPrompt": "{myLanguage} 会替换成你的翻译语言。",
+        "prompt.translateToEnglish.name": "改写成简单正确的英文",
+        "prompt.summary.name": "摘要",
+        "prompt.voiceCleanup.name": "语音整理"
     ]
 }

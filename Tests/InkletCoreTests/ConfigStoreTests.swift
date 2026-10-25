@@ -468,7 +468,7 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertTrue(config.promptModes.contains { $0.id == "custom-saved" })
         XCTAssertEqual(
             config.promptModes.prefix(2).map(\.id),
-            [PromptMode.translateToEnglishID, PromptMode.chineseSummaryID]
+            [PromptMode.translateToEnglishID, PromptMode.summaryID]
         )
         XCTAssertTrue(config.promptModes.allSatisfy { !$0.participatesInAuto && $0.autoRule == .none })
     }
@@ -489,7 +489,7 @@ final class ConfigStoreTests: XCTestCase {
                     "isVisible": true
                 },
                 {
-                    "id": "\(PromptMode.chineseSummaryID)",
+                    "id": "\(PromptMode.summaryID)",
                     "name": "To Chinese Summary",
                     "description": "",
                     "systemPrompt": "Summary prompt.",
@@ -507,7 +507,7 @@ final class ConfigStoreTests: XCTestCase {
 
         XCTAssertEqual(config.promptModes.map(\.id), [
             PromptMode.translateToEnglishID,
-            PromptMode.chineseSummaryID,
+            PromptMode.summaryID,
             PromptMode.voiceCleanupID
         ])
         XCTAssertEqual(config.promptModes[0].systemPrompt, "Translate prompt.")
@@ -575,6 +575,95 @@ final class ConfigStoreTests: XCTestCase {
         let mode = try XCTUnwrap(config.promptModes.first { $0.id == PromptMode.voiceCleanupID })
 
         XCTAssertEqual(mode.systemPrompt, "My custom cleanup prompt.")
+    }
+
+    func testConfigDecodeUpgradesUntouchedChineseSummaryToMyLanguageSummary() throws {
+        let legacySummaryPrompt = """
+        Summarize the user's text in concise, natural Simplified Chinese.
+        Capture the key facts, decisions, dates, names, numbers, and action items.
+        Remove repetition and minor details unless they are important.
+        Use clear paragraphs or short bullet points when that improves readability.
+        Do not add information that is not in the original text.
+        Do not include explanations about the task.
+        Return only the Chinese summary.
+        """
+        let data = """
+        {
+            "promptModes": [
+                {
+                    "id": "\(PromptMode.summaryID)",
+                    "name": "To Chinese Summary",
+                    "description": "",
+                    "systemPrompt": \(try jsonString(legacySummaryPrompt)),
+                    "shortcut": null,
+                    "participatesInAuto": false,
+                    "autoRule": "none",
+                    "sortOrder": 0,
+                    "isVisible": false
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+        let mode = try XCTUnwrap(config.promptModes.first { $0.id == PromptMode.summaryID })
+        let defaultMode = try XCTUnwrap(PromptModeStore.defaultStore().mode(id: PromptMode.summaryID))
+
+        XCTAssertEqual(mode.name, defaultMode.name)
+        XCTAssertEqual(mode.systemPrompt, defaultMode.systemPrompt)
+        XCTAssertFalse(mode.isVisible)
+    }
+
+    func testConfigDecodePreservesCustomizedChineseSummary() throws {
+        let data = """
+        {
+            "promptModes": [
+                {
+                    "id": "\(PromptMode.summaryID)",
+                    "name": "To Chinese Summary",
+                    "description": "",
+                    "systemPrompt": "Summarize in Simplified Chinese as three bullets.",
+                    "shortcut": null,
+                    "participatesInAuto": false,
+                    "autoRule": "none",
+                    "sortOrder": 0,
+                    "isVisible": true
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+        let mode = try XCTUnwrap(config.promptModes.first { $0.id == PromptMode.summaryID })
+
+        XCTAssertEqual(mode.name, "To Chinese Summary")
+        XCTAssertEqual(mode.systemPrompt, "Summarize in Simplified Chinese as three bullets.")
+    }
+
+    func testConfigDecodeKeepsRenamedBuiltInModes() throws {
+        let data = """
+        {
+            "promptModes": [
+                {
+                    "id": "\(PromptMode.translateToEnglishID)",
+                    "name": "Fix My English",
+                    "description": "",
+                    "systemPrompt": "My English prompt.",
+                    "shortcut": null,
+                    "participatesInAuto": false,
+                    "autoRule": "none",
+                    "sortOrder": 0,
+                    "isVisible": true
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+        let mode = try XCTUnwrap(config.promptModes.first { $0.id == PromptMode.translateToEnglishID })
+
+        XCTAssertEqual(mode.name, "Fix My English")
+        XCTAssertEqual(mode.systemPrompt, "My English prompt.")
     }
 
     func testResolvedProviderPresetFollowsSelectedProvider() {

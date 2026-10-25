@@ -49,6 +49,14 @@ final class LocalizationCoverageTests: XCTestCase {
         XCTAssertGreaterThan(referenceCount, 0)
     }
 
+    func testBuiltInPromptModesShowTranslatedNamesUntilRenamed() throws {
+        var mode = try XCTUnwrap(PromptModeStore.defaultStore().mode(id: PromptMode.summaryID))
+        XCTAssertEqual(mode.localizedName, L10n.text("prompt.summary.name"))
+
+        mode.name = "My Summary"
+        XCTAssertEqual(mode.localizedName, "My Summary")
+    }
+
     func testSystemLanguageHonorsTheFirstSupportedPreferenceIncludingEnglish() {
         XCTAssertEqual(L10n.resolveLanguage(preferredLanguages: ["en-US", "ja-JP"]), .english)
         XCTAssertEqual(L10n.resolveLanguage(preferredLanguages: ["ja-JP", "en-US"]), .japanese)

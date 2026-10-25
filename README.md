@@ -48,7 +48,7 @@ Text workflow:
 
 1. Focus any text field in another app.
 2. Press `Option+Space`.
-3. Fuzzy-search for a prompt mode (for example, `ts` can match `To Chinese Summary`), use `Up` / `Down` to highlight it, then press `Tab` or `Enter` to commit the mode.
+3. Fuzzy-search for a prompt mode (for example, `ts` can match `To Simple and Correct English`), use `Up` / `Down` to highlight it, then press `Tab` or `Enter` to commit the mode.
 4. Type or paste rough text.
 5. Press `Enter` to transform it. The result appears as it is generated; press `Escape` to stop.
 6. Press `Enter` again to insert the result, or press `Shift+Command+C` (or click the copy button on the result) to copy it instead.
@@ -75,7 +75,7 @@ The Dictation shortcut is source-local and hold-only. You can change its modifie
 - Lets you choose which buttons the selection menu shows and in what order, under Settings › Selection Assistant › Menu Buttons. Translate, Pronounce, and any prompt mode can be a button; up to four show at once and the rest go under **More**. A prompt mode button runs that mode on the selected text and shows the result in the panel with copy and playback controls.
 - Transforms text with built-in prompt modes:
   - To Simple and Correct English
-  - To Chinese Summary
+  - Summarize (into your Translation Language, which follows the interface language by default)
   - Voice Cleanup
 - Streams the result into the popover as it is generated, then inserts it back into the previously focused app or copies it with the result's copy button.
 - Uses one application-agnostic, Accessibility-first selection path. Automatic Selection Actions first ask macOS Accessibility for the selection, then use the configured temporary clipboard fallback only when Force Selection permits it. Each read stays bound to the captured source process and cancels if that process exits or loses focus.
