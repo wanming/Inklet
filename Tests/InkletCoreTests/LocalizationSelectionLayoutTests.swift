@@ -39,6 +39,26 @@ final class LocalizationSelectionLayoutTests: XCTestCase {
         }
     }
 
+    func testCustomMenuTruncatesLongModeNamesAndMovesExtrasUnderMore() {
+        let longName = String(repeating: "Very long prompt mode ", count: 4)
+        let items = SelectionMenuItem.defaults + (0..<3).map {
+            SelectionMenuItem(action: .promptMode("mode-\($0)"), promptModeName: longName)
+        }
+        for language in InterfaceLanguage.allCases where language != .system {
+            withLanguage(language) {
+                let view = SelectionActionView(
+                    state: .menu(errorMessage: nil, feedback: nil),
+                    menuItems: items,
+                    onTranslate: {}, onPronounce: {}, onPronounceOriginal: {},
+                    onPronounceTranslation: {}, onCopyTranslation: {}, onRetryTranslation: {}
+                )
+                let size = NSHostingView(rootView: view).fittingSize
+                XCTAssertLessThanOrEqual(size.width, 600, language.rawValue)
+                XCTAssertEqual(size.height, 46, accuracy: 1, language.rawValue)
+            }
+        }
+    }
+
     func testLongTranslationSupportsTheMinimumResizablePanelWidth() {
         withLanguage(.german) {
             let text = String(repeating: "A longer translation. ", count: 30)

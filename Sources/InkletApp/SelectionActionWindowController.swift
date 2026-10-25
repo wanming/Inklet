@@ -99,6 +99,7 @@ final class SelectionActionWindowController: NSWindowController {
     var onPronounceTranslation: (() -> Void)?
     var onCopyTranslation: (() -> Void)?
     var onRetryTranslation: (() -> Void)?
+    var onRunPromptMode: ((String) -> Void)?
     var onDismiss: (() -> Void)?
 
     var isPanelVisible: Bool {
@@ -106,8 +107,12 @@ final class SelectionActionWindowController: NSWindowController {
     }
 
     private var state: SelectionActionViewState = .menu(errorMessage: nil, feedback: nil)
+    private var menuItems = SelectionMenuItem.defaults
+    private var resultKind = SelectionActionResultKind.translation
     private let panelWidth: CGFloat = 300
     private let minimumPanelHeight: CGFloat = 46
+    // Wide enough for four menu buttons with truncated prompt mode names.
+    private let maximumMenuPanelWidth: CGFloat = 600
     private var hasUserResizedTranslationPanel = false
     private var isProgrammaticResize = false
     private var rememberedTranslationPanelSize: SelectionPanelSize?
@@ -150,8 +155,14 @@ final class SelectionActionWindowController: NSWindowController {
         fatalError("init(coder:) has not been implemented")
     }
 
+    /// Sets the buttons for the next `showMenu`.
+    func setMenuItems(_ items: [SelectionMenuItem]) {
+        menuItems = items.isEmpty ? SelectionMenuItem.defaults : items
+    }
+
     func showMenu(at point: SelectionPoint) {
         hasUserResizedTranslationPanel = false
+        resultKind = .translation
         state = .menu(errorMessage: nil, feedback: nil)
         render()
         positionWindow(at: point)
@@ -201,13 +212,23 @@ final class SelectionActionWindowController: NSWindowController {
         render()
     }
 
+    func showRunningPromptMode(_ modeID: String) {
+        state = .menu(errorMessage: nil, feedback: .loadingMenuPromptMode(modeID))
+        render()
+    }
+
+    /// Shows a result. `kind` is kept across later calls that only update feedback.
     func showTranslation(
         _ text: String,
         errorMessage: String? = nil,
-        feedback: SelectionActionFeedback? = nil
+        feedback: SelectionActionFeedback? = nil,
+        kind: SelectionActionResultKind? = nil
     ) {
         if translationText(for: state) != text {
             hasUserResizedTranslationPanel = false
+        }
+        if let kind {
+            resultKind = kind
         }
         state = .translationResult(text, errorMessage: errorMessage, feedback: feedback)
         render()
@@ -229,12 +250,16 @@ final class SelectionActionWindowController: NSWindowController {
 
         let hostingView = SelectionActionHostingView(rootView: SelectionActionView(
             state: state,
+            menuItems: menuItems,
+            resultKind: resultKind,
             onTranslate: { [weak self] in self?.onTranslate?() },
             onPronounce: { [weak self] in self?.onPronounce?() },
             onPronounceOriginal: { [weak self] in self?.onPronounceOriginal?() },
             onPronounceTranslation: { [weak self] in self?.onPronounceTranslation?() },
             onCopyTranslation: { [weak self] in self?.onCopyTranslation?() },
-            onRetryTranslation: { [weak self] in self?.onRetryTranslation?() }
+            onRetryTranslation: { [weak self] in self?.onRetryTranslation?() },
+            onRunPromptMode: { [weak self] modeID in self?.onRunPromptMode?(modeID) },
+            onShowMoreActions: { [weak self] items in self?.showMoreActionsMenu(items) }
         ))
         hostingView.wantsLayer = true
         hostingView.layer?.cornerRadius = 12
@@ -243,6 +268,29 @@ final class SelectionActionWindowController: NSWindowController {
         window?.contentView = hostingView
         resizeToPreferredSize()
         updateBackgroundDragExclusionRects()
+    }
+
+    private func showMoreActionsMenu(_ items: [SelectionMenuItem]) {
+        let menu = NSMenu()
+        for item in items {
+            let menuItem = SelectionMenuActionItem(title: item.title) { [weak self] in
+                self?.performMenuAction(item.action)
+            }
+            menuItem.image = NSImage(systemSymbolName: item.systemImage, accessibilityDescription: nil)
+            menu.addItem(menuItem)
+        }
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+    }
+
+    private func performMenuAction(_ action: SelectionMenuAction) {
+        switch action {
+        case .translate:
+            onTranslate?()
+        case .pronounce:
+            onPronounce?()
+        case .promptMode(let modeID):
+            onRunPromptMode?(modeID)
+        }
     }
 
     private func resizeToPreferredSize() {
@@ -277,8 +325,9 @@ final class SelectionActionWindowController: NSWindowController {
             )
         }
 
+        let maximumWidth: CGFloat = if case .menu = state { maximumMenuPanelWidth } else { 320 }
         return SelectionPanelSize(
-            width: min(max(fittingSize.width, 120), 320),
+            width: min(max(fittingSize.width, 120), maximumWidth),
             height: min(max(fittingSize.height, minimumPanelHeight), 260)
         )
     }
@@ -361,7 +410,7 @@ final class SelectionActionWindowController: NSWindowController {
             panel.backgroundDragExclusionRects = []
             window.styleMask.remove(.resizable)
             window.minSize = NSSize(width: 120, height: minimumPanelHeight)
-            window.maxSize = NSSize(width: 320, height: 260)
+            window.maxSize = NSSize(width: maximumMenuPanelWidth, height: 260)
         }
     }
 
@@ -453,5 +502,24 @@ extension SelectionActionWindowController: NSWindowDelegate {
             saveRememberedTranslationPanelSize(window.frame.size)
         }
         updateBackgroundDragExclusionRects()
+    }
+}
+
+private final class SelectionMenuActionItem: NSMenuItem {
+    private let handler: () -> Void
+
+    init(title: String, handler: @escaping () -> Void) {
+        self.handler = handler
+        super.init(title: title, action: #selector(runHandler), keyEquivalent: "")
+        target = self
+    }
+
+    @available(*, unavailable)
+    required init(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func runHandler() {
+        handler()
     }
 }

@@ -118,6 +118,10 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - Inspect the bundle-qualified selection diagnostic log and confirm repeated event entries are rate-limited and no selected text, clipboard text, or typed characters are recorded.
 - Translate selected text and confirm the result remains visible with copy, original-audio, and translated-audio controls.
 - Translate the same text with the same settings again and confirm the cached result appears. Confirm a successful action is recorded in Settings > History, but mere selection without an action is not.
+- In Settings > Selection Assistant > Menu Buttons, turn on two prompt modes and reorder the list. Select text and confirm the menu shows the buttons in that order, long mode names truncate with a tooltip, and the last enabled button cannot be turned off.
+- Turn on five or more buttons and confirm three show inline and the rest open from **More**. Choose each overflow item and confirm it runs; the panel stays open while the More menu is shown.
+- Run a prompt mode button: its icon becomes a spinner, the result appears with Copy result and Play result controls, Retry after a failure reruns the same mode, and the run is recorded in History with the mode name.
+- Choose Restore Default and confirm the menu returns to Translate and Pronounce.
 
 ## Update Checks
 
