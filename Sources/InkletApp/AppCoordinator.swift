@@ -53,6 +53,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     private let windowController: InkletPopoverWindowController
     private let settingsController: SettingsWindowController
     private let aboutController: AboutWindowController
+    private var welcomeGuideController: WelcomeGuideWindowController?
     private let hotkeyManager: GlobalHotkeyManager
     private let configStore: UserDefaultsConfigStore
     private let accessibilityPermissionService: AccessibilityPermissionService
@@ -105,7 +106,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         let apiKeyStore = LocalAPIKeyStore()
         let migrationPresentationModel = LegacyMigrationPresentationModel(outcome: migrationOutcome)
         let accessibilityPermissionService = AccessibilityPermissionService()
-        AppCoordinator.startWithBuiltInModelIfFirstLaunch(
+        AppCoordinator.prepareWelcomeGuideIfNewInstall(
             configStore: configStore,
             apiKeyStore: apiKeyStore,
             migrationOutcome: migrationOutcome
@@ -278,7 +279,9 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         windowController.reloadDictationConfiguration()
         BuiltInDictationResidency.shared.start()
         selectionActions.configureSelectionActions()
-        showPermissionSettingsIfNeeded()
+        if !showWelcomeGuideIfPending() {
+            showPermissionSettingsIfNeeded()
+        }
         installSettingsShortcutMonitor()
         refreshMigrationImportEligibility()
         settingsController.showMigrationNotice()
@@ -608,53 +611,75 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         refreshMigrationImportEligibility()
     }
 
-    /// A new install starts with the built-in model and downloads it right away, so the first writing
-    /// popover shows the download's progress instead of asking for an API key. This runs before the
-    /// settings and popover models load the config.
-    private static func startWithBuiltInModelIfFirstLaunch(
-        configStore: UserDefaultsConfigStore,
-        apiKeyStore: LocalAPIKeyStore,
-        migrationOutcome: LegacySandboxMigrationOutcome
-    ) {
-        guard !configStore.hasSavedConfig else { return }
-        let hasSavedAPIKey = LLMProviderPreset.all.contains { preset in
-            apiKeyStore.loadAPIKey(forProviderID: preset.id)?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .isEmpty == false
-        }
-        guard let config = BuiltInFirstLaunch.initialConfig(
-            hasSavedConfig: false,
-            hasSavedAPIKey: hasSavedAPIKey,
-            didCompleteOnboarding: UserDefaults.standard.bool(forKey: InkletPreferenceKeys.didCompleteOnboarding),
-            hasPendingMigration: migrationOutcome.hasIncompleteComponents,
-            isEngineAvailable: BuiltInModelServer.isEngineAvailable,
-            physicalMemoryBytes: ProcessInfo.processInfo.physicalMemory
-        ),
-            let model = BuiltInModel.model(id: config.model),
-            (try? configStore.save(config)) != nil
-        else {
-            return
-        }
-        let downloads = BuiltInModelDownloads.shared
-        if !downloads.isInstalled(model) {
-            downloads.download(model)
-        }
-        // Live Dictation also runs on this Mac by default; its smaller model downloads next.
-        let dictationModel = BuiltInDictationModel.recommended
-        if !downloads.isInstalled(dictationModel) {
-            Task { @MainActor in
-                await downloads.waitForAll()
-                downloads.download(dictationModel)
-            }
-        }
-    }
-
     private func showPermissionSettingsIfNeeded() {
         guard !accessibilityPermissionService.isTrusted else {
             return
         }
 
         showSettings(section: .general)
+    }
+
+    /// A new install starts with the built-in model when this Mac can run it, and opens the welcome
+    /// guide, which walks through permissions and downloads the model. This runs before the settings and
+    /// popover models load the config.
+    private static func prepareWelcomeGuideIfNewInstall(
+        configStore: UserDefaultsConfigStore,
+        apiKeyStore: LocalAPIKeyStore,
+        migrationOutcome: LegacySandboxMigrationOutcome
+    ) {
+        let userDefaults = UserDefaults.standard
+        guard !configStore.hasSavedConfig else { return }
+        let hasSavedAPIKey = LLMProviderPreset.all.contains { preset in
+            apiKeyStore.loadAPIKey(forProviderID: preset.id)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty == false
+        }
+        guard OnboardingPolicy.isNewInstall(
+            hasSavedConfig: false,
+            hasSavedAPIKey: hasSavedAPIKey,
+            didCompleteOnboarding: userDefaults.bool(forKey: InkletPreferenceKeys.didCompleteOnboarding),
+            hasPendingMigration: migrationOutcome.hasIncompleteComponents
+        ) else {
+            return
+        }
+        if let config = OnboardingPolicy.initialConfig(
+            isEngineAvailable: BuiltInModelServer.isEngineAvailable,
+            physicalMemoryBytes: ProcessInfo.processInfo.physicalMemory
+        ) {
+            try? configStore.save(config)
+        }
+        userDefaults.set(true, forKey: InkletPreferenceKeys.isWelcomeGuidePending)
+    }
+
+    /// Returns false when the guide is already done, so the usual permission check runs instead.
+    private func showWelcomeGuideIfPending() -> Bool {
+        let userDefaults = UserDefaults.standard
+        guard userDefaults.bool(forKey: InkletPreferenceKeys.isWelcomeGuidePending),
+              !userDefaults.bool(forKey: InkletPreferenceKeys.didCompleteOnboarding)
+        else {
+            return false
+        }
+        let controller = welcomeGuideController ?? WelcomeGuideWindowController(
+            settings: settingsController.settingsModel,
+            onAccessibilityTrusted: {
+                NotificationCenter.default.post(name: .inkletAccessibilityDidBecomeTrusted, object: nil)
+            },
+            onFinish: { [weak self] in
+                self?.finishWelcomeGuide()
+            }
+        )
+        welcomeGuideController = controller
+        controller.show()
+        return true
+    }
+
+    private func finishWelcomeGuide() {
+        let userDefaults = UserDefaults.standard
+        userDefaults.set(true, forKey: InkletPreferenceKeys.didCompleteOnboarding)
+        userDefaults.removeObject(forKey: InkletPreferenceKeys.isWelcomeGuidePending)
+        welcomeGuideController?.close()
+        welcomeGuideController = nil
+        openPopover()
     }
 
     private func configureStatusItemIcon() {

@@ -59,6 +59,47 @@ final class SettingsProviderSelectionTests: XCTestCase {
     }
 
     @MainActor
+    @MainActor
+    func testWelcomeGuideWalksEveryStepAndFinishesOnTheLast() throws {
+        let (settings, _) = try makeModel(keychain: ProviderSelectionKeychainClient())
+        let guide = WelcomeGuideViewModel(settings: settings)
+        var didFinish = false
+        guide.onFinish = { didFinish = true }
+
+        XCTAssertEqual(guide.step, .welcome)
+        for _ in 1..<WelcomeGuideViewModel.Step.allCases.count {
+            guide.performPrimaryAction()
+        }
+        XCTAssertEqual(guide.step, .ready)
+        XCTAssertFalse(didFinish)
+
+        guide.goBack()
+        XCTAssertEqual(guide.step, .dictation)
+        guide.performPrimaryAction()
+        guide.performPrimaryAction()
+        XCTAssertTrue(didFinish)
+    }
+
+    @MainActor
+    func testWelcomeGuideCloudChoiceSavesTheOpenAIKey() throws {
+        let keychain = ProviderSelectionKeychainClient()
+        let (settings, configStore) = try makeModel(keychain: keychain)
+        settings.selectProvider(LLMProviderPreset.builtIn.id)
+        let guide = WelcomeGuideViewModel(settings: settings)
+        guide.performPrimaryAction()
+        guide.performPrimaryAction()
+        XCTAssertEqual(guide.step, .writingModel)
+
+        guide.selectWritingChoice(.builtIn)
+        guide.selectWritingChoice(.cloud)
+        settings.providerAPIKey = "sk-guide"
+        guide.performPrimaryAction()
+
+        XCTAssertEqual(guide.step, .dictation)
+        XCTAssertEqual(try configStore.load().providerID, LLMProviderPreset.openAI.id)
+        XCTAssertEqual(keychain.value(forAccount: LLMProviderPreset.openAI.id), "sk-guide")
+    }
+
     private func makeModel(
         keychain: ProviderSelectionKeychainClient
     ) throws -> (SettingsViewModel, UserDefaultsConfigStore) {

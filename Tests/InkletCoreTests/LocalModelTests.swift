@@ -178,34 +178,37 @@ final class LocalModelTests: XCTestCase {
 
     func testNewInstallStartsWithTheBuiltInModelForThisMac() throws {
         let gigabyte: UInt64 = 1_073_741_824
-        func initialConfig(
+        func isNewInstall(
             hasSavedConfig: Bool = false,
             hasSavedAPIKey: Bool = false,
             didCompleteOnboarding: Bool = false,
-            hasPendingMigration: Bool = false,
-            isEngineAvailable: Bool = true,
-            memoryGB: UInt64 = 16
-        ) -> AppConfig? {
-            BuiltInFirstLaunch.initialConfig(
+            hasPendingMigration: Bool = false
+        ) -> Bool {
+            OnboardingPolicy.isNewInstall(
                 hasSavedConfig: hasSavedConfig,
                 hasSavedAPIKey: hasSavedAPIKey,
                 didCompleteOnboarding: didCompleteOnboarding,
-                hasPendingMigration: hasPendingMigration,
-                isEngineAvailable: isEngineAvailable,
-                physicalMemoryBytes: memoryGB * gigabyte
+                hasPendingMigration: hasPendingMigration
             )
         }
 
-        let config = try XCTUnwrap(initialConfig())
+        XCTAssertTrue(isNewInstall())
+        XCTAssertFalse(isNewInstall(hasSavedConfig: true))
+        XCTAssertFalse(isNewInstall(hasSavedAPIKey: true))
+        XCTAssertFalse(isNewInstall(didCompleteOnboarding: true))
+        XCTAssertFalse(isNewInstall(hasPendingMigration: true))
+
+        let config = try XCTUnwrap(OnboardingPolicy.initialConfig(
+            isEngineAvailable: true,
+            physicalMemoryBytes: 16 * gigabyte
+        ))
         XCTAssertEqual(config.providerID, LLMProviderPreset.builtIn.id)
         XCTAssertEqual(config.model, BuiltInModel.gemma4E4B.id)
-        XCTAssertEqual(initialConfig(memoryGB: 8)?.model, BuiltInModel.qwen35_4B.id)
-
-        XCTAssertNil(initialConfig(hasSavedConfig: true))
-        XCTAssertNil(initialConfig(hasSavedAPIKey: true))
-        XCTAssertNil(initialConfig(didCompleteOnboarding: true))
-        XCTAssertNil(initialConfig(hasPendingMigration: true))
-        XCTAssertNil(initialConfig(isEngineAvailable: false))
+        XCTAssertEqual(
+            OnboardingPolicy.initialConfig(isEngineAvailable: true, physicalMemoryBytes: 8 * gigabyte)?.model,
+            BuiltInModel.qwen35_4B.id
+        )
+        XCTAssertNil(OnboardingPolicy.initialConfig(isEngineAvailable: false, physicalMemoryBytes: 16 * gigabyte))
     }
 
     func testConfigStoreReportsWhetherAConfigWasSaved() throws {
