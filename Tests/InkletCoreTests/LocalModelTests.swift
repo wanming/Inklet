@@ -212,7 +212,8 @@ final class LocalModelTests: XCTestCase {
         let suiteName = "LocalModelTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
-        let store = UserDefaultsConfigStore(userDefaults: defaults)
+        // A suite also searches the test process's own defaults, so use a key nothing else writes.
+        let store = UserDefaultsConfigStore(userDefaults: defaults, key: "appConfig.\(UUID().uuidString)")
 
         XCTAssertFalse(store.hasSavedConfig)
         try store.save(AppConfig.defaultConfig())
