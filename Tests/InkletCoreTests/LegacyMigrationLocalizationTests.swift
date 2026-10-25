@@ -251,9 +251,7 @@ final class LegacyMigrationLocalizationTests: XCTestCase {
     }
 
     private func parsedLanguageTables() throws -> [String: [LocalizationEntry]] {
-        let packageRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let localizationURL = packageRoot.appendingPathComponent("Sources/InkletApp/InkletLocalization.swift")
-        let source = try String(contentsOf: localizationURL, encoding: .utf8)
+        let source = try LocalizationSourceFixture.source()
         return try Dictionary(uniqueKeysWithValues: languageTables.map { language in
             (language.symbol, try migrationEntries(in: language.symbol, source: source))
         })
@@ -277,7 +275,7 @@ final class LegacyMigrationLocalizationTests: XCTestCase {
     }
 
     private func migrationEntries(in table: String, source: String) throws -> [LocalizationEntry] {
-        let startMarker = "private static let \(table): [String: String] = ["
+        let startMarker = "    static let \(table): [String: String] = ["
         let startRange = try XCTUnwrap(source.range(of: startMarker), "Missing \(table) localization table")
         let remainder = source[startRange.upperBound...]
         let endRange = try XCTUnwrap(remainder.range(of: "\n    ]"), "Unterminated \(table) localization table")

@@ -151,13 +151,11 @@ final class UpdateCheckLocalizationTests: XCTestCase {
     }
 
     private func localizationSource() throws -> String {
-        let path = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-            .appendingPathComponent("Sources/InkletApp/InkletLocalization.swift")
-        return try String(contentsOf: path, encoding: .utf8)
+        try LocalizationSourceFixture.source()
     }
 
     private func localizationTableIDs(in source: String) throws -> [String] {
-        let regex = try NSRegularExpression(pattern: #"^[ \t]*private[ \t]+static[ \t]+let[ \t]+([A-Za-z_][A-Za-z0-9_]*):[ \t]*\[String:[ \t]*String\][ \t]*=[ \t]*\["#, options: .anchorsMatchLines)
+        let regex = try NSRegularExpression(pattern: #"^[ \t]*static[ \t]+let[ \t]+([A-Za-z_][A-Za-z0-9_]*):[ \t]*\[String:[ \t]*String\][ \t]*=[ \t]*\["#, options: .anchorsMatchLines)
         let range = NSRange(source.startIndex..<source.endIndex, in: source)
         return regex.matches(in: source, range: range).compactMap {
             Range($0.range(at: 1), in: source).map { String(source[$0]) }
@@ -165,7 +163,7 @@ final class UpdateCheckLocalizationTests: XCTestCase {
     }
 
     private func localizationTableSource(_ tableID: String, in source: String) throws -> String {
-        let declaration = "    private static let \(tableID): [String: String] = ["
+        let declaration = "    static let \(tableID): [String: String] = ["
         let start = try XCTUnwrap(source.range(of: declaration)).upperBound
         let end = try XCTUnwrap(source.range(of: "\n    ]", range: start..<source.endIndex)).lowerBound
         return String(source[start..<end])

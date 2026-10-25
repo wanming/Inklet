@@ -46,6 +46,7 @@ swift build -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors
 - Do not commit local build output, `.dmg` files, `.worktrees/`, `.build/`, API keys, tokens, or personal configuration.
 - Update documentation when changing install, setup, provider, or release behavior.
 - Use English for documentation and project-facing prose.
+- Interface text lives in `Sources/InkletApp/Localization/`, one file per language. Add each new key to every language file; `scripts/check-localization.sh` fails when a table is missing a key.
 
 ## Distribution And Release Changes
 
