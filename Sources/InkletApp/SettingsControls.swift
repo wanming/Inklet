@@ -4,19 +4,21 @@ import SwiftUI
 import InkletCore
 
 struct PromptModeTableView: NSViewRepresentable {
-    static let rowHeight: CGFloat = 34
-    static let rowSpacing: CGFloat = 2
-    static var rowPitch: CGFloat { rowHeight + rowSpacing }
-
     let modes: [PromptMode]
     @Binding var selectedModeID: String
+    let canDelete: Bool
     let onMove: (Int, Int) -> Void
+    let onToggleVisibility: (String) -> Void
+    let onDelete: (String) -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
             modes: modes,
             selectedModeID: $selectedModeID,
-            onMove: onMove
+            canDelete: canDelete,
+            onMove: onMove,
+            onToggleVisibility: onToggleVisibility,
+            onDelete: onDelete
         )
     }
 
@@ -26,12 +28,11 @@ struct PromptModeTableView: NSViewRepresentable {
         column.resizingMask = .autoresizingMask
         tableView.addTableColumn(column)
         tableView.headerView = nil
-        tableView.rowHeight = Self.rowHeight
-        tableView.intercellSpacing = NSSize(width: 0, height: Self.rowSpacing)
+        tableView.rowHeight = 34
+        tableView.intercellSpacing = NSSize(width: 0, height: 2)
         tableView.backgroundColor = .clear
         tableView.selectionHighlightStyle = .none
         tableView.usesAlternatingRowBackgroundColors = false
-        tableView.style = .plain
         tableView.delegate = context.coordinator
         tableView.dataSource = context.coordinator
         tableView.registerForDraggedTypes([Coordinator.dragPasteboardType])
@@ -51,7 +52,10 @@ struct PromptModeTableView: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         context.coordinator.modes = modes
         context.coordinator.selectedModeID = $selectedModeID
+        context.coordinator.canDelete = canDelete
         context.coordinator.onMove = onMove
+        context.coordinator.onToggleVisibility = onToggleVisibility
+        context.coordinator.onDelete = onDelete
 
         guard let tableView = scrollView.documentView as? NSTableView else {
             return
@@ -70,18 +74,27 @@ struct PromptModeTableView: NSViewRepresentable {
 
         var modes: [PromptMode]
         var selectedModeID: Binding<String>
+        var canDelete: Bool
         var onMove: (Int, Int) -> Void
+        var onToggleVisibility: (String) -> Void
+        var onDelete: (String) -> Void
         weak var tableView: NSTableView?
         private var isSyncingSelection = false
 
         init(
             modes: [PromptMode],
             selectedModeID: Binding<String>,
-            onMove: @escaping (Int, Int) -> Void
+            canDelete: Bool,
+            onMove: @escaping (Int, Int) -> Void,
+            onToggleVisibility: @escaping (String) -> Void,
+            onDelete: @escaping (String) -> Void
         ) {
             self.modes = modes
             self.selectedModeID = selectedModeID
+            self.canDelete = canDelete
             self.onMove = onMove
+            self.onToggleVisibility = onToggleVisibility
+            self.onDelete = onDelete
         }
 
         func numberOfRows(in tableView: NSTableView) -> Int {
@@ -96,7 +109,12 @@ struct PromptModeTableView: NSViewRepresentable {
             let cell = (tableView.makeView(withIdentifier: Self.rowIdentifier, owner: self) as? PromptModeTableCellView)
                 ?? PromptModeTableCellView(identifier: Self.rowIdentifier)
             let mode = modes[row]
-            cell.configure(mode: mode, isSelected: mode.id == selectedModeID.wrappedValue)
+            cell.configure(
+                mode: mode,
+                isSelected: mode.id == selectedModeID.wrappedValue,
+                canDelete: canDelete,
+                target: self
+            )
             return cell
         }
 
@@ -168,6 +186,22 @@ struct PromptModeTableView: NSViewRepresentable {
                 tableView.deselectAll(nil)
             }
         }
+
+        @MainActor
+        @objc func toggleVisibility(_ sender: NSButton) {
+            guard let modeID = sender.identifier?.rawValue else {
+                return
+            }
+            onToggleVisibility(modeID)
+        }
+
+        @MainActor
+        @objc func deleteMode(_ sender: NSButton) {
+            guard let modeID = sender.identifier?.rawValue else {
+                return
+            }
+            onDelete(modeID)
+        }
     }
 }
 
@@ -193,18 +227,22 @@ private final class PromptModeTableScrollView: NSScrollView {
     }
 }
 
-/// A row with only the mode name. The drag handle appears on hover, a hidden mode
-/// shows a dimmed name and an eye-slash mark, and the selected row lifts as a raised card.
-/// Visibility and deletion live in the detail pane.
+/// A mode row in the Prompt Modes list. The drag handle stays visible; the visibility and
+/// delete buttons appear on hover or selection, except that a hidden mode always shows its
+/// crossed-out eye so its state can be seen at a glance.
 private final class PromptModeTableCellView: NSTableCellView {
+    private static let rowInset: CGFloat = InkletTheme.Spacing.xxs
+    private let rowContainer = NSView()
     private let selectionBackground = NSView()
     private let dragHandle = NSImageView()
     private let titleField = NSTextField(labelWithString: "")
-    private let hiddenMark = NSImageView()
+    private let visibilityButton = NSButton()
+    private let deleteButton = NSButton()
     private var trackingArea: NSTrackingArea?
     private var isHovered = false
     private var isCellSelected = false
     private var isModeVisible = true
+    private var canDeleteMode = true
 
     init(identifier: NSUserInterfaceItemIdentifier) {
         super.init(frame: .zero)
@@ -217,14 +255,32 @@ private final class PromptModeTableCellView: NSTableCellView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(mode: PromptMode, isSelected: Bool) {
+    func configure(
+        mode: PromptMode,
+        isSelected: Bool,
+        canDelete: Bool,
+        target: PromptModeTableView.Coordinator
+    ) {
+        let symbolConfiguration = NSImage.SymbolConfiguration(pointSize: InkletTheme.IconSize.small, weight: .medium)
         isCellSelected = isSelected
         isModeVisible = mode.isVisible
+        canDeleteMode = canDelete
         titleField.stringValue = mode.name.isEmpty ? L10n.text("settings.mode.untitled") : mode.localizedName
-        titleField.toolTip = titleField.stringValue
-        titleField.font = .systemFont(ofSize: 13, weight: isSelected ? .semibold : .regular)
-        hiddenMark.isHidden = mode.isVisible
-        hiddenMark.toolTip = L10n.text("settings.mode.hidden")
+        titleField.font = .systemFont(ofSize: 13, weight: isSelected ? .medium : .regular)
+        visibilityButton.image = NSImage(systemSymbolName: mode.isVisible ? "eye" : "eye.slash", accessibilityDescription: nil)?
+            .withSymbolConfiguration(symbolConfiguration)
+        visibilityButton.toolTip = mode.isVisible ? L10n.text("settings.mode.visible") : L10n.text("settings.mode.hidden")
+        visibilityButton.setAccessibilityLabel(visibilityButton.toolTip)
+        visibilityButton.identifier = NSUserInterfaceItemIdentifier(mode.id)
+        visibilityButton.target = target
+        visibilityButton.action = #selector(PromptModeTableView.Coordinator.toggleVisibility(_:))
+
+        deleteButton.identifier = NSUserInterfaceItemIdentifier(mode.id)
+        deleteButton.target = target
+        deleteButton.action = #selector(PromptModeTableView.Coordinator.deleteMode(_:))
+        deleteButton.isEnabled = canDelete
+        deleteButton.toolTip = L10n.text("settings.mode.delete")
+        deleteButton.setAccessibilityLabel(deleteButton.toolTip)
         applyAppearance()
     }
 
@@ -260,18 +316,21 @@ private final class PromptModeTableCellView: NSTableCellView {
     private func buildView() {
         wantsLayer = true
         layer?.backgroundColor = NSColor.clear.cgColor
+        rowContainer.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(rowContainer)
 
         selectionBackground.wantsLayer = true
         selectionBackground.layer?.cornerRadius = InkletTheme.Radius.control
         selectionBackground.layer?.cornerCurve = .continuous
-        selectionBackground.layer?.shadowOffset = CGSize(width: 0, height: -1)
-        selectionBackground.layer?.shadowRadius = 1
+        selectionBackground.layer?.backgroundColor = NSColor.clear.cgColor
         selectionBackground.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(selectionBackground)
+        rowContainer.addSubview(selectionBackground)
 
-        let symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 11, weight: .regular)
+        let symbolConfiguration = NSImage.SymbolConfiguration(pointSize: InkletTheme.IconSize.small, weight: .medium)
         dragHandle.image = NSImage(systemSymbolName: "line.3.horizontal", accessibilityDescription: nil)?
             .withSymbolConfiguration(symbolConfiguration)
+        dragHandle.setContentHuggingPriority(.required, for: .horizontal)
+        dragHandle.setContentCompressionResistancePriority(.required, for: .horizontal)
         dragHandle.toolTip = L10n.text("settings.mode.dragToSort")
         dragHandle.translatesAutoresizingMaskIntoConstraints = false
 
@@ -280,49 +339,78 @@ private final class PromptModeTableCellView: NSTableCellView {
         titleField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         titleField.translatesAutoresizingMaskIntoConstraints = false
 
-        hiddenMark.image = NSImage(systemSymbolName: "eye.slash", accessibilityDescription: L10n.text("settings.mode.hidden"))?
+        configureIconButton(visibilityButton)
+        configureIconButton(deleteButton)
+        deleteButton.image = NSImage(systemSymbolName: "trash", accessibilityDescription: nil)?
             .withSymbolConfiguration(symbolConfiguration)
-        hiddenMark.setContentHuggingPriority(.required, for: .horizontal)
-        hiddenMark.setContentCompressionResistancePriority(.required, for: .horizontal)
-        hiddenMark.translatesAutoresizingMaskIntoConstraints = false
 
-        addSubview(dragHandle)
-        addSubview(titleField)
-        addSubview(hiddenMark)
+        rowContainer.addSubview(dragHandle)
+        rowContainer.addSubview(titleField)
+        rowContainer.addSubview(visibilityButton)
+        rowContainer.addSubview(deleteButton)
 
+        let buttonSize = InkletTheme.ControlHeight.small
         NSLayoutConstraint.activate([
-            selectionBackground.leadingAnchor.constraint(equalTo: leadingAnchor),
-            selectionBackground.trailingAnchor.constraint(equalTo: trailingAnchor),
-            selectionBackground.topAnchor.constraint(equalTo: topAnchor),
-            selectionBackground.bottomAnchor.constraint(equalTo: bottomAnchor),
-            dragHandle.widthAnchor.constraint(equalToConstant: 13),
-            dragHandle.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            dragHandle.centerYAnchor.constraint(equalTo: centerYAnchor),
-            titleField.leadingAnchor.constraint(equalTo: dragHandle.trailingAnchor, constant: 8),
-            titleField.trailingAnchor.constraint(lessThanOrEqualTo: hiddenMark.leadingAnchor, constant: -8),
-            titleField.centerYAnchor.constraint(equalTo: centerYAnchor),
-            hiddenMark.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
-            hiddenMark.centerYAnchor.constraint(equalTo: centerYAnchor)
+            rowContainer.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Self.rowInset),
+            rowContainer.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Self.rowInset),
+            rowContainer.topAnchor.constraint(equalTo: topAnchor, constant: 1),
+            rowContainer.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -1),
+            selectionBackground.leadingAnchor.constraint(equalTo: rowContainer.leadingAnchor),
+            selectionBackground.trailingAnchor.constraint(equalTo: rowContainer.trailingAnchor),
+            selectionBackground.topAnchor.constraint(equalTo: rowContainer.topAnchor),
+            selectionBackground.bottomAnchor.constraint(equalTo: rowContainer.bottomAnchor),
+            dragHandle.widthAnchor.constraint(equalToConstant: InkletTheme.IconSize.large),
+            visibilityButton.widthAnchor.constraint(equalToConstant: buttonSize),
+            visibilityButton.heightAnchor.constraint(equalToConstant: buttonSize),
+            deleteButton.widthAnchor.constraint(equalToConstant: buttonSize),
+            deleteButton.heightAnchor.constraint(equalToConstant: buttonSize),
+            dragHandle.leadingAnchor.constraint(equalTo: rowContainer.leadingAnchor, constant: InkletTheme.Spacing.xs),
+            dragHandle.centerYAnchor.constraint(equalTo: rowContainer.centerYAnchor),
+            titleField.leadingAnchor.constraint(equalTo: dragHandle.trailingAnchor, constant: InkletTheme.Spacing.xs),
+            titleField.trailingAnchor.constraint(lessThanOrEqualTo: visibilityButton.leadingAnchor, constant: -InkletTheme.Spacing.xxs),
+            titleField.centerYAnchor.constraint(equalTo: rowContainer.centerYAnchor),
+            visibilityButton.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor),
+            visibilityButton.centerYAnchor.constraint(equalTo: rowContainer.centerYAnchor),
+            deleteButton.trailingAnchor.constraint(equalTo: rowContainer.trailingAnchor, constant: -InkletTheme.Spacing.xxs),
+            deleteButton.centerYAnchor.constraint(equalTo: rowContainer.centerYAnchor)
         ])
     }
 
     private func applyAppearance() {
+        let isDark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        let showsActions = isHovered || isCellSelected
+        selectionBackground.layer?.backgroundColor = isCellSelected
+            ? NSColor.controlAccentColor
+                .withAlphaComponent(isDark ? InkletAccent.softAlphaDark : InkletAccent.softAlphaLight)
+                .cgColor
+            : (isHovered ? resolvedCGColor(InkletPalette.fill.nsColor) : NSColor.clear.cgColor)
+        titleField.textColor = isModeVisible ? InkletPalette.label.nsColor : InkletPalette.tertiaryLabel.nsColor
+        dragHandle.contentTintColor = showsActions
+            ? InkletPalette.secondaryLabel.nsColor
+            : InkletPalette.tertiaryLabel.nsColor
+        visibilityButton.contentTintColor = InkletPalette.secondaryLabel.nsColor
+        visibilityButton.isHidden = !showsActions && isModeVisible
+        deleteButton.contentTintColor = InkletPalette.secondaryLabel.nsColor
+        deleteButton.isHidden = !showsActions || !canDeleteMode
+    }
+
+    private func resolvedCGColor(_ color: NSColor) -> CGColor {
+        var resolvedColor = color.cgColor
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            let background = isCellSelected
-                ? InkletPalette.surfaceRaised.nsColor
-                : (isHovered ? InkletPalette.fill.nsColor : .clear)
-            selectionBackground.layer?.backgroundColor = background.cgColor
-            selectionBackground.layer?.borderWidth = isCellSelected ? 1 : 0
-            selectionBackground.layer?.borderColor = InkletPalette.hairline.nsColor.cgColor
-            selectionBackground.layer?.shadowColor = NSColor.black.cgColor
-            selectionBackground.layer?.shadowOpacity = isCellSelected ? 0.06 : 0
-            titleField.textColor = isModeVisible
-                ? InkletPalette.label.nsColor
-                : InkletPalette.tertiaryLabel.nsColor
-            dragHandle.contentTintColor = InkletPalette.tertiaryLabel.nsColor
-            dragHandle.alphaValue = isHovered ? 1 : 0
-            hiddenMark.contentTintColor = InkletPalette.tertiaryLabel.nsColor
+            resolvedColor = color.cgColor
         }
+        return resolvedColor
+    }
+
+    private func configureIconButton(_ button: NSButton) {
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.isBordered = false
+        button.bezelStyle = .regularSquare
+        button.setButtonType(.momentaryChange)
+        button.imagePosition = .imageOnly
+        button.focusRingType = .none
+        button.setContentHuggingPriority(.required, for: .horizontal)
+        button.setContentCompressionResistancePriority(.required, for: .horizontal)
     }
 }
 
@@ -453,11 +541,12 @@ struct HotkeyRecorderField: NSViewRepresentable {
         override init(frame frameRect: NSRect) {
             super.init(frame: frameRect)
             wantsLayer = true
-            layer?.cornerRadius = 8
+            layer?.cornerRadius = InkletTheme.Radius.control
+            layer?.cornerCurve = .continuous
             layer?.borderWidth = 1
             label.translatesAutoresizingMaskIntoConstraints = false
             label.alignment = .center
-            label.font = .monospacedSystemFont(ofSize: 13, weight: .medium)
+            label.font = .monospacedSystemFont(ofSize: 12, weight: .medium)
             addSubview(label)
             NSLayoutConstraint.activate([
                 label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
@@ -529,10 +618,13 @@ struct HotkeyRecorderField: NSViewRepresentable {
         }
 
         func updateDisplay(pressedModifiers: String = "") {
-            let backgroundColor = isRecording ? NSColor.controlAccentColor.withAlphaComponent(0.16) : NSColor.controlBackgroundColor
+            let isDark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            let backgroundColor = isRecording
+                ? NSColor.controlAccentColor.withAlphaComponent(isDark ? InkletAccent.softAlphaDark : InkletAccent.softAlphaLight)
+                : InkletPalette.surfaceRaised.nsColor
             layer?.backgroundColor = resolvedCGColor(backgroundColor)
-            layer?.borderColor = resolvedCGColor(isRecording ? .controlAccentColor : .separatorColor)
-            label.textColor = isRecording ? .controlAccentColor : .labelColor
+            layer?.borderColor = resolvedCGColor(isRecording ? .controlAccentColor : InkletPalette.strokeStrong.nsColor)
+            label.textColor = isRecording ? .controlAccentColor : InkletPalette.label.nsColor
             if isRecording {
                 label.stringValue = pressedModifiers.isEmpty
                     ? L10n.text("settings.hotkey.recording")

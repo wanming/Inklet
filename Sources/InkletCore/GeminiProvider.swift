@@ -26,6 +26,7 @@ public struct GeminiProvider: LLMProvider {
             }
 
             var content: Content?
+            var finishReason: String?
         }
 
         var candidates: [Candidate]
@@ -83,6 +84,9 @@ public struct GeminiProvider: LLMProvider {
         }
 
         guard (200..<300).contains(httpResponse.statusCode) else {
+            if ContextLimitError.matches(responseBody: data) {
+                throw TransformationError.contextTooLong
+            }
             throw TransformationError.provider(Self.providerErrorMessage(from: data, statusCode: httpResponse.statusCode))
         }
 
@@ -93,7 +97,8 @@ public struct GeminiProvider: LLMProvider {
                 "provider": "gemini",
                 "model": request.model
             ],
-            elapsedMilliseconds: elapsedMilliseconds
+            elapsedMilliseconds: elapsedMilliseconds,
+            wasTruncated: Self.outputWasTruncated(in: data)
         )
     }
 
@@ -117,6 +122,14 @@ public struct GeminiProvider: LLMProvider {
             throw TransformationError.emptyResponse
         }
         return outputText
+    }
+
+    /// Whether the reply stopped at the output limit (`finishReason: "MAX_TOKENS"`).
+    public static func outputWasTruncated(in data: Data) -> Bool {
+        guard let response = try? JSONDecoder().decode(ResponseBody.self, from: data) else {
+            return false
+        }
+        return response.candidates.contains { $0.finishReason == "MAX_TOKENS" }
     }
 
     static func providerErrorMessage(from data: Data, statusCode: Int) -> String {

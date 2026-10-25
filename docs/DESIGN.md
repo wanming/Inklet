@@ -17,10 +17,10 @@ Visual reference (light and dark, every surface): [Inklet design language canvas
 
 Approved with the Settings refinement pass ("Refinement pass" board on the canvas). They apply to every surface.
 
-1. **Neutral selection.** A selected sidebar item or list row is a neutral fill (`fillHover`) or a raised card with bold text; only its icon takes `accentText`. Solid accent blocks are for the primary button and switches.
+1. **Quiet selection.** A selected navigation item is a neutral fill (`fillHover`) with a medium-weight label; only its icon takes `accentText`. List rows use `accentSoft` at most. Solid accent blocks are for the primary button and switches.
 2. **Fewer lines, more layers.** Separate groups with spacing and the surface ladder (`surface`, `surfaceRaised`, `surfaceSunken`), not with dividers, dashed boxes or outlines around everything. A hairline is allowed where two scrolling regions meet.
 3. **Clear type hierarchy.** One `pageTitle` per pane, `fieldLabel` (12 semibold, `secondaryLabel`) above fields, `body` for content. Headings are not all bold.
-4. **Actions on demand.** Rows show their content; drag handles appear on hover, and destructive or secondary actions for the selected item live in its detail area. Don't repeat a control (for example a visibility icon in the row and a switch in the detail).
+4. **Actions on demand.** Rows show their content first; row actions such as visibility and delete appear on hover or selection, so long names keep their width. A state the user must notice (a hidden mode's crossed-out eye) stays visible.
 5. **Native window chrome.** Windows use the system titlebar, traffic lights, corners and shadow. No custom close buttons.
 
 ## Color
@@ -116,9 +116,8 @@ Read `@Environment(\.accessibilityReduceMotion)` and pass it to `appear(reduceMo
 | Mode chip | (popover header) | 28 pt, radius 8, `fill` background; mode icon in `accentText`, name in `control` semibold, chevron. Opens the mode picker. |
 | Card | `.inkletCard()` | Settings groups and the result card. Rows inside are separated by `InkletRowDivider`. |
 | List row | `InkletRowBackground` | 40 pt rows in the mode picker. Selected: `accentSoft` with an `accentText` icon. Hover: `fill`. |
-| Settings sidebar item | `SettingsSidebarLabel` | 8 pt vertical padding, radius 6, `secondaryLabel` icon. Selected: `fillHover`, semibold, `accentText` icon. Hover: `fill`. |
-| Editable list row | `PromptModeTableView` | 34 pt rows, name only. Selected: `surfaceRaised` card with a hairline and a 1 pt shadow, semibold. Hover: `fill` and the drag handle. Hidden items: `tertiaryLabel` name and an eye-slash mark. |
-| Field | `InkletFieldModifier` | `surfaceRaised`, radius 6, `strokeStrong` border, `accent` border when focused. 32 pt for single-line fields. |
+| Settings sidebar item | `SettingsSidebarLabel` | 30 pt, radius 6, `secondaryLabel` icon. Selected: `fillHover`, medium weight, `accentText` icon. Hover: `fill`. |
+| Field | `InkletFieldModifier` | `surfaceRaised`, radius 8, `strokeStrong` border, `accent` border when focused. |
 | Status banner | `InkletStatusBanner(tone:message:action:)` | Neutral `surfaceSunken`, tone icon, message in `label`, one inline action that resolves the problem (Open Settings, Retry, Copy). |
 | Floating panel | `.inkletFloatingPanel()` | See Elevation. |
 | Material | `InkletMaterialBackground(material:)` | `.popover` for floating panels, `.sidebar` for the settings sidebar. |
@@ -135,9 +134,7 @@ Interaction states follow `AGENTS.md` § Interaction Details: loading replaces t
 
 **Translation card** (floating, 300 wide by default, resizable, radius 12). Translated text in 14 pt with 3 pt line spacing directly on the surface; a toolbar under a hairline with the copy icon button on the left and the original and translated audio buttons on the right. Errors show a warning icon, the message in `body`, and a Retry button. Planned: the target language as a menu in the toolbar.
 
-**Settings** (860 × 560, native titled window with a transparent titlebar and the system traffic lights). A 200 pt sidebar on the `.sidebar` material, starting 52 pt down to clear the traffic lights; About sits at the bottom above a one-line version in `caption`. The pane opens with the `pageTitle` and the section description in `body` `secondaryLabel`, 32 pt from the top, with no divider under it. Fields use `fieldLabel` above and `help` in `tertiaryLabel` below; switches sit on the right of a `body` title and `help` subtitle. The footer is a single `caption` line ("Changes save automatically") with no bar behind it. Target for the panes that still use the earlier layout: grouped cards where each row is at least 44 pt, label on the left, control on the right, rows separated by inset hairlines; expert options in an Advanced disclosure at the end of a pane.
-
-**Prompt modes** (Settings pane). A 256 pt column with the mode list (name only, see Editable list row) and a ghost "Add mode" button in `accentText` right under the last row, then a hairline, then the detail: name field, prompt editor, the "Show in menu" switch in a card, and a ghost "Delete mode" button in `statusError` at the bottom. Long names show in full on hover.
+**Settings** (860 × 560, native titled window with a transparent titlebar: the system draws the traffic lights, corners and shadow, and Esc closes it). A 210 pt sidebar on the sidebar material, starting 52 pt down to clear the traffic lights, with 30 pt items (14 pt icon, `body` label that wraps for long translations, radius 6); the selected item is a `fillHover` background with a medium-weight label and an `accentText` icon, hover uses `fill`. About sits apart at the bottom of the sidebar. The pane, on `surface`, has a 68 pt header with the `pageTitle` and the last save status as a `caption` (success icon in `statusSuccess`, errors in `statusError`); there is no custom close button. Below it, grouped cards (`settingsGroup`) with an optional 12 pt semibold `secondaryLabel` title: each row (`settingsRow`) is at least 44 pt, label in `body` with optional `help` below on the left, the control on the right, rows separated by inset hairlines. Controls that need the full width (prompt editors, the selection menu list) use a stacked row (`settingsStackedRow`) with the label above and an optional ghost action such as Restore Default on the right. Pickers are native menus at their natural width, booleans are switches, text fields are 220 pt. Prompt Modes is a 240 pt list card (34 pt rows: drag handle, name, and visibility and delete icons that appear on hover or selection; a hidden mode keeps its crossed-out eye and dims its name) next to the mode's cards. Section order: General, Write Assistant, Prompt Modes, Live Dictation, Selection Assistant, History, About. Expert options go in an Advanced disclosure at the end of a pane.
 
 **About** (380 wide, native window). The pen nib on a 76 pt `accentSoft` tile, "Inklet" in `pageTitle`, version in `caption`, tagline in `body` `secondaryLabel`, links in `control` `accentText`, copyright in `caption`.
 
@@ -160,7 +157,7 @@ Interaction states follow `AGENTS.md` § Interaction Details: loading replaces t
 
 The tokens above were introduced alongside the earlier ones. The earlier names in `InkletTheme.swift` now return the new palette (for example `textSecondary` returns `secondaryLabel`), so surfaces that still use them already get the new colors. Surfaces move to the new names and components one at a time, and the earlier names are removed once nothing uses them.
 
-Status: the writing popover, mode picker, selection bar, translation card, Settings window chrome (sidebar, header, footer, field helpers), Prompt modes, About and the welcome guide's language picker, step titles and action bar are migrated. The other Settings panes and What's New use the new colors through the earlier names, and move to the card layout next.
+Status: the writing popover, mode picker, selection bar, translation card, Settings, About and the welcome guide's language picker, step titles and action bar are migrated. What's New and the rest of the welcome guide use the new colors through the earlier names.
 
 | Earlier | Now |
 | --- | --- |

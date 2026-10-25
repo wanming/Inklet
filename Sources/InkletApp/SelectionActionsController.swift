@@ -600,7 +600,9 @@ final class SelectionActionsController {
                 if !self.isStopping, !self.isMigrationMaintenanceActive {
                     self.selectionActionWindowController.showTranslationError(
                         (error as? LocalModelError)?.userFacingMessage
-                            ?? L10n.text("selection.action.translationFailed")
+                            ?? (error as? TransformationError == .contextTooLong
+                                ? L10n.text("error.contextTooLong")
+                                : L10n.text("selection.action.translationFailed"))
                     )
                 }
             }
@@ -849,13 +851,19 @@ final class SelectionActionsController {
                 await MainActor.run {
                     guard !self.isStopping else { return }
                     self.currentTranslationText = result.outputText
-                    self.selectionActionWindowController.showTranslation(result.outputText, kind: .promptMode)
+                    self.selectionActionWindowController.showTranslation(
+                        result.outputText,
+                        errorMessage: result.wasTruncated ? L10n.text("popover.warning.outputTruncated") : nil,
+                        kind: .promptMode
+                    )
                 }
             } catch is CancellationError {
             } catch {
                 if !self.isStopping, !self.isMigrationMaintenanceActive {
                     self.selectionActionWindowController.showTranslationError(
-                        L10n.text("selection.action.promptModeFailed")
+                        error as? TransformationError == .contextTooLong
+                            ? L10n.text("error.contextTooLong")
+                            : L10n.text("selection.action.promptModeFailed")
                     )
                 }
             }

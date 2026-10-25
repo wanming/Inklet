@@ -31,13 +31,14 @@ private extension SelectionForceSelectionMode {
     }
 }
 
+/// Sidebar order follows docs/DESIGN.md; About sits apart at the bottom of the sidebar.
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general = "General"
     case writeAssistant = "Write Assistant"
+    case promptModes = "Prompt Modes"
     case dictation = "Live Dictation"
     case selectionAssistant = "Selection Assistant"
     case history = "History"
-    case promptModes = "Prompt Modes"
     case about = "About"
 
     var id: String { rawValue }
@@ -116,14 +117,21 @@ struct SettingsView: View {
         L10n.format("settings.aiPronunciation.speedValue", model.config.selectionActions.pronunciationSpeed)
     }
 
+    private var isPronunciationPreviewPlaying: Bool {
+        if case .playing(let voice)? = model.pronunciationPreviewState {
+            return voice == model.config.selectionActions.pronunciationVoice
+        }
+        return false
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             sidebar
             detail
+                .background(InkletTheme.surface)
         }
         .frame(width: 860, height: 560)
         .environment(\.locale, Locale(identifier: localeIdentifier))
-        .background(InkletTheme.surface)
         .ignoresSafeArea()
         .task {
             await model.refreshModelCatalogIfNeeded()
@@ -178,37 +186,43 @@ struct SettingsView: View {
     }
 
     private var sidebar: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            ForEach(SettingsSection.allCases) { section in
-                if section == .about {
-                    Spacer(minLength: InkletTheme.Spacing.md)
+        VStack(alignment: .leading, spacing: 0) {
+            // Room for the system traffic lights in the transparent titlebar.
+            Color.clear
+                .frame(height: SettingsLayoutMetrics.titlebarInset)
+
+            VStack(spacing: 2) {
+                ForEach(SettingsSection.allCases.filter { $0 != .about }) { section in
+                    sidebarButton(section)
                 }
-                Button {
-                    selectedSection = section
-                } label: {
-                    SettingsSidebarLabel(
-                        section: section,
-                        isSelected: selectedSection == section
-                    )
-                }
-                .buttonStyle(.plain)
-                .help(section.title)
             }
 
-            Text(L10n.format("settings.version", BuildInfo.displayVersion))
-                .font(InkletTheme.Typography.caption)
-                .foregroundStyle(InkletTheme.tertiaryLabel)
-                .padding(.horizontal, 10)
-                .padding(.top, 6)
+            Spacer(minLength: InkletTheme.Spacing.md)
+
+            sidebarButton(.about)
         }
-        .padding(.horizontal, 10)
-        .padding(.top, SettingsLayoutMetrics.titlebarInset)
-        .padding(.bottom, 14)
-        .frame(width: 200, alignment: .leading)
-        .frame(maxHeight: .infinity, alignment: .top)
+        .padding(.horizontal, InkletTheme.Spacing.xs)
+        .padding(.bottom, InkletTheme.Spacing.sm)
+        .frame(width: SettingsLayoutMetrics.sidebarWidth)
+        .frame(maxHeight: .infinity)
         .disabled(model.isMigrationMaintenanceActive)
         .background(InkletMaterialBackground(material: .sidebar))
-        .overlay(alignment: .trailing) { Rectangle().fill(InkletTheme.hairline).frame(width: 1) }
+        .overlay(alignment: .trailing) {
+            InkletTheme.hairline.frame(width: 1)
+        }
+    }
+
+    private func sidebarButton(_ section: SettingsSection) -> some View {
+        Button {
+            selectedSection = section
+        } label: {
+            SettingsSidebarLabel(
+                section: section,
+                isSelected: selectedSection == section
+            )
+        }
+        .buttonStyle(.plain)
+        .help(section.title)
     }
 
     private var detail: some View {
@@ -218,96 +232,85 @@ struct SettingsView: View {
             Group {
                 switch selectedSection {
                 case .general:
-                    ScrollView {
+                    settingsPage {
                         generalPanel
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 20)
                     }
                 case .writeAssistant:
                     writeAssistantPanel
                         .disabled(model.isMigrationMaintenanceActive)
+                case .promptModes:
+                    promptModesPanel
+                        .disabled(model.isMigrationMaintenanceActive)
                 case .dictation:
-                    ScrollView {
+                    settingsPage {
                         dictationSettingsPanel
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 20)
                     }
                     .disabled(model.isMigrationMaintenanceActive)
                 case .selectionAssistant:
-                    ScrollView {
+                    settingsPage {
                         selectionActionsPanel
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 20)
                     }
                     .disabled(model.isMigrationMaintenanceActive)
                 case .history:
                     historyPanel
                         .disabled(model.isMigrationMaintenanceActive)
-                case .promptModes:
-                    promptModesPanel
-                        .disabled(model.isMigrationMaintenanceActive)
                 case .about:
-                    ScrollView {
+                    settingsPage {
                         aboutPanel
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 20)
                     }
                     .disabled(model.isMigrationMaintenanceActive)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-            footer
         }
     }
 
+    /// The window closes with its traffic lights or Esc, so the header holds only the title
+    /// and the last save status.
     private var detailHeader: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: InkletTheme.Spacing.sm) {
             Text(selectedSection.title)
                 .font(InkletTheme.Typography.pageTitle)
                 .tracking(-0.2)
                 .foregroundStyle(InkletTheme.label)
-            Text(sectionDescription)
-                .font(InkletTheme.Typography.body)
-                .foregroundStyle(InkletTheme.secondaryLabel)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(1)
+            Spacer(minLength: InkletTheme.Spacing.md)
+            saveStatus
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, InkletTheme.Spacing.xl)
-        .padding(.top, InkletTheme.Spacing.xxl)
-        .padding(.bottom, InkletTheme.Spacing.md)
+        .frame(height: SettingsLayoutMetrics.headerHeight)
     }
 
-    private var sectionDescription: String {
-        switch selectedSection {
-        case .general:
-            L10n.text("settings.description.general")
-        case .writeAssistant:
-            L10n.text("settings.description.writeAssistant")
-        case .dictation:
-            L10n.text("settings.description.dictation")
-        case .selectionAssistant:
-            L10n.text("settings.description.selectionAssistant")
-        case .history:
-            L10n.text("settings.description.history")
-        case .promptModes:
-            L10n.text("settings.description.promptModes")
-        case .about:
-            L10n.text("settings.description.about")
+    /// Settings save on their own; the header only reports the last save or a problem.
+    @ViewBuilder
+    private var saveStatus: some View {
+        if !model.message.isEmpty {
+            HStack(alignment: .firstTextBaseline, spacing: InkletTheme.Spacing.xxs) {
+                Image(systemName: isSuccessMessage ? "checkmark.circle" : "exclamationmark.circle")
+                    .foregroundStyle(isSuccessMessage ? InkletTheme.statusSuccess : InkletTheme.statusError)
+                Text(model.message)
+                    .foregroundStyle(isSuccessMessage ? InkletTheme.secondaryLabel : InkletTheme.label)
+                    .multilineTextAlignment(.trailing)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .font(InkletTheme.Typography.caption)
+            .frame(maxWidth: 320, alignment: .trailing)
+            .help(L10n.text("settings.footer.pending"))
         }
     }
 
     private var generalPanel: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
             if migrationPresentationModel.phase != .hidden {
                 migrationNoticeCard
             }
 
-            VStack(alignment: .leading, spacing: 22) {
-                settingsPanel {
+            VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
+                settingsGroup(L10n.text("settings.group.provider")) {
                     providerRows
+                }
 
+                settingsGroup(L10n.text("settings.group.interface")) {
                     settingsRow(L10n.text("settings.row.language"), help: L10n.text("settings.help.language")) {
                         Picker("", selection: $model.interfaceLanguage) {
                             ForEach(InterfaceLanguage.allCases) { language in
@@ -315,7 +318,7 @@ struct SettingsView: View {
                             }
                         }
                         .labelsHidden()
-                        .frame(maxWidth: 320, alignment: .leading)
+                        .fixedSize()
                     }
 
                     settingsRow(L10n.text("settings.row.appearance"), help: L10n.text("settings.help.appearance")) {
@@ -325,7 +328,7 @@ struct SettingsView: View {
                             }
                         }
                         .labelsHidden()
-                        .frame(maxWidth: 320, alignment: .leading)
+                        .fixedSize()
                     }
                 }
 
@@ -353,13 +356,14 @@ struct SettingsView: View {
                 }
             }
             .labelsHidden()
-            .frame(maxWidth: 320, alignment: .leading)
+            .fixedSize()
         }
 
         if model.usesOpenAIForWriting {
             settingsRow(L10n.text("settings.row.openAIAPIKey"), help: L10n.text("settings.help.openAIAPIKey")) {
                 SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $model.providerAPIKey)
                     .textFieldStyle(.roundedBorder)
+                    .frame(width: SettingsLayoutMetrics.fieldWidth)
             }
         } else {
             if model.isBuiltInProvider {
@@ -372,6 +376,7 @@ struct SettingsView: View {
                 settingsRow(L10n.text("settings.row.apiKey"), help: L10n.text("settings.help.apiKey")) {
                     SecureField(model.selectedProvider.apiKeyPlaceholder, text: $model.providerAPIKey)
                         .textFieldStyle(.roundedBorder)
+                        .frame(width: SettingsLayoutMetrics.fieldWidth)
                 }
             }
 
@@ -382,6 +387,7 @@ struct SettingsView: View {
                         text: $model.config.customOpenAICompatibleEndpoint
                     )
                     .textFieldStyle(.roundedBorder)
+                    .frame(width: SettingsLayoutMetrics.fieldWidth)
                 }
             }
         }
@@ -395,44 +401,73 @@ struct SettingsView: View {
             settingsRow(L10n.text("settings.row.openAIAPIKey"), help: help) {
                 SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $model.openAIAPIKey)
                     .textFieldStyle(.roundedBorder)
+                    .frame(width: SettingsLayoutMetrics.fieldWidth)
             }
         }
     }
 
+    @ViewBuilder
     private var builtInModelRow: some View {
         let builtInModel = model.selectedBuiltInModel
         let selectedBuiltInModelBinding = Binding(
             get: { model.selectedBuiltInModel.id },
             set: { model.selectBuiltInModel($0) }
         )
+        let detail = L10n.format(
+            "settings.localModel.detail",
+            builtInModel.localizedDownloadSize,
+            builtInModel.recommendedMemoryGB
+        )
 
-        return settingsRow(L10n.text("settings.row.localModel"), help: L10n.text("settings.help.localModel")) {
-            VStack(alignment: .leading, spacing: 8) {
-                Picker("", selection: selectedBuiltInModelBinding) {
-                    ForEach(BuiltInModel.all) { option in
-                        Text(model.builtInModelTitle(option)).tag(option.id)
-                    }
-                }
-                .labelsHidden()
-                .frame(maxWidth: 320, alignment: .leading)
-
-                Text(L10n.format(
-                    "settings.localModel.detail",
-                    builtInModel.localizedDownloadSize,
-                    builtInModel.recommendedMemoryGB
-                ))
-                .font(.system(size: 11))
-                .foregroundStyle(InkletTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-                if model.isBuiltInEngineAvailable {
-                    builtInModelDownloadControls(for: builtInModel)
-                } else {
-                    Label(L10n.text("error.localModel.engineMissing"), systemImage: "exclamationmark.triangle")
-                        .font(.system(size: 11))
-                        .foregroundStyle(InkletTheme.warning)
+        settingsRow(L10n.text("settings.row.localModel"), help: L10n.text("settings.help.localModel")) {
+            Picker("", selection: selectedBuiltInModelBinding) {
+                ForEach(BuiltInModel.all) { option in
+                    Text(model.builtInModelTitle(option)).tag(option.id)
                 }
             }
+            .labelsHidden()
+            .fixedSize()
+        }
+
+        if model.isBuiltInEngineAvailable {
+            modelStatusRow(detail: detail) {
+                builtInModelDownloadControls(for: builtInModel)
+            }
+        } else {
+            modelStatusRow(detail: detail, warning: L10n.text("error.localModel.engineMissing")) {
+                EmptyView()
+            }
+        }
+    }
+
+    /// A model's download size on the left and its download, progress or delete controls on the right.
+    private func modelStatusRow<Controls: View>(
+        detail: String,
+        warning: String? = nil,
+        @ViewBuilder controls: () -> Controls
+    ) -> some View {
+        VStack(spacing: 0) {
+            InkletRowDivider()
+            HStack(spacing: InkletTheme.Spacing.md) {
+                VStack(alignment: .leading, spacing: InkletTheme.Spacing.xxs) {
+                    Text(detail)
+                        .font(InkletTheme.Typography.help)
+                        .foregroundStyle(InkletTheme.secondaryLabel)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let warning {
+                        Label(warning, systemImage: "exclamationmark.triangle")
+                            .font(InkletTheme.Typography.help)
+                            .foregroundStyle(InkletTheme.statusWarning)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                controls()
+            }
+            .padding(.horizontal, InkletTheme.Spacing.sm)
+            .padding(.vertical, InkletTheme.Spacing.xs)
+            .frame(minHeight: SettingsLayoutMetrics.rowHeight)
         }
     }
 
@@ -455,46 +490,51 @@ struct SettingsView: View {
         switch state {
         case .notDownloaded:
             Button(L10n.text("settings.localModel.download"), action: download)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                .buttonStyle(InkletButtonStyle(kind: .primary, size: .small))
+                .fixedSize()
         case .downloading(let fraction):
-            HStack(spacing: 10) {
+            HStack(spacing: InkletTheme.Spacing.xs) {
                 ProgressView(value: fraction)
-                    .frame(maxWidth: 200)
+                    .frame(width: 120)
                 Text(L10n.format("settings.localModel.downloading", fraction * 100))
-                    .font(.system(size: 11).monospacedDigit())
-                    .foregroundStyle(InkletTheme.textSecondary)
+                    .font(InkletTheme.Typography.caption.monospacedDigit())
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize()
                 Button(L10n.text("settings.localModel.cancel"), action: cancel)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(InkletButtonStyle(kind: .secondary, size: .small))
+                    .fixedSize()
             }
         case .verifying:
-            HStack(spacing: 8) {
+            HStack(spacing: InkletTheme.Spacing.xs) {
                 ProgressView()
                     .controlSize(.small)
                 Text(L10n.text("settings.localModel.verifying"))
-                    .font(.system(size: 11))
-                    .foregroundStyle(InkletTheme.textSecondary)
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize()
             }
         case .ready:
-            HStack(spacing: 10) {
+            HStack(spacing: InkletTheme.Spacing.sm) {
                 Label(L10n.text("settings.localModel.ready"), systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(InkletTheme.primary)
+                    .font(InkletTheme.Typography.caption)
+                    .foregroundStyle(InkletTheme.statusSuccess)
+                    .fixedSize()
                 Button(L10n.text("settings.localModel.delete"), action: delete)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(InkletButtonStyle(kind: .secondary, size: .small))
+                    .fixedSize()
             }
         case .failed(let message):
-            VStack(alignment: .leading, spacing: 6) {
-                Text(message)
-                    .font(.system(size: 11))
-                    .foregroundStyle(InkletTheme.warning)
+            VStack(alignment: .trailing, spacing: InkletTheme.Spacing.xs) {
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.statusWarning)
+                    .multilineTextAlignment(.trailing)
                     .fixedSize(horizontal: false, vertical: true)
                 Button(L10n.text("settings.localModel.retry"), action: download)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
+                    .buttonStyle(InkletButtonStyle(kind: .primary, size: .small))
+                    .fixedSize()
             }
+            .frame(maxWidth: SettingsLayoutMetrics.fieldWidth, alignment: .trailing)
         }
     }
 
@@ -503,34 +543,40 @@ struct SettingsView: View {
             L10n.text("settings.row.localServer"),
             help: L10n.format("settings.help.localServer", model.selectedProvider.endpoint.absoluteString)
         ) {
-            HStack(spacing: 10) {
+            HStack(spacing: InkletTheme.Spacing.xs) {
                 switch model.localServerStatus {
                 case .checking:
                     ProgressView()
                         .controlSize(.small)
                     Text(L10n.text("settings.localServer.checking"))
-                        .foregroundStyle(InkletTheme.textSecondary)
+                        .foregroundStyle(InkletTheme.secondaryLabel)
+                        .fixedSize()
                 case .connected(let modelCount):
                     Label(
                         L10n.format("settings.localServer.connected", modelCount),
                         systemImage: "checkmark.circle.fill"
                     )
-                    .foregroundStyle(InkletTheme.primary)
+                    .foregroundStyle(InkletTheme.statusSuccess)
+                    .fixedSize()
                 case .unreachable:
-                    Text(L10n.format("settings.localServer.unreachable", model.selectedProvider.name))
-                        .foregroundStyle(InkletTheme.warning)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Label(
+                        L10n.format("settings.localServer.unreachable", model.selectedProvider.name),
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .foregroundStyle(InkletTheme.statusWarning)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 200, alignment: .trailing)
                 case nil:
                     EmptyView()
                 }
                 Button(L10n.text("settings.localServer.refresh")) {
                     model.refreshLocalServerModels()
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+                .buttonStyle(InkletButtonStyle(kind: .secondary, size: .small))
+                .fixedSize()
                 .disabled(model.localServerStatus == .checking)
             }
-            .font(.system(size: 11, weight: .medium))
+            .font(InkletTheme.Typography.caption)
         }
         .onAppear {
             if model.localServerStatus == nil {
@@ -540,43 +586,36 @@ struct SettingsView: View {
     }
 
     private var migrationNoticeCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.sm) {
+            HStack(alignment: .top, spacing: InkletTheme.Spacing.sm) {
                 Image(systemName: "externaldrive.badge.exclamationmark")
-                    .foregroundStyle(InkletTheme.warning)
+                    .font(.system(size: InkletTheme.IconSize.large, weight: .medium))
+                    .foregroundStyle(InkletTheme.statusWarning)
                     .frame(width: 20)
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: InkletTheme.Spacing.xxs) {
                     Text(L10n.text("legacyMigration.notice.title"))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(InkletTheme.textPrimary)
+                        .font(InkletTheme.Typography.body.weight(.semibold))
+                        .foregroundStyle(InkletTheme.label)
                     Text(migrationNoticeMessage)
-                        .font(.system(size: 11))
-                        .foregroundStyle(InkletTheme.textSecondary)
+                        .font(InkletTheme.Typography.help)
+                        .foregroundStyle(InkletTheme.secondaryLabel)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
-            HStack(spacing: 8) {
-                migrationPrimaryAction
+            HStack(spacing: InkletTheme.Spacing.xs) {
                 if migrationPresentationModel.phase == .relaunchFailed {
                     Button(L10n.text("legacyMigration.action.quit"), action: onQuitForMigration)
-                        .buttonStyle(.plain)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(InkletTheme.textSecondary)
-                        .padding(.horizontal, 10)
-                        .frame(height: 28)
-                        .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
+                        .buttonStyle(InkletButtonStyle(kind: .secondary))
+                        .fixedSize()
                 }
+                migrationPrimaryAction
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(14)
-        .frame(maxWidth: 580, alignment: .leading)
-        .background(InkletTheme.controlFill.opacity(0.58), in: RoundedRectangle(cornerRadius: 10))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(InkletTheme.subtleBorder)
-        }
+        .padding(InkletTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .inkletCard()
     }
 
     private var migrationNoticeMessage: String {
@@ -655,8 +694,8 @@ struct SettingsView: View {
             .font(.system(size: 12, weight: .semibold))
             .frame(width: SettingsLayoutMetrics.migrationActionWidth, height: 28)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.small)
+        .buttonStyle(InkletButtonStyle(kind: .primary))
+        .fixedSize()
         .disabled(!isEnabled)
         .help(L10n.text("legacyMigration.settings.help"))
         .accessibilityLabel(L10n.text(titleKey))
@@ -668,14 +707,14 @@ struct SettingsView: View {
             set: { model.selectModelMenuValue($0) }
         )
 
-        return settingsPanel {
+        return settingsGroup {
             settingsRow(L10n.text("settings.row.hotkey"), help: L10n.text("settings.help.hotkey")) {
                 HotkeyRecorderField(hotkey: $model.config.hotkey)
-                    .frame(width: 220, height: 34)
+                    .frame(width: 200, height: InkletTheme.ControlHeight.regular)
             }
 
             settingsRow(L10n.text("settings.row.model"), help: L10n.format("settings.help.model.default", model.selectedProvider.defaultModel)) {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .trailing, spacing: InkletTheme.Spacing.xs) {
                     if !model.selectedProviderModelOptions.isEmpty {
                         Picker("", selection: selectedModelBinding) {
                             ForEach(model.selectedProviderModelOptions, id: \.self) { modelID in
@@ -687,43 +726,44 @@ struct SettingsView: View {
                             }
                         }
                         .labelsHidden()
-                        .frame(maxWidth: 320, alignment: .leading)
+                        .fixedSize()
                     }
 
                     if model.shouldShowCustomModelField {
-                        VStack(alignment: .leading, spacing: 6) {
-                            TextField(model.selectedProvider.defaultModel, text: $model.config.model)
-                                .textFieldStyle(.roundedBorder)
-                            if !model.selectedModelIsDefault {
-                                Text(L10n.text("settings.model.customized"))
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(InkletTheme.primary)
-                            }
+                        TextField(model.selectedProvider.defaultModel, text: $model.config.model)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: SettingsLayoutMetrics.fieldWidth)
+                        if !model.selectedModelIsDefault {
+                            Text(L10n.text("settings.model.customized"))
+                                .font(InkletTheme.Typography.caption)
+                                .foregroundStyle(InkletTheme.secondaryLabel)
                         }
                     }
 
                     if model.isRefreshingModelCatalog {
                         Text(L10n.text("settings.model.refreshing"))
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
+                            .font(InkletTheme.Typography.caption)
+                            .foregroundStyle(InkletTheme.tertiaryLabel)
                     }
                 }
             }
 
             settingsRow(L10n.text("settings.row.timeout"), help: L10n.text("settings.help.timeout")) {
-                Stepper(value: $model.config.timeoutSeconds, in: 1...120, step: 1) {
+                HStack(spacing: InkletTheme.Spacing.xs) {
                     Text(L10n.format("settings.seconds", Int(model.config.timeoutSeconds)))
-                        .font(.body.monospacedDigit())
+                        .font(InkletTheme.Typography.body.monospacedDigit())
+                        .foregroundStyle(InkletTheme.label)
+                    Stepper("", value: $model.config.timeoutSeconds, in: 1...120, step: 1)
+                        .labelsHidden()
                 }
+                .fixedSize()
             }
         }
     }
 
     private var writeAssistantPanel: some View {
-        ScrollView {
+        settingsPage {
             writeAssistantControls
-                .padding(.horizontal, 24)
-                .padding(.vertical, 20)
         }
     }
 
@@ -733,60 +773,68 @@ struct SettingsView: View {
             set: { model.selectedMicrophoneMenuID = $0 }
         )
 
-        return settingsPanel {
-            settingsRow(
-                L10n.text("settings.row.dictationEnabled"),
-                help: L10n.text("settings.help.dictationEnabled")
-            ) {
-                Toggle("", isOn: $model.config.voiceInput.isEnabled)
-                    .labelsHidden()
+        return VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
+            settingsGroup {
+                settingsRow(
+                    L10n.text("settings.row.dictationEnabled"),
+                    help: L10n.text("settings.help.dictationEnabled")
+                ) {
+                    Toggle("", isOn: $model.config.voiceInput.isEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
             }
 
-            Group {
-                if model.isBuiltInEngineAvailable {
+            VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
+                settingsGroup {
+                    if model.isBuiltInEngineAvailable {
+                        settingsRow(
+                            L10n.text("settings.row.dictationEngine"),
+                            help: L10n.text("settings.help.dictationEngine")
+                        ) {
+                            Picker("", selection: $model.config.voiceInput.engine) {
+                                ForEach(VoiceInputConfig.Engine.allCases) { engine in
+                                    Text(engine.localizedName).tag(engine)
+                                }
+                            }
+                            .labelsHidden()
+                            .fixedSize()
+                        }
+                    }
+
+                    if model.usesBuiltInDictation {
+                        dictationModelRow
+                    }
+
                     settingsRow(
-                        L10n.text("settings.row.dictationEngine"),
-                        help: L10n.text("settings.help.dictationEngine")
+                        L10n.text("settings.row.dictationShortcut"),
+                        help: L10n.text("settings.help.dictationShortcut")
                     ) {
-                        Picker("", selection: $model.config.voiceInput.engine) {
-                            ForEach(VoiceInputConfig.Engine.allCases) { engine in
-                                Text(engine.localizedName).tag(engine)
+                        Picker("", selection: $model.config.voiceInput.shortcut) {
+                            ForEach(VoiceInputConfig.Shortcut.settingsCases) { shortcut in
+                                Text(shortcut.localizedName).tag(shortcut)
                             }
                         }
                         .labelsHidden()
-                        .frame(maxWidth: 320, alignment: .leading)
+                        .fixedSize()
                     }
-                }
 
-                if model.usesBuiltInDictation {
-                    dictationModelRow
-                }
-
-                settingsRow(
-                    L10n.text("settings.row.dictationShortcut"),
-                    help: L10n.text("settings.help.dictationShortcut")
-                ) {
-                    Picker("", selection: $model.config.voiceInput.shortcut) {
-                        ForEach(VoiceInputConfig.Shortcut.settingsCases) { shortcut in
-                            Text(shortcut.localizedName).tag(shortcut)
+                    settingsRow(L10n.text("settings.row.microphone"), help: L10n.text("settings.help.microphone")) {
+                        Picker("", selection: selectedMicrophoneBinding) {
+                            ForEach(model.microphoneOptions) { option in
+                                Text(option.localizedName).tag(option.id)
+                            }
                         }
+                        .labelsHidden()
+                        .fixedSize()
                     }
-                    .labelsHidden()
-                    .frame(maxWidth: 320, alignment: .leading)
-                }
 
-                settingsRow(L10n.text("settings.row.microphone"), help: L10n.text("settings.help.microphone")) {
-                    Picker("", selection: selectedMicrophoneBinding) {
-                        ForEach(model.microphoneOptions) { option in
-                            Text(option.localizedName).tag(option.id)
-                        }
+                    if !model.usesBuiltInDictation {
+                        openAIVoiceKeyRow(help: L10n.text("settings.help.openAIAPIKey.dictation"))
                     }
-                    .labelsHidden()
-                    .frame(maxWidth: 320, alignment: .leading)
                 }
 
                 if !model.usesBuiltInDictation {
-                    openAIVoiceKeyRow(help: L10n.text("settings.help.openAIAPIKey.dictation"))
                     openAIDictationAdvancedSettings
                 }
             }
@@ -794,32 +842,30 @@ struct SettingsView: View {
         }
     }
 
+    @ViewBuilder
     private var dictationModelRow: some View {
         let dictationModel = model.dictationModel
-        return settingsRow(L10n.text("settings.row.dictationModel"), help: L10n.text("settings.help.dictationModel")) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(dictationModel.displayName)
-                    .font(.system(size: 13))
-                    .foregroundStyle(InkletTheme.textPrimary)
 
-                Text(L10n.format("settings.dictationModel.detail", dictationModel.localizedDownloadSize))
-                    .font(.system(size: 11))
-                    .foregroundStyle(InkletTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        settingsRow(L10n.text("settings.row.dictationModel"), help: L10n.text("settings.help.dictationModel")) {
+            Text(dictationModel.displayName)
+                .font(InkletTheme.Typography.body)
+                .foregroundStyle(InkletTheme.secondaryLabel)
+                .fixedSize()
+        }
 
-                modelDownloadControls(
-                    state: model.dictationModelState,
-                    download: { model.downloadDictationModel() },
-                    cancel: { model.cancelDictationModelDownload() },
-                    delete: { model.deleteDictationModel() }
-                )
-            }
+        modelStatusRow(detail: L10n.format("settings.dictationModel.detail", dictationModel.localizedDownloadSize)) {
+            modelDownloadControls(
+                state: model.dictationModelState,
+                download: { model.downloadDictationModel() },
+                cancel: { model.cancelDictationModelDownload() },
+                delete: { model.deleteDictationModel() }
+            )
         }
     }
 
     private var openAIDictationAdvancedSettings: some View {
         DisclosureGroup {
-            VStack(alignment: .leading, spacing: 12) {
+            settingsGroup {
                 settingsRow(
                     L10n.text("settings.row.fallbackSpeechModel"),
                     help: L10n.text("settings.help.fallbackSpeechModel")
@@ -829,65 +875,60 @@ struct SettingsView: View {
                         text: $model.config.voiceInput.speechModel
                     )
                     .textFieldStyle(.roundedBorder)
+                    .frame(width: SettingsLayoutMetrics.fieldWidth)
                 }
             }
-            .padding(.top, 10)
+            .padding(.top, InkletTheme.Spacing.xs)
         } label: {
             Text(L10n.text("settings.group.dictationAdvanced"))
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(InkletTheme.textPrimary)
+                .font(InkletTheme.Typography.control)
+                .foregroundStyle(InkletTheme.secondaryLabel)
         }
-        .tint(InkletTheme.textSecondary)
+        .tint(InkletTheme.secondaryLabel)
     }
 
     private var selectionActionsPanel: some View {
-        settingsPanel {
-            settingsRow(
-                L10n.text("settings.row.selectionActionsEnabled"),
-                help: L10n.text("settings.help.selectionActionsEnabled")
-            ) {
-                Toggle("", isOn: $model.config.selectionActions.isEnabled)
-                    .labelsHidden()
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
+            settingsGroup {
+                settingsRow(
+                    L10n.text("settings.row.selectionActionsEnabled"),
+                    help: L10n.text("settings.help.selectionActionsEnabled")
+                ) {
+                    Toggle("", isOn: $model.config.selectionActions.isEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
             }
 
-            settingsRow(
+            selectionMenuGroup
+            selectionTranslationGroup
+            selectionPronunciationGroup
+        }
+    }
+
+    private var selectionMenuGroup: some View {
+        settingsGroup(L10n.text("settings.group.selectionMenu")) {
+            settingsStackedRow(
                 L10n.text("settings.row.selectionMenuButtons"),
                 help: L10n.format(
                     "settings.help.selectionMenuButtons",
                     SelectionMenuLayout.maximumInlineButtonCount
                 )
             ) {
-                VStack(alignment: .leading, spacing: 8) {
-                    let buttons = model.selectionMenuButtons
-                    VStack(spacing: 0) {
-                        ForEach(Array(buttons.enumerated()), id: \.element.id) { index, button in
-                            selectionMenuButtonRow(button, index: index, count: buttons.count)
-                            if index < buttons.count - 1 {
-                                Divider().opacity(0.4)
-                            }
+                let buttons = model.selectionMenuButtons
+                VStack(spacing: 0) {
+                    ForEach(Array(buttons.enumerated()), id: \.element.id) { index, button in
+                        selectionMenuButtonRow(button, index: index, count: buttons.count)
+                        if index < buttons.count - 1 {
+                            InkletRowDivider()
                         }
                     }
-                    .modifier(InkletFieldModifier())
-
-                    Button {
-                        model.resetSelectionMenuButtons()
-                    } label: {
-                        Label(
-                            L10n.text("settings.selectionMenu.restoreDefault"),
-                            systemImage: "arrow.counterclockwise"
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(InkletTheme.textSecondary)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
-                    .fixedSize()
-                    .help(L10n.text("settings.selectionMenu.restoreDefault"))
-                    .accessibilityLabel(L10n.text("settings.selectionMenu.restoreDefault"))
                 }
-                .frame(maxWidth: 420, alignment: .leading)
+                .inkletCard(cornerRadius: InkletTheme.Radius.control)
+            } accessory: {
+                restoreDefaultButton(L10n.text("settings.selectionMenu.restoreDefault")) {
+                    model.resetSelectionMenuButtons()
+                }
             }
 
             settingsRow(
@@ -900,7 +941,7 @@ struct SettingsView: View {
                     }
                 }
                 .labelsHidden()
-                .frame(maxWidth: 320, alignment: .leading)
+                .fixedSize()
             }
 
             settingsRow(
@@ -909,9 +950,14 @@ struct SettingsView: View {
             ) {
                 Toggle("", isOn: $model.config.selectionActions.allowsSimulatedCopyFallback)
                     .labelsHidden()
+                    .toggleStyle(.switch)
                     .disabled(model.config.selectionActions.forceSelectionMode == .disabled)
             }
+        }
+    }
 
+    private var selectionTranslationGroup: some View {
+        settingsGroup(L10n.text("settings.group.translation")) {
             settingsRow(
                 L10n.text("settings.row.translationLanguage"),
                 help: L10n.text("settings.help.translationLanguage")
@@ -922,54 +968,33 @@ struct SettingsView: View {
                     }
                 }
                 .labelsHidden()
-                .frame(maxWidth: 320, alignment: .leading)
+                .fixedSize()
             }
 
-            settingsRow(
+            settingsStackedRow(
                 L10n.text("settings.row.translationPrompt"),
                 help: L10n.text("settings.help.translationPrompt")
             ) {
-                VStack(alignment: .leading, spacing: 8) {
-                    SettingsPromptTextView(text: $model.config.selectionActions.translationPrompt)
-                        .frame(height: 118)
-                        .padding(10)
-                        .modifier(InkletFieldModifier())
-                        .accessibilityLabel(L10n.text("settings.row.translationPrompt"))
-
-                    Button {
-                        model.resetSelectionTranslationPrompt()
-                    } label: {
-                        Label(
-                            L10n.text("settings.translationPrompt.restoreDefault"),
-                            systemImage: "arrow.counterclockwise"
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(InkletTheme.textSecondary)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
-                    .fixedSize()
-                    .help(L10n.text("settings.translationPrompt.restoreDefault"))
-                    .accessibilityLabel(L10n.text("settings.translationPrompt.restoreDefault"))
+                SettingsPromptTextView(text: $model.config.selectionActions.translationPrompt)
+                    .frame(height: 118)
+                    .padding(InkletTheme.Spacing.xs)
+                    .modifier(InkletFieldModifier())
+                    .accessibilityLabel(L10n.text("settings.row.translationPrompt"))
+            } accessory: {
+                restoreDefaultButton(L10n.text("settings.translationPrompt.restoreDefault")) {
+                    model.resetSelectionTranslationPrompt()
                 }
-                .frame(maxWidth: 420, alignment: .leading)
             }
+        }
+    }
 
+    private var selectionPronunciationGroup: some View {
+        settingsGroup(L10n.text("settings.group.pronunciation")) {
             settingsRow(
                 L10n.text("settings.row.aiPronunciation"),
                 help: L10n.text("settings.help.aiPronunciation")
             ) {
-                HStack(spacing: 8) {
-                    Picker("", selection: $model.config.selectionActions.pronunciationVoice) {
-                        ForEach(SelectionPronunciationVoice.allCases) { voice in
-                            Text(voice.displayName).tag(voice)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(maxWidth: 220, alignment: .leading)
-
+                HStack(spacing: InkletTheme.Spacing.xxs) {
                     Button {
                         model.previewPronunciationVoice()
                     } label: {
@@ -977,42 +1002,54 @@ struct SettingsView: View {
                         case .loading(let voice) where voice == model.config.selectionActions.pronunciationVoice:
                             ProgressView()
                                 .controlSize(.small)
-                                .frame(width: 18, height: 18)
                         case .playing(let voice) where voice == model.config.selectionActions.pronunciationVoice:
-                            SpeakerWaveIcon(state: .playing, fontSize: 13, weight: .regular)
-                                .frame(width: 18, height: 18)
+                            SpeakerWaveIcon(
+                                state: .playing,
+                                fontSize: InkletTheme.IconSize.regular,
+                                weight: .medium,
+                                foregroundColor: InkletTheme.accentText
+                            )
                         default:
-                            SpeakerWaveIcon(state: .idle, fontSize: 13, weight: .regular)
-                                .frame(width: 18, height: 18)
+                            SpeakerWaveIcon(
+                                state: .idle,
+                                fontSize: InkletTheme.IconSize.regular,
+                                weight: .medium,
+                                foregroundColor: InkletTheme.secondaryLabel
+                            )
                         }
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(InkletIconButtonStyle(isActive: isPronunciationPreviewPlaying))
                     .help(L10n.text("settings.aiPronunciation.preview"))
                     .accessibilityLabel(L10n.text("settings.aiPronunciation.preview"))
                     .disabled(model.pronunciationPreviewState?.matches(model.config.selectionActions.pronunciationVoice) == true)
+
+                    Picker("", selection: $model.config.selectionActions.pronunciationVoice) {
+                        ForEach(SelectionPronunciationVoice.allCases) { voice in
+                            Text(voice.displayName).tag(voice)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
                 }
-                .fixedSize(horizontal: true, vertical: false)
-                .frame(maxWidth: 320, alignment: .leading)
             }
 
             settingsRow(
                 L10n.text("settings.row.aiPronunciationSpeed"),
                 help: L10n.text("settings.help.aiPronunciationSpeed")
             ) {
-                HStack(spacing: 12) {
+                HStack(spacing: InkletTheme.Spacing.sm) {
                     Slider(
                         value: pronunciationSpeedBinding,
                         in: SelectionActionsConfig.minimumPronunciationSpeed...SelectionActionsConfig.maximumPronunciationSpeed,
                         step: 0.05
                     )
-                    .frame(maxWidth: 220)
+                    .frame(width: 160)
 
                     Text(pronunciationSpeedText)
-                        .font(.body.monospacedDigit())
-                        .frame(width: 52, alignment: .trailing)
+                        .font(InkletTheme.Typography.body.monospacedDigit())
+                        .foregroundStyle(InkletTheme.secondaryLabel)
+                        .frame(width: 44, alignment: .trailing)
                 }
-                .frame(maxWidth: 320, alignment: .leading)
             }
 
             openAIVoiceKeyRow(help: L10n.text("settings.help.openAIAPIKey.pronunciation"))
@@ -1020,8 +1057,8 @@ struct SettingsView: View {
     }
 
     private var historyPanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.md) {
+            HStack(spacing: InkletTheme.Spacing.sm) {
                 Picker("", selection: $model.historyFilter) {
                     Text(L10n.text("settings.history.filter.all")).tag(Optional<HistorySource>.none)
                     ForEach(HistorySource.allCases) { source in
@@ -1029,8 +1066,8 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(maxWidth: 360)
                 .labelsHidden()
+                .fixedSize()
 
                 Spacer()
 
@@ -1039,36 +1076,32 @@ struct SettingsView: View {
                 } label: {
                     Label(L10n.text("settings.history.clear"), systemImage: "trash")
                 }
-                .buttonStyle(.plain)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(InkletTheme.warning)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 6)
-                .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
+                .buttonStyle(InkletButtonStyle(kind: .secondary, size: .small))
+                .fixedSize()
                 .disabled(model.historyItems.isEmpty)
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 16)
+            .padding(.horizontal, InkletTheme.Spacing.xl)
+            .padding(.top, InkletTheme.Spacing.xxs)
 
             if model.filteredHistoryItems.isEmpty {
-                VStack(spacing: 8) {
+                VStack(spacing: InkletTheme.Spacing.xs) {
                     Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 24, weight: .regular))
-                        .foregroundStyle(InkletTheme.textFaint)
+                        .font(InkletTheme.Typography.pageTitle)
+                        .foregroundStyle(InkletTheme.tertiaryLabel)
                     Text(L10n.text("settings.history.empty"))
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(InkletTheme.textSecondary)
+                        .font(InkletTheme.Typography.body)
+                        .foregroundStyle(InkletTheme.secondaryLabel)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 10) {
+                    LazyVStack(spacing: InkletTheme.Spacing.sm) {
                         ForEach(model.filteredHistoryItems) { item in
                             historyRow(item)
                         }
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 20)
+                    .padding(.horizontal, InkletTheme.Spacing.xl)
+                    .padding(.bottom, InkletTheme.Spacing.xl)
                 }
             }
         }
@@ -1084,35 +1117,37 @@ struct SettingsView: View {
     }
 
     private var promptModesPanel: some View {
-        HStack(alignment: .top, spacing: 0) {
-            VStack(alignment: .leading, spacing: InkletTheme.Spacing.xs) {
+        HStack(alignment: .top, spacing: InkletTheme.Spacing.md) {
+            VStack(spacing: InkletTheme.Spacing.xs) {
                 PromptModeTableView(
                     modes: model.orderedPromptModes,
                     selectedModeID: $model.selectedPromptModeID,
+                    canDelete: model.config.promptModes.count > 1,
                     onMove: { source, destination in
                         model.movePromptModes(from: IndexSet(integer: source), to: destination)
+                    },
+                    onToggleVisibility: { modeID in
+                        model.togglePromptModeVisibility(modeID: modeID)
+                    },
+                    onDelete: { modeID in
+                        promptModePendingDeletionID = modeID
                     }
                 )
-                .frame(height: min(
-                    CGFloat(model.orderedPromptModes.count) * PromptModeTableView.rowPitch,
-                    SettingsLayoutMetrics.promptModeListMaxHeight
-                ))
+                .padding(.vertical, InkletTheme.Spacing.xxs)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: InkletTheme.Radius.card))
+                .inkletCard()
 
                 Button {
                     model.addPromptMode()
                 } label: {
                     Label(L10n.text("settings.mode.add"), systemImage: "plus")
-                        .foregroundStyle(InkletTheme.accentText)
+                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(InkletButtonStyle(kind: .ghost, size: .small))
+                .buttonStyle(InkletButtonStyle(kind: .secondary))
             }
-            .padding(.leading, InkletTheme.Spacing.md)
-            .frame(width: SettingsLayoutMetrics.promptModeListWidth, alignment: .topLeading)
+            .frame(width: SettingsLayoutMetrics.promptModeListWidth)
             .frame(maxHeight: .infinity, alignment: .top)
-
-            InkletTheme.hairline
-                .frame(width: 1)
-                .padding(.bottom, InkletTheme.Spacing.xs)
 
             if let index = model.selectedPromptModeIndex {
                 ScrollView {
@@ -1128,168 +1163,128 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, minHeight: 280)
             }
         }
+        .padding(.horizontal, InkletTheme.Spacing.xl)
+        .padding(.top, InkletTheme.Spacing.xxs)
+        .padding(.bottom, InkletTheme.Spacing.xl)
     }
 
     private func promptModeDetail(index: Int) -> some View {
-        let modeID = model.config.promptModes[index].id
-        return VStack(alignment: .leading, spacing: 6) {
-            Text(L10n.text("settings.row.name"))
-                .font(InkletTheme.Typography.fieldLabel)
-                .foregroundStyle(InkletTheme.secondaryLabel)
-            TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
-                .textFieldStyle(.plain)
-                .font(InkletTheme.Typography.body)
-                .padding(.horizontal, 10)
-                .frame(height: InkletTheme.ControlHeight.large)
-                .modifier(InkletFieldModifier())
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
+            settingsGroup {
+                settingsStackedRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
+                    TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
+                        .textFieldStyle(.plain)
+                        .font(InkletTheme.Typography.body)
+                        .padding(.horizontal, InkletTheme.Spacing.xs)
+                        .frame(height: InkletTheme.ControlHeight.regular)
+                        .modifier(InkletFieldModifier())
+                }
 
-            Text(L10n.text("settings.row.systemPrompt"))
-                .font(InkletTheme.Typography.fieldLabel)
-                .foregroundStyle(InkletTheme.secondaryLabel)
-                .padding(.top, InkletTheme.Spacing.sm)
-            SettingsPromptTextView(text: $model.config.promptModes[index].systemPrompt)
-                .frame(height: 172)
-                .padding(10)
-                .modifier(InkletFieldModifier())
-
-            settingsToggle(
-                title: L10n.text("settings.mode.visibleInMenu"),
-                subtitle: L10n.text("settings.mode.visibleInMenuHelp"),
-                isOn: model.promptModeVisibilityBinding(modeID: modeID)
-            )
-            .padding(.horizontal, InkletTheme.Spacing.sm)
-            .padding(.vertical, InkletTheme.Spacing.xs)
-            .frame(minHeight: InkletTheme.ControlHeight.bar)
-            .inkletCard()
-            .padding(.top, InkletTheme.Spacing.sm)
-
-            Button {
-                promptModePendingDeletionID = modeID
-            } label: {
-                Label(L10n.text("settings.mode.delete"), systemImage: "trash")
-                    .foregroundStyle(InkletTheme.statusError)
+                settingsStackedRow(L10n.text("settings.row.systemPrompt")) {
+                    SettingsPromptTextView(text: $model.config.promptModes[index].systemPrompt)
+                        .frame(height: 188)
+                        .padding(InkletTheme.Spacing.xs)
+                        .modifier(InkletFieldModifier())
+                        .accessibilityLabel(L10n.text("settings.row.systemPrompt"))
+                }
             }
-            .buttonStyle(InkletButtonStyle(kind: .ghost, size: .small))
-            .disabled(model.config.promptModes.count <= 1)
-            .padding(.leading, -10)
-            .padding(.top, InkletTheme.Spacing.sm)
+
+            settingsGroup {
+                settingsRow(
+                    L10n.text("settings.mode.visibleInMenu"),
+                    help: L10n.text("settings.mode.visibleInMenuHelp")
+                ) {
+                    Toggle("", isOn: model.promptModeVisibilityBinding(modeID: model.config.promptModes[index].id))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+            }
         }
-        .padding(.horizontal, InkletTheme.Spacing.xl)
-        .padding(.bottom, InkletTheme.Spacing.md)
     }
 
     private var systemPermissionsPanel: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            permissionSection(title: L10n.text("settings.systemPermissions.title")) {
-                permissionLine(
-                    title: L10n.text("settings.permission.accessibility"),
-                    description: L10n.text("settings.permission.description"),
-                    isTrusted: model.isAccessibilityTrusted,
-                    action: { model.openAccessibilitySettings() }
-                )
-            }
+        settingsGroup(L10n.text("settings.systemPermissions.title")) {
+            permissionLine(
+                title: L10n.text("settings.permission.accessibility"),
+                description: model.isAccessibilityTrusted
+                    ? L10n.text("settings.permission.authorized")
+                    : L10n.text("settings.permission.description"),
+                isTrusted: model.isAccessibilityTrusted,
+                action: { model.openAccessibilitySettings() }
+            )
         }
-        .frame(maxWidth: 680, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .id(model.permissionRefreshID)
     }
 
     private var aboutPanel: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
             settingsAboutSummary
 
-            permissionSection(title: L10n.text("settings.quickStart.title")) {
+            settingsGroup(L10n.text("settings.quickStart.title")) {
                 quickStartShortcuts
             }
 
-            permissionSection(title: L10n.text("settings.privacy.title")) {
-                VStack(alignment: .leading, spacing: 8) {
-                    privacyLine(L10n.text("settings.privacy.keychain"))
-                    privacyLine(L10n.text("settings.privacy.provider"))
-                    privacyLine(L10n.text("settings.privacy.voice"))
-                    privacyLine(L10n.text("settings.privacy.clipboard"))
-                    privacyLine(L10n.text("settings.privacy.history"))
-                }
+            settingsGroup(L10n.text("settings.privacy.title")) {
+                privacyLine(L10n.text("settings.privacy.keychain"))
+                privacyLine(L10n.text("settings.privacy.provider"))
+                privacyLine(L10n.text("settings.privacy.voice"))
+                privacyLine(L10n.text("settings.privacy.clipboard"))
+                privacyLine(L10n.text("settings.privacy.history"))
             }
         }
-        .frame(maxWidth: 680, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .id(model.permissionRefreshID)
     }
 
     private var settingsAboutSummary: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .center, spacing: 14) {
-                PenNibShape()
-                    .stroke(style: StrokeStyle(lineWidth: 1.45, lineCap: .round, lineJoin: .round))
-                    .foregroundStyle(InkletTheme.primary)
-                    .padding(10)
-                    .frame(width: 48, height: 48)
-                    .background(InkletTheme.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(InkletTheme.primary.opacity(0.20))
-                    }
+        HStack(alignment: .top, spacing: InkletTheme.Spacing.md) {
+            PenNibShape()
+                .stroke(style: StrokeStyle(lineWidth: 1.45, lineCap: .round, lineJoin: .round))
+                .foregroundStyle(InkletTheme.label)
+                .padding(10)
+                .frame(width: 48, height: 48)
+                .background(InkletTheme.fill, in: RoundedRectangle(cornerRadius: InkletTheme.Radius.card))
 
-                VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: InkletTheme.Spacing.xs) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("Inklet")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(InkletTheme.textPrimary)
+                        .font(InkletTheme.Typography.title)
+                        .foregroundStyle(InkletTheme.label)
                     Text(L10n.format("settings.version", BuildInfo.displayVersion))
-                        .font(.system(size: 11))
-                        .foregroundStyle(InkletTheme.textTertiary)
+                        .font(InkletTheme.Typography.caption)
+                        .foregroundStyle(InkletTheme.tertiaryLabel)
                 }
+
+                Text(L10n.text("about.tagline"))
+                    .font(InkletTheme.Typography.body)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: InkletTheme.Spacing.md) {
+                    Link(L10n.text("about.website"), destination: URL(string: "https://getinklet.app")!)
+                    Link(L10n.text("about.privacyPolicy"), destination: URL(string: "https://getinklet.app/privacy")!)
+                    Link(L10n.text("about.support"), destination: URL(string: "mailto:support@getinklet.app")!)
+                }
+                .font(InkletTheme.Typography.control)
+
+                Text("© 2026 Inklet")
+                    .font(InkletTheme.Typography.caption)
+                    .foregroundStyle(InkletTheme.tertiaryLabel)
             }
-
-            Text(L10n.text("about.tagline"))
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(InkletTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack(spacing: 16) {
-                Link(L10n.text("about.website"), destination: URL(string: "https://getinklet.app")!)
-                Link(L10n.text("about.privacyPolicy"), destination: URL(string: "https://getinklet.app/privacy")!)
-                Link(L10n.text("about.support"), destination: URL(string: "mailto:support@getinklet.app")!)
-            }
-            .font(.system(size: 12, weight: .medium))
-
-            Text("© 2026 Inklet")
-                .font(.system(size: 11))
-                .foregroundStyle(InkletTheme.textTertiary)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(14)
-        .frame(maxWidth: 680, alignment: .leading)
-        .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 10))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(InkletTheme.subtleBorder)
-        }
+        .padding(InkletTheme.Spacing.md)
+        .inkletCard()
     }
 
+    @ViewBuilder
     private var quickStartShortcuts: some View {
-        HStack(alignment: .top, spacing: 48) {
-            VStack(alignment: .leading, spacing: 8) {
-                shortcutLine(keys: [model.config.hotkey], title: L10n.text("settings.quickStart.open"), keyWidth: 102, keyAlignment: .trailing)
-                shortcutLine(keys: ["⌘", "↵"], title: L10n.text("settings.quickStart.original"), keyWidth: 102, keyAlignment: .trailing)
-                if model.config.voiceInput.activeShortcut != .disabled {
-                    shortcutLine(
-                        keys: voiceShortcutKeys,
-                        title: L10n.text("settings.quickStart.voice.pressAndHold"),
-                        keyWidth: 102,
-                        keyAlignment: .trailing
-                    )
-                }
-            }
-            .frame(width: 292, alignment: .leading)
-
-            VStack(alignment: .leading, spacing: 8) {
-                shortcutLine(keys: ["↵"], title: L10n.text("settings.quickStart.submit"), keyWidth: 34, keyAlignment: .leading, textSpacing: 8)
-                shortcutLine(keys: ["esc"], title: L10n.text("settings.quickStart.close"), keyWidth: 34, keyAlignment: .leading, textSpacing: 8)
-            }
-            .frame(width: 220, alignment: .leading)
+        shortcutLine(keys: [model.config.hotkey], title: L10n.text("settings.quickStart.open"))
+        shortcutLine(keys: ["⌘", "↵"], title: L10n.text("settings.quickStart.original"))
+        if model.config.voiceInput.activeShortcut != .disabled {
+            shortcutLine(keys: voiceShortcutKeys, title: L10n.text("settings.quickStart.voice.pressAndHold"))
         }
-        .frame(width: 560, alignment: .leading)
-        .fixedSize(horizontal: true, vertical: false)
+        shortcutLine(keys: ["↵"], title: L10n.text("settings.quickStart.submit"))
+        shortcutLine(keys: ["esc"], title: L10n.text("settings.quickStart.close"))
     }
 
     private var voiceShortcutKeys: [String] {
@@ -1297,34 +1292,26 @@ struct SettingsView: View {
     }
 
     private func permissionStatusColor(isTrusted: Bool) -> Color {
-        isTrusted ? InkletTheme.primary : InkletTheme.warning
+        isTrusted ? InkletTheme.statusSuccess : InkletTheme.statusWarning
     }
 
-    private func permissionSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .tracking(0.7)
-                .textCase(.uppercase)
-                .foregroundStyle(InkletTheme.textTertiary)
-            content()
+    private func shortcutLine(keys: [String], title: String) -> some View {
+        VStack(spacing: 0) {
+            InkletRowDivider()
+            HStack(spacing: InkletTheme.Spacing.md) {
+                shortcutTitle(title)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                shortcutKeys(keys)
+                    .fixedSize()
+            }
+            .padding(.horizontal, InkletTheme.Spacing.sm)
+            .padding(.vertical, InkletTheme.Spacing.xs)
+            .frame(minHeight: SettingsLayoutMetrics.compactRowHeight)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func shortcutLine(keys: [String], title: String, keyWidth: CGFloat, keyAlignment: Alignment, textSpacing: CGFloat = 14) -> some View {
-        HStack(spacing: textSpacing) {
-            shortcutKeys(keys)
-                .fixedSize()
-                .frame(minWidth: keyWidth, alignment: keyAlignment)
-
-            shortcutTitle(title)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func shortcutKeys(_ keys: [String]) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: InkletTheme.Spacing.xxs) {
             ForEach(keys, id: \.self) { key in
                 Keycap(title: key)
             }
@@ -1333,8 +1320,8 @@ struct SettingsView: View {
 
     private func shortcutTitle(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 12))
-            .foregroundStyle(InkletTheme.textSecondary)
+            .font(InkletTheme.Typography.body)
+            .foregroundStyle(InkletTheme.label)
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -1346,80 +1333,70 @@ struct SettingsView: View {
     ) -> some View {
         let statusColor = permissionStatusColor(isTrusted: isTrusted)
 
-        return HStack(alignment: .center, spacing: 14) {
-            Image(systemName: isTrusted ? "checkmark" : "exclamationmark")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(statusColor)
-                .frame(width: 42, height: 42)
-                .background(statusColor.opacity(0.11), in: Circle())
+        return VStack(spacing: 0) {
+            InkletRowDivider()
+            HStack(alignment: .center, spacing: InkletTheme.Spacing.sm) {
+                Image(systemName: isTrusted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .font(.system(size: InkletTheme.IconSize.large, weight: .medium))
+                    .foregroundStyle(statusColor)
+                    .frame(width: 20)
+                    .accessibilityLabel(L10n.text(isTrusted ? "settings.permission.authorized" : "settings.permission.required"))
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(InkletTheme.textPrimary)
+                        .font(InkletTheme.Typography.body)
+                        .foregroundStyle(InkletTheme.label)
+
+                    Text(description)
+                        .font(InkletTheme.Typography.help)
+                        .foregroundStyle(InkletTheme.secondaryLabel)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Text(description)
-                    .font(.system(size: 12))
-                    .foregroundStyle(InkletTheme.textTertiary)
-                    .fixedSize(horizontal: false, vertical: true)
+                Button(action: action) {
+                    Label(L10n.text("settings.permission.openShort"), systemImage: "arrow.up.forward.app")
+                }
+                .buttonStyle(InkletButtonStyle(kind: .secondary, size: .small))
+                .fixedSize()
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Button(action: action) {
-                Label(L10n.text("settings.permission.openShort"), systemImage: "arrow.up.forward.app")
-            }
-            .buttonStyle(.plain)
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(InkletTheme.textSecondary)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
-            .fixedSize()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(InkletTheme.controlFill.opacity(0.58), in: RoundedRectangle(cornerRadius: 10))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(InkletTheme.subtleBorder)
+            .padding(.horizontal, InkletTheme.Spacing.sm)
+            .padding(.vertical, InkletTheme.Spacing.sm)
         }
     }
 
     private func privacyLine(_ text: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Circle()
-                .fill(InkletTheme.textFaint)
-                .frame(width: 3, height: 3)
-                .alignmentGuide(.firstTextBaseline) { context in
-                    context[VerticalAlignment.center]
-                }
+        VStack(spacing: 0) {
+            InkletRowDivider()
             Text(text.replacingOccurrences(of: "• ", with: ""))
-                .font(.system(size: 12))
-                .foregroundStyle(InkletTheme.textSecondary)
+                .font(InkletTheme.Typography.body)
+                .foregroundStyle(InkletTheme.secondaryLabel)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, InkletTheme.Spacing.sm)
+                .padding(.vertical, InkletTheme.Spacing.xs)
+                .frame(minHeight: SettingsLayoutMetrics.compactRowHeight)
         }
     }
 
     private func historyRow(_ item: HistoryItem) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.sm) {
+            HStack(spacing: InkletTheme.Spacing.xs) {
                 Label(historySourceTitle(item.source), systemImage: historySourceIcon(item.source))
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(InkletTheme.textPrimary)
+                    .font(InkletTheme.Typography.control)
+                    .foregroundStyle(InkletTheme.label)
 
                 Text(item.createdAt.formatted(
                     Date.FormatStyle(date: .abbreviated, time: .shortened)
                         .locale(Locale(identifier: localeIdentifier))
                 ))
-                    .font(.system(size: 11))
-                    .foregroundStyle(InkletTheme.textTertiary)
+                    .font(InkletTheme.Typography.caption)
+                    .foregroundStyle(InkletTheme.tertiaryLabel)
 
                 if let label = historyMetadataLabel(item) {
                     Text(label)
-                        .font(.system(size: 11))
-                        .foregroundStyle(InkletTheme.textTertiary)
+                        .font(InkletTheme.Typography.caption)
+                        .foregroundStyle(InkletTheme.tertiaryLabel)
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
@@ -1436,24 +1413,20 @@ struct SettingsView: View {
             historyTextBlock(title: L10n.text("settings.history.original"), text: item.inputText)
             historyTextBlock(title: L10n.text("settings.history.result"), text: item.outputText)
         }
-        .padding(12)
-        .background(InkletTheme.controlFill.opacity(0.58), in: RoundedRectangle(cornerRadius: 8))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(InkletTheme.subtleBorder)
-        }
+        .padding(InkletTheme.Spacing.sm)
+        .inkletCard()
     }
 
     private func historyTextBlock(title: String, text: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.xxs) {
             Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(InkletTheme.textTertiary)
+                .font(InkletTheme.Typography.caption)
+                .foregroundStyle(InkletTheme.tertiaryLabel)
 
             ScrollView {
                 Text(text)
-                    .font(.system(size: 12))
-                    .foregroundStyle(InkletTheme.textSecondary)
+                    .font(InkletTheme.Typography.body)
+                    .foregroundStyle(InkletTheme.label)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1476,12 +1449,9 @@ struct SettingsView: View {
             }
         } label: {
             Image(systemName: copiedHistoryControlID == feedbackID ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(InkletTheme.textSecondary)
-                .frame(width: 26, height: 26)
-                .contentShape(Rectangle())
+                .foregroundStyle(copiedHistoryControlID == feedbackID ? InkletTheme.statusSuccess : InkletTheme.secondaryLabel)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(InkletIconButtonStyle(size: InkletTheme.ControlHeight.small))
         .help(title)
         .accessibilityLabel(title)
     }
@@ -1518,71 +1488,133 @@ struct SettingsView: View {
         return item.model
     }
 
-    private var footer: some View {
-        HStack(spacing: 12) {
-            if !model.message.isEmpty {
-                Label(model.message, systemImage: isSuccessMessage ? "checkmark.circle" : "exclamationmark.circle")
-                    .font(InkletTheme.Typography.help)
-                    .foregroundStyle(isSuccessMessage ? InkletTheme.statusSuccess : InkletTheme.statusError)
-                    .lineLimit(2)
-            } else {
-                Text(L10n.text("settings.footer.pending"))
-                    .font(InkletTheme.Typography.caption)
-                    .foregroundStyle(InkletTheme.tertiaryLabel)
-            }
-            Spacer()
+    // MARK: Page building blocks (docs/DESIGN.md, Surfaces > Settings)
+
+    /// A scrolling pane with the page margins.
+    private func settingsPage<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        ScrollView {
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, InkletTheme.Spacing.xl)
+                .padding(.top, InkletTheme.Spacing.xxs)
+                .padding(.bottom, InkletTheme.Spacing.xl)
         }
-        .padding(.horizontal, InkletTheme.Spacing.xl)
-        .padding(.vertical, InkletTheme.Spacing.sm)
     }
 
-    private func settingsPanel<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            content()
+    /// A card of rows with an optional small title above it.
+    private func settingsGroup<Content: View>(
+        _ title: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.xs) {
+            if let title {
+                Text(title)
+                    .font(InkletTheme.Typography.help.weight(.semibold))
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .padding(.leading, InkletTheme.Spacing.sm)
+            }
+
+            VStack(alignment: .leading, spacing: 0) {
+                content()
+            }
+            // Every row starts with a hairline; the first one tucks under the card's top edge.
+            .padding(.top, -1)
+            .clipShape(RoundedRectangle(cornerRadius: InkletTheme.Radius.card))
+            .inkletCard()
         }
-        .padding(0)
-        .frame(maxWidth: 580, alignment: .leading)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func settingsRow<Content: View>(
-        _ title: String,
-        help: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(title)
-                    .font(InkletTheme.Typography.fieldLabel)
-                    .foregroundStyle(InkletTheme.secondaryLabel)
-                Spacer()
-            }
-            content()
-                .frame(maxWidth: .infinity, alignment: .leading)
+    private func settingsRowLabel(_ title: String, help: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(InkletTheme.Typography.body)
+                .foregroundStyle(InkletTheme.label)
+                .fixedSize(horizontal: false, vertical: true)
             if !help.isEmpty {
                 Text(help)
                     .font(InkletTheme.Typography.help)
-                    .foregroundStyle(InkletTheme.tertiaryLabel)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Label and help on the left, the control on the right.
+    private func settingsRow<Content: View>(
+        _ title: String,
+        help: String = "",
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(spacing: 0) {
+            InkletRowDivider()
+            HStack(alignment: .center, spacing: InkletTheme.Spacing.md) {
+                settingsRowLabel(title, help: help)
+                content()
+            }
+            .padding(.horizontal, InkletTheme.Spacing.sm)
+            .padding(.vertical, InkletTheme.Spacing.xs)
+            .frame(minHeight: SettingsLayoutMetrics.rowHeight)
+        }
+    }
+
+    /// Label and help above a control that needs the full width, such as a prompt editor.
+    private func settingsStackedRow<Content: View, Accessory: View>(
+        _ title: String,
+        help: String = "",
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder accessory: () -> Accessory
+    ) -> some View {
+        VStack(spacing: 0) {
+            InkletRowDivider()
+            VStack(alignment: .leading, spacing: InkletTheme.Spacing.xs) {
+                HStack(alignment: .top, spacing: InkletTheme.Spacing.md) {
+                    settingsRowLabel(title, help: help)
+                    accessory()
+                }
+                content()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(InkletTheme.Spacing.sm)
+        }
+    }
+
+    private func settingsStackedRow<Content: View>(
+        _ title: String,
+        help: String = "",
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        settingsStackedRow(title, help: help, content: content) {
+            EmptyView()
+        }
+    }
+
+    private func restoreDefaultButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: "arrow.counterclockwise")
+        }
+        .buttonStyle(InkletButtonStyle(kind: .ghost, size: .small))
+        .fixedSize()
+        .help(title)
+        .accessibilityLabel(title)
     }
 
     private func selectionMenuButtonRow(_ button: SelectionMenuButton, index: Int, count: Int) -> some View {
         let item = model.selectionMenuItem(for: button)
-        return HStack(spacing: 8) {
+        return HStack(spacing: InkletTheme.Spacing.xs) {
             Toggle(isOn: Binding(
                 get: { button.isEnabled },
                 set: { model.setSelectionMenuButton(button.action, isEnabled: $0) }
             )) {
-                HStack(spacing: 6) {
+                HStack(spacing: InkletTheme.Spacing.xs) {
                     Image(systemName: item.systemImage)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(InkletTheme.textSecondary)
-                        .frame(width: 16)
+                        .font(.system(size: InkletTheme.IconSize.small, weight: .medium))
+                        .foregroundStyle(InkletTheme.secondaryLabel)
+                        .frame(width: InkletTheme.IconSize.large)
                     Text(item.title)
-                        .font(.system(size: 13))
-                        .foregroundStyle(InkletTheme.textPrimary)
+                        .font(InkletTheme.Typography.body)
+                        .foregroundStyle(InkletTheme.label)
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
@@ -1590,7 +1622,7 @@ struct SettingsView: View {
             .toggleStyle(.checkbox)
             .disabled(!model.canDisableSelectionMenuButton(button))
 
-            Spacer(minLength: 8)
+            Spacer(minLength: InkletTheme.Spacing.xs)
 
             selectionMenuMoveButton(
                 title: L10n.text("settings.selectionMenu.moveUp"),
@@ -1607,8 +1639,9 @@ struct SettingsView: View {
                 model.moveSelectionMenuButton(at: index, by: 1)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.leading, InkletTheme.Spacing.sm)
+        .padding(.trailing, InkletTheme.Spacing.xxs)
+        .frame(minHeight: SettingsLayoutMetrics.compactRowHeight)
     }
 
     private func selectionMenuMoveButton(
@@ -1619,34 +1652,11 @@ struct SettingsView: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(InkletTheme.textSecondary)
-                .frame(width: 22, height: 22)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(InkletIconButtonStyle(size: InkletTheme.ControlHeight.small))
         .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.35)
         .help(title)
         .accessibilityLabel(title)
-    }
-
-    private func settingsToggle(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
-        HStack(spacing: InkletTheme.Spacing.md) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(InkletTheme.Typography.body)
-                    .foregroundStyle(InkletTheme.label)
-                Text(subtitle)
-                    .font(InkletTheme.Typography.help)
-                    .foregroundStyle(InkletTheme.secondaryLabel)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer()
-            Toggle("", isOn: isOn)
-                .labelsHidden()
-                .toggleStyle(.switch)
-        }
     }
 }
 
@@ -1656,35 +1666,47 @@ struct SettingsSidebarLabel: View {
     @State private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: InkletTheme.Spacing.xs) {
             Image(systemName: section.icon)
-                .font(.system(size: InkletTheme.IconSize.regular))
+                .font(.system(size: InkletTheme.IconSize.regular, weight: .medium))
                 .foregroundStyle(isSelected ? InkletTheme.accentText : InkletTheme.secondaryLabel)
-                .frame(width: 18)
+                .frame(width: SettingsLayoutMetrics.sidebarIconWidth)
             Text(section.title)
-                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                .font(InkletTheme.Typography.body.weight(isSelected ? .medium : .regular))
                 .foregroundStyle(InkletTheme.label)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, InkletTheme.Spacing.xs)
-        .background(
-            isSelected ? InkletTheme.fillHover : isHovered ? InkletTheme.fill : Color.clear,
-            in: RoundedRectangle(cornerRadius: InkletTheme.Radius.small)
-        )
+        .padding(.horizontal, InkletTheme.Spacing.xs)
+        .padding(.vertical, SettingsLayoutMetrics.sidebarItemVerticalPadding)
+        .frame(minHeight: SettingsLayoutMetrics.sidebarItemHeight)
+        .background(background, in: RoundedRectangle(cornerRadius: InkletTheme.Radius.small))
         .contentShape(RoundedRectangle(cornerRadius: InkletTheme.Radius.small))
         .onHover { isHovered = $0 }
         .animation(InkletTheme.Motion.fast, value: isHovered)
     }
+
+    private var background: Color {
+        // A neutral selection; only the icon carries the accent (docs/DESIGN.md, Refinement rules).
+        if isSelected {
+            return InkletTheme.fillHover
+        }
+        return isHovered ? InkletTheme.fill : .clear
+    }
 }
 
 enum SettingsLayoutMetrics {
-    /// Room under the transparent titlebar for the traffic lights.
+    static let sidebarWidth: CGFloat = 210
+    static let sidebarItemHeight: CGFloat = 30
+    static let sidebarItemVerticalPadding: CGFloat = 6
+    static let sidebarIconWidth: CGFloat = 18
+    /// Clears the system traffic lights in the transparent titlebar.
     static let titlebarInset: CGFloat = 52
-    /// Wide enough for a mode name such as "To Simple and Correct English" at 13 pt semibold.
-    static let promptModeListWidth: CGFloat = 256
-    static let promptModeListMaxHeight: CGFloat = 330
+    static let headerHeight: CGFloat = 68
+    static let rowHeight: CGFloat = 44
+    static let compactRowHeight: CGFloat = 36
+    static let fieldWidth: CGFloat = 220
+    static let promptModeListWidth: CGFloat = 240
 
     static var migrationActionWidth: CGFloat {
         let font = NSFont.systemFont(ofSize: 12, weight: .semibold)
