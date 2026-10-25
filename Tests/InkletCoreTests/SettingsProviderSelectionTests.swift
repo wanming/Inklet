@@ -59,7 +59,6 @@ final class SettingsProviderSelectionTests: XCTestCase {
     }
 
     @MainActor
-    @MainActor
     func testWelcomeGuideWalksEveryStepAndFinishesOnTheLast() throws {
         let (settings, _) = try makeModel(keychain: ProviderSelectionKeychainClient())
         let guide = WelcomeGuideViewModel(settings: settings)
@@ -100,6 +99,7 @@ final class SettingsProviderSelectionTests: XCTestCase {
         XCTAssertEqual(keychain.value(forAccount: LLMProviderPreset.openAI.id), "sk-guide")
     }
 
+    @MainActor
     private func makeModel(
         keychain: ProviderSelectionKeychainClient
     ) throws -> (SettingsViewModel, UserDefaultsConfigStore) {
