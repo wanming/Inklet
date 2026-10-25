@@ -27,7 +27,8 @@ enum LocalizationSnapshot {
             styleMask: [.borderless], backing: .buffered, defer: false
         )
         window.isReleasedWhenClosed = false
-        window.appearance = NSAppearance(named: .aqua)
+        let isDark = ProcessInfo.processInfo.environment["INKLET_SNAPSHOT_APPEARANCE"] == "dark"
+        window.appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
         window.contentView = host
         host.layoutSubtreeIfNeeded()
         guard let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) else {
