@@ -50,7 +50,7 @@ Mit Text:
 
 1. Setzen Sie den Fokus in ein beliebiges Textfeld einer anderen App.
 2. Drücken Sie `Option+Space`.
-3. Suchen Sie unscharf nach einem Prompt-Modus (zum Beispiel findet `ts` den Modus `To Chinese Summary`), markieren Sie ihn mit `Up` / `Down` und bestätigen Sie ihn mit `Tab` oder `Enter`.
+3. Suchen Sie unscharf nach einem Prompt-Modus (zum Beispiel findet `zus` den Modus `Zusammenfassen`), markieren Sie ihn mit `Up` / `Down` und bestätigen Sie ihn mit `Tab` oder `Enter`.
 4. Tippen oder fügen Sie Ihren Rohtext ein.
 5. Drücken Sie `Enter`, um ihn umzuwandeln. Das Ergebnis erscheint während der Generierung; mit `Escape` stoppen Sie sie.
 6. Drücken Sie erneut `Enter`, um das Ergebnis einzufügen, oder `Shift+Command+C` (bzw. die Kopiertaste am Ergebnis), um es stattdessen zu kopieren.
@@ -76,9 +76,9 @@ Der Diktat-Kurzbefehl wirkt nur im Quelleditor und nur durch Halten. Unter **Ein
 - Spielt ausgewählten Text direkt ab und kann im Übersetzungsergebnis sowohl den Original- als auch den übersetzten Text abspielen.
 - Unter **Einstellungen** › **Auswahlassistent** › **Menütasten** wählen Sie, welche Tasten das Auswahlmenü zeigt und in welcher Reihenfolge. **Übersetzen**, **Aussprechen** und jeder Prompt-Modus können eine Taste sein; bis zu vier werden gleichzeitig angezeigt, der Rest landet unter **Mehr**. Eine Prompt-Modus-Taste führt diesen Modus auf den ausgewählten Text aus und zeigt das Ergebnis im Bereich mit Kopier- und Wiedergabesteuerung.
 - Wandelt Text mit integrierten Prompt-Modi um:
-  - To Simple and Correct English
-  - To Chinese Summary
-  - Voice Cleanup
+  - In einfaches, korrektes Englisch (in Ihrer Schreibsprache, wählbar unter Einstellungen › Allgemein; standardmäßig Englisch)
+  - Zusammenfassen (in Ihrer Übersetzungssprache, standardmäßig die Sprache der Oberfläche)
+  - Sprachbereinigung
 - Streamt das Ergebnis während der Generierung ins Popover und fügt es dann in die zuvor fokussierte App ein oder kopiert es über die Kopiertaste am Ergebnis.
 - Verwendet einen einzigen, app-unabhängigen Auswahlweg, der zuerst auf Bedienungshilfen setzt. Automatische Auswahlaktionen fragen die Auswahl zunächst über die macOS-Bedienungshilfen ab und nutzen den konfigurierten temporären Zwischenablage-Fallback nur, wenn **Erzwungene Auswahl** es erlaubt. Jeder Lesevorgang bleibt an den erfassten Quellprozess gebunden und wird abgebrochen, wenn dieser Prozess endet oder den Fokus verliert.
 - Lässt simuliertes `Command+C` standardmäßig ausgeschaltet. Das Kopieren über das Menü bleibt der sichere Fallback für **Erzwungene Auswahl**; für Apps ohne nutzbares Kopieren-Menü können Sie simuliertes Kopieren ausdrücklich als erweiterten Fallback aktivieren, das jedoch Spiele, Remote-Desktops oder virtuelle Maschinen stören kann.

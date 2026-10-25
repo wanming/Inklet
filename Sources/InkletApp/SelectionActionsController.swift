@@ -831,7 +831,7 @@ final class SelectionActionsController {
                 }
                 let result = try await TransformationService(provider: provider).transform(
                     sourceText: sourceText,
-                    mode: mode,
+                    mode: mode.resolvingLanguages(config.promptLanguages),
                     model: config.model,
                     timeoutSeconds: config.timeoutSeconds
                 )

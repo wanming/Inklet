@@ -50,7 +50,7 @@ Con il testo:
 
 1. Metti lo stato attivo in un qualsiasi campo di testo di un’altra app.
 2. Premi `Option+Space`.
-3. Cerca una modalità prompt con la ricerca approssimativa (per esempio, `ts` può trovare `To Chinese Summary`), usa `Up` / `Down` per evidenziarla, poi premi `Tab` o `Enter` per confermarla.
+3. Cerca una modalità prompt con la ricerca approssimativa (per esempio, `ria` può trovare `Riassumere`), usa `Up` / `Down` per evidenziarla, poi premi `Tab` o `Enter` per confermarla.
 4. Digita o incolla il testo grezzo.
 5. Premi `Enter` per trasformarlo. Il risultato compare man mano che viene generato; premi `Escape` per fermarlo.
 6. Premi di nuovo `Enter` per inserire il risultato, oppure premi `Shift+Command+C` (o fai clic sul pulsante di copia del risultato) per copiarlo.
@@ -76,9 +76,9 @@ La scorciatoia di dettatura funziona solo nell’editor sorgente e solo tenendol
 - Riproduce direttamente il testo selezionato e, dal risultato della traduzione, può riprodurre sia il testo originale sia quello tradotto.
 - Ti permette di scegliere quali pulsanti mostra il menu di selezione e in quale ordine, in **Impostazioni** › **Assistente di selezione** › **Pulsanti del menu**. **Traduci**, **Pronuncia** e qualsiasi modalità prompt possono diventare un pulsante; ne compaiono al massimo quattro alla volta e gli altri finiscono in **Altro**. Un pulsante di modalità prompt esegue quella modalità sul testo selezionato e mostra il risultato nel pannello con i controlli di copia e riproduzione.
 - Trasforma il testo con modalità prompt integrate:
-  - To Simple and Correct English
-  - To Chinese Summary
-  - Voice Cleanup
+  - In inglese semplice e corretto (nella tua lingua di scrittura, scelta in Impostazioni › Generale; inglese per impostazione predefinita)
+  - Riassumere (nella tua lingua di traduzione, che per impostazione predefinita segue la lingua dell’interfaccia)
+  - Pulizia della voce
 - Mostra il risultato nel popover man mano che viene generato, poi lo inserisce nell’app che aveva lo stato attivo o lo copia con il pulsante di copia del risultato.
 - Usa un unico percorso di selezione, indipendente dall’app e basato prima di tutto su Accessibilità. Le azioni di selezione automatiche chiedono prima la selezione ad Accessibilità di macOS e usano il metodo alternativo configurato con gli appunti temporanei solo quando la **Selezione forzata** lo consente. Ogni lettura resta legata al processo sorgente acquisito e si annulla se quel processo termina o perde lo stato attivo.
 - Lascia disattivato per impostazione predefinita il `Command+C` simulato. La copia dal menu resta il metodo alternativo sicuro della **Selezione forzata**; per le app senza un menu Copia utilizzabile puoi attivare esplicitamente la copia simulata come alternativa avanzata, ma può interferire con giochi, desktop remoti o macchine virtuali.

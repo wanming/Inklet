@@ -23,6 +23,13 @@ final class SettingsViewModel: ObservableObject {
     @Published var openAIAPIKey: String
     @Published var selectedPromptModeID: String
     @Published var interfaceLanguage: InterfaceLanguage
+    /// Saved as soon as it changes, like the interface language it sits next to.
+    @Published var writingLanguage: SelectionTranslationLanguage {
+        didSet {
+            guard writingLanguage != oldValue else { return }
+            InkletLanguageStore.writingLanguage = writingLanguage
+        }
+    }
     @Published var cachedProviderModels: [String: [String]]
     @Published var isRefreshingModelCatalog: Bool
     @Published var isEditingCustomModel: Bool
@@ -80,6 +87,7 @@ final class SettingsViewModel: ObservableObject {
         self.savedConfig = loadedConfig
         self.message = ""
         self.interfaceLanguage = InkletLanguageStore.selectedLanguage
+        self.writingLanguage = InkletLanguageStore.writingLanguage
         self.savedInterfaceLanguage = InkletLanguageStore.selectedLanguage
         let loadedProviderAPIKey = apiKeyStore.loadAPIKey(forProviderID: loadedConfig.providerID) ?? ""
         self.providerAPIKey = loadedProviderAPIKey
@@ -88,7 +96,7 @@ final class SettingsViewModel: ObservableObject {
         self.openAIAPIKey = loadedOpenAIAPIKey
         self.savedOpenAIAPIKey = loadedOpenAIAPIKey
         self.selectedPromptModeID = loadedConfig.promptModes.sorted { $0.sortOrder < $1.sortOrder }.first?.id
-            ?? PromptMode.translateToEnglishID
+            ?? PromptMode.rewriteID
         self.cachedProviderModels = Dictionary(
             uniqueKeysWithValues: LLMProviderPreset.all.compactMap { preset in
                 guard let modelIDs = modelCatalogService.cachedModelIDs(for: preset.id) else {
@@ -608,7 +616,7 @@ final class SettingsViewModel: ObservableObject {
         }
 
         if selectedPromptModeID == modeID {
-            selectedPromptModeID = config.promptModes.first?.id ?? PromptMode.translateToEnglishID
+            selectedPromptModeID = config.promptModes.first?.id ?? PromptMode.rewriteID
         }
         save()
     }
@@ -647,6 +655,24 @@ final class SettingsViewModel: ObservableObject {
 
         config.promptModes[index].isVisible.toggle()
         save()
+    }
+
+    /// Shows a built-in mode's translated name; typing a different name makes it the user's own.
+    func promptModeNameBinding(modeID: String) -> Binding<String> {
+        Binding(
+            get: { [weak self] in
+                self?.config.promptModes.first(where: { $0.id == modeID })?.localizedName ?? ""
+            },
+            set: { [weak self] newValue in
+                guard let self,
+                      let index = self.config.promptModes.firstIndex(where: { $0.id == modeID }),
+                      self.config.promptModes[index].localizedName != newValue
+                else {
+                    return
+                }
+                self.config.promptModes[index].name = newValue
+            }
+        )
     }
 
     func promptModeVisibilityBinding(modeID: String) -> Binding<Bool> {

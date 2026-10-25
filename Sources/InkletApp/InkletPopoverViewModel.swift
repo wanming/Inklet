@@ -749,7 +749,7 @@ final class InkletPopoverViewModel: ObservableObject {
         let mode = PromptModeStore(modes: modes).resolve(
             modeID: resolvedModeID,
             sourceText: source
-        )
+        ).resolvingLanguages(config.promptLanguages)
         let transformationModeID = mode.id
         let model = config.model
         let timeoutSeconds = config.effectiveTimeoutSeconds
@@ -919,7 +919,7 @@ final class InkletPopoverViewModel: ObservableObject {
             return preferredModeID
         }
 
-        return visibleModes.first?.id ?? PromptMode.translateToEnglishID
+        return visibleModes.first?.id ?? PromptMode.rewriteID
     }
 
     private static func modePickerItems(for modes: [PromptMode]) -> [WritingModePickerItem] {

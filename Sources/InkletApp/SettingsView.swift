@@ -2,24 +2,6 @@ import AppKit
 import SwiftUI
 import InkletCore
 
-private extension SelectionTranslationLanguage {
-    var localizedDisplayName: String {
-        switch self {
-        case .followInterfaceLanguage: L10n.text("selection.language.followInterface")
-        case .english: "English"
-        case .simplifiedChinese: "简体中文"
-        case .traditionalChinese: "繁體中文"
-        case .japanese: "日本語"
-        case .korean: "한국어"
-        case .spanish: "Español"
-        case .french: "Français"
-        case .german: "Deutsch"
-        case .portuguese: "Português"
-        case .italian: "Italiano"
-        }
-    }
-}
-
 private extension SelectionForceSelectionMode {
     var localizedDisplayName: String {
         switch self {
@@ -336,6 +318,16 @@ struct SettingsView: View {
                     settingsRow(L10n.text("settings.row.language"), help: L10n.text("settings.help.language")) {
                         Picker("", selection: $model.interfaceLanguage) {
                             ForEach(InterfaceLanguage.allCases) { language in
+                                Text(language.localizedDisplayName).tag(language)
+                            }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+
+                    settingsRow(L10n.text("settings.row.writingLanguage"), help: L10n.text("settings.help.writingLanguage")) {
+                        Picker("", selection: $model.writingLanguage) {
+                            ForEach(SelectionTranslationLanguage.writingLanguageCases) { language in
                                 Text(language.localizedDisplayName).tag(language)
                             }
                         }
@@ -1194,7 +1186,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
             settingsGroup {
                 settingsStackedRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.name")) {
-                    TextField(L10n.text("settings.row.name"), text: $model.config.promptModes[index].name)
+                    TextField(L10n.text("settings.row.name"), text: model.promptModeNameBinding(modeID: model.config.promptModes[index].id))
                         .textFieldStyle(.plain)
                         .font(InkletTheme.Typography.body)
                         .padding(.horizontal, InkletTheme.Spacing.xs)
@@ -1202,7 +1194,7 @@ struct SettingsView: View {
                         .modifier(InkletFieldModifier())
                 }
 
-                settingsStackedRow(L10n.text("settings.row.systemPrompt")) {
+                settingsStackedRow(L10n.text("settings.row.systemPrompt"), help: L10n.text("settings.help.systemPrompt")) {
                     SettingsPromptTextView(text: $model.config.promptModes[index].systemPrompt)
                         .frame(height: 188)
                         .padding(InkletTheme.Spacing.xs)

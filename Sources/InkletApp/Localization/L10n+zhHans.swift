@@ -212,7 +212,7 @@ extension L10n {
         "settings.row.allowSimulatedCopyFallback": "允许模拟 Cmd+C",
         "settings.help.allowSimulatedCopyFallback": "菜单复制不可用时向前台 App 发送 Cmd+C，可能会干扰游戏或远程应用。",
         "settings.row.translationLanguage": "翻译语言",
-        "settings.help.translationLanguage": "选中文本翻译动作使用的目标语言。",
+        "settings.help.translationLanguage": "选中文本翻译和摘要模式使用的语言。",
         "settings.row.translationPrompt": "翻译 Prompt",
         "settings.help.translationPrompt": "选中文本翻译动作使用的指令。用 {targetLanguage} 表示所选语言。",
         "settings.translationPrompt.restoreDefault": "恢复默认",
@@ -418,13 +418,12 @@ extension L10n {
         "error.provider.prefix": "%@ 请求失败：%@",
         "hotkey.error.unsupported": "暂不支持快捷键“%@”。目前支持 ⌥Space、Option+Space、Alt+Space、⌘Space、Command+Space、Cmd+Space。",
         "hotkey.error.registrationFailed": "快捷键注册失败（%d）。",
-        "prompt.simpleCorrectEnglish.description": "改写或翻译成简单、正确的英文",
-        "prompt.chineseSummary.description": "把任意文本总结成简洁中文",
-        "prompt.translateToEnglish.description": "改写或翻译成简单、正确的英文",
-        "prompt.improveWriting.description": "保持原语言，润色语法、表达和清晰度",
-        "prompt.makeConcise.description": "保持原语言，压缩文字并保留重点",
-        "prompt.professionalTone.description": "改成更职业、清楚、礼貌的语气",
-        "prompt.friendlyReply.description": "改成自然、友好、适合回复的表达",
-        "prompt.custom.description": "使用用户自定义 prompt"
+        "settings.row.writingLanguage": "写作语言",
+        "settings.help.writingLanguage": "你对外写作时用的语言，改写模式会写成这种语言。",
+        "welcome.writingLanguage.title": "我主要用这种语言写作",
+        "settings.help.systemPrompt": "{myLanguage} 会替换成你的翻译语言，{writingLanguage} 会替换成你的写作语言。",
+        "prompt.rewrite.name": "改写成简单正确的%@",
+        "prompt.summary.name": "摘要",
+        "prompt.voiceCleanup.name": "语音整理"
     ]
 }
