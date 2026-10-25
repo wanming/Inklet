@@ -316,7 +316,7 @@ extension L10n {
         "welcome.model.builtIn.title": "이 Mac에서 %@ 실행(추천)",
         "welcome.model.builtIn.detail": "%@ 다운로드가 필요합니다. 텍스트가 Mac 밖으로 나가지 않으며 오프라인에서도 작동합니다.",
         "welcome.model.cloud.title": "클라우드 모델",
-        "welcome.model.cloud.detail": "OpenAI API 키를 사용합니다. 다른 제공자는 설정에서 고를 수 있습니다.",
+        "welcome.model.cloud.detail": "OpenAI, Anthropic, Gemini, DeepSeek 같은 제공자를 고르고 API 키를 입력하세요.",
         "welcome.model.keep.title": "%@ 계속 사용",
         "welcome.model.keep.detail": "지금 설정을 그대로 유지합니다.",
         "welcome.dictation.title": "실시간 받아쓰기(선택)",

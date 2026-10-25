@@ -316,7 +316,7 @@ extension L10n {
         "welcome.model.builtIn.title": "%@ su questo Mac (consigliato)",
         "welcome.model.builtIn.detail": "Download di %@. Il testo non lascia mai il tuo Mac e funziona offline.",
         "welcome.model.cloud.title": "Modello cloud",
-        "welcome.model.cloud.detail": "Usa la tua chiave API OpenAI. Gli altri fornitori sono nelle Impostazioni.",
+        "welcome.model.cloud.detail": "Scegli un fornitore come OpenAI, Anthropic, Gemini o DeepSeek e inserisci la sua chiave API.",
         "welcome.model.keep.title": "Continua a usare %@",
         "welcome.model.keep.detail": "La configurazione attuale resta invariata.",
         "welcome.dictation.title": "Dettatura dal vivo (facoltativa)",

@@ -254,7 +254,7 @@ extension L10n {
         "welcome.model.builtIn.title": "在这台 Mac 上运行 %@（推荐）",
         "welcome.model.builtIn.detail": "需要下载 %@。文字不会离开你的 Mac，离线也能用。",
         "welcome.model.cloud.title": "云端模型",
-        "welcome.model.cloud.detail": "使用你的 OpenAI API key。其他服务商可以在设置里选择。",
+        "welcome.model.cloud.detail": "选择 OpenAI、Anthropic、Gemini、DeepSeek 等服务商，并填写它的 API key。",
         "welcome.model.keep.title": "继续使用 %@",
         "welcome.model.keep.detail": "保留你现在的设置。",
         "welcome.dictation.title": "实时听写（可选）",

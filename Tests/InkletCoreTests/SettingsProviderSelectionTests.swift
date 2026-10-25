@@ -100,6 +100,32 @@ final class SettingsProviderSelectionTests: XCTestCase {
     }
 
     @MainActor
+    func testWelcomeGuideCloudCardCanPickAnyCloudProvider() throws {
+        let keychain = ProviderSelectionKeychainClient()
+        let (settings, configStore) = try makeModel(keychain: keychain)
+        settings.selectProvider(LLMProviderPreset.builtIn.id)
+        let guide = WelcomeGuideViewModel(settings: settings)
+        while guide.step != .writingModel {
+            guide.performPrimaryAction()
+        }
+
+        XCTAssertTrue(guide.cloudProviderOptions.contains { $0.id == "deepseek" })
+        XCTAssertFalse(guide.cloudProviderOptions.contains { $0.runsLocally })
+        guide.selectCloudProvider("deepseek")
+        XCTAssertEqual(guide.writingChoice, .cloud)
+        XCTAssertTrue(guide.needsCloudAPIKey)
+        settings.providerAPIKey = "sk-deepseek"
+        guide.performPrimaryAction()
+
+        XCTAssertEqual(try configStore.load().providerID, "deepseek")
+        XCTAssertEqual(keychain.value(forAccount: "deepseek"), "sk-deepseek")
+        guide.goBack()
+        guide.selectWritingChoice(.builtIn)
+        guide.selectWritingChoice(.cloud)
+        XCTAssertEqual(settings.config.providerID, "deepseek")
+    }
+
+    @MainActor
     func testWelcomeGuideShortcutStepSavesTheChosenShortcuts() throws {
         let (settings, configStore) = try makeModel(keychain: ProviderSelectionKeychainClient())
         let guide = WelcomeGuideViewModel(settings: settings)
