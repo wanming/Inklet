@@ -278,7 +278,7 @@ final class SettingsWindowController: NSWindowController {
             return
         }
 
-        let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id)
+        let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: configuredProviderID)
         guard !OnboardingPolicy.shouldShowProviderSetupAfterReturningFromPermissionSettings(
             providerAPIKey: providerAPIKey
         ) else {
@@ -288,6 +288,10 @@ final class SettingsWindowController: NSWindowController {
 
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    private var configuredProviderID: String {
+        ((try? configStore.load()) ?? AppConfig.defaultConfig()).providerID
     }
 
     private func schedulePermissionMonitor(for permission: PermissionSettingsDestination) {
@@ -318,7 +322,7 @@ final class SettingsWindowController: NSWindowController {
     }
 
     private func openPopoverAfterCompletingOnboardingIfNeeded() {
-        let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id)
+        let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: configuredProviderID)
         guard OnboardingPolicy.shouldOpenPopoverAfterClosingSettings(
             didOpenAccessibilitySettings: didOpenAccessibilitySettings,
             isAccessibilityTrusted: AccessibilityPermissionService().isTrusted,
