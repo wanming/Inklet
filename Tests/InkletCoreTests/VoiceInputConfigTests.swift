@@ -141,7 +141,32 @@ final class VoiceInputConfigTests: XCTestCase {
             JSONSerialization.jsonObject(with: JSONEncoder().encode(decoded)) as? [String: Any]
         )
         XCTAssertEqual(Set(object.keys), [
-            "shortcut", "speechEndpoint", "speechModel", "microphoneDeviceID"
+            "isEnabled", "shortcut", "speechEndpoint", "speechModel", "microphoneDeviceID"
         ])
+    }
+
+    func testDictationSwitchKeepsTheChosenShortcut() throws {
+        var config = VoiceInputConfig(shortcut: .leftCommand, speechModel: "model", microphoneDeviceID: nil)
+        XCTAssertTrue(config.isEnabled)
+        XCTAssertEqual(config.activeShortcut, .leftCommand)
+
+        config.isEnabled = false
+        let decoded = try JSONDecoder().decode(VoiceInputConfig.self, from: JSONEncoder().encode(config))
+
+        XCTAssertFalse(decoded.isEnabled)
+        XCTAssertEqual(decoded.shortcut, .leftCommand)
+        XCTAssertEqual(decoded.activeShortcut, .disabled)
+        XCTAssertFalse(VoiceInputConfig.Shortcut.selectableCases.contains(.disabled))
+    }
+
+    func testSavedDisabledShortcutTurnsDictationOff() throws {
+        let legacy = try JSONDecoder().decode(VoiceInputConfig.self, from: Data(#"{"shortcut":"disabled"}"#.utf8))
+        XCTAssertFalse(legacy.isEnabled)
+        XCTAssertEqual(legacy.shortcut, VoiceInputConfig.defaultShortcut)
+        XCTAssertEqual(legacy.activeShortcut, .disabled)
+
+        let enabled = try JSONDecoder().decode(VoiceInputConfig.self, from: Data(#"{"shortcut":"rightCommand"}"#.utf8))
+        XCTAssertTrue(enabled.isEnabled)
+        XCTAssertEqual(enabled.activeShortcut, .rightCommand)
     }
 }
