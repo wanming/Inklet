@@ -729,22 +729,25 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         let releases = pendingWhatsNewReleases
         pendingWhatsNewReleases = []
         whatsNewTask = nil
-        showWhatsNew(releases, activating: false)
+        showWhatsNew(releases, style: .update, activating: false)
     }
 
-    @objc func openWhatsNew() {
-        guard !isStopping,
-              let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
-              let release = WhatsNewCatalog.latestRelease(upTo: currentVersion)
-        else {
-            return
-        }
-        showWhatsNew([release], activating: true)
+    @objc func openChangelog() {
+        guard !isStopping else { return }
+        showWhatsNew(WhatsNewCatalog.changelog(upTo: currentAppVersion), style: .changelog, activating: true)
     }
 
-    private func showWhatsNew(_ releases: [WhatsNewRelease], activating: Bool) {
+    private var currentAppVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
+
+    private func showWhatsNew(_ releases: [WhatsNewRelease], style: WhatsNewView.Style, activating: Bool) {
         whatsNewController?.close()
-        let controller = WhatsNewWindowController(releases: releases)
+        let controller = WhatsNewWindowController(
+            releases: releases,
+            style: style,
+            currentVersion: currentAppVersion
+        )
         whatsNewController = controller
         controller.show(activating: activating)
     }
@@ -851,8 +854,8 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         )
         menu.addItem(
             NSMenuItem(
-                title: L10n.text("app.menu.whatsNew"),
-                action: #selector(openWhatsNew),
+                title: L10n.text("app.menu.changelog"),
+                action: #selector(openChangelog),
                 keyEquivalent: ""
             )
         )

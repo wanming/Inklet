@@ -51,19 +51,20 @@ enum WhatsNewCatalog {
         versions.compactMap { version in releases.first { $0.version == version } }
     }
 
-    /// The notes for this version, or the newest older ones, for the menu item.
-    static func latestRelease(upTo currentVersion: String) -> WhatsNewRelease? {
+    /// Every release up to this version, newest first, for the changelog.
+    static func changelog(upTo currentVersion: String) -> [WhatsNewRelease] {
         releases
             .filter { !WhatsNewPolicy.isNewer($0.version, than: currentVersion) }
-            .max { WhatsNewPolicy.isNewer($1.version, than: $0.version) }
+            .sorted { WhatsNewPolicy.isNewer($0.version, than: $1.version) }
     }
 }
 
-/// A small window listing what changed, shown once after an update. It is ordered front without
-/// activating Inklet, so it never takes focus from the app the person is typing in.
+/// A small window listing what changed. After an update it shows the new versions once, ordered front
+/// without activating Inklet so it never takes focus from the app the person is typing in. From the
+/// menu it shows the whole changelog with the running version highlighted.
 @MainActor
 final class WhatsNewWindowController: NSWindowController {
-    init(releases: [WhatsNewRelease]) {
+    init(releases: [WhatsNewRelease], style: WhatsNewView.Style, currentVersion: String) {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 480, height: 360),
             styleMask: [.titled, .closable, .fullSizeContentView],
@@ -72,11 +73,17 @@ final class WhatsNewWindowController: NSWindowController {
         )
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.title = L10n.text("whatsNew.window.title")
+        window.title = style == .changelog
+            ? L10n.text("whatsNew.changelog.title")
+            : L10n.text("whatsNew.window.title")
         window.isReleasedWhenClosed = false
         super.init(window: window)
         shouldCascadeWindows = false
-        let hostingView = NSHostingView(rootView: WhatsNewView(releases: releases) { [weak self] in
+        let hostingView = NSHostingView(rootView: WhatsNewView(
+            releases: releases,
+            style: style,
+            currentVersion: currentVersion
+        ) { [weak self] in
             self?.close()
         })
         window.contentView = hostingView
@@ -100,26 +107,36 @@ final class WhatsNewWindowController: NSWindowController {
 }
 
 struct WhatsNewView: View {
+    enum Style {
+        /// The versions added since the last launch, shown once after an update.
+        case update
+        /// Every release, newest first, opened from the menu.
+        case changelog
+    }
+
     let releases: [WhatsNewRelease]
+    let style: Style
+    let currentVersion: String
     let onClose: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: InkletTheme.Spacing.xxs) {
-                Text(L10n.text("whatsNew.title"))
-                    .font(InkletTheme.Typography.pageTitle)
-                    .foregroundStyle(InkletTheme.label)
-                Text(L10n.format("whatsNew.version", releases.first?.version ?? ""))
-                    .font(InkletTheme.Typography.help)
-                    .foregroundStyle(InkletTheme.secondaryLabel)
-            }
-            .padding(.top, InkletTheme.Spacing.xxl)
-            .padding(.bottom, InkletTheme.Spacing.lg)
+            header
+                .padding(.top, InkletTheme.Spacing.xxl)
+                .padding(.bottom, InkletTheme.Spacing.lg)
 
-            VStack(alignment: .leading, spacing: InkletTheme.Spacing.md) {
-                ForEach(releases.flatMap(\.features), id: \.titleKey) { feature in
-                    featureRow(feature)
+            switch style {
+            case .update:
+                featureList(releases.flatMap(\.features))
+            case .changelog:
+                ScrollView {
+                    VStack(alignment: .leading, spacing: InkletTheme.Spacing.sm) {
+                        ForEach(releases, id: \.version) { release in
+                            changelogSection(release)
+                        }
+                    }
                 }
+                .frame(maxHeight: .infinity)
             }
 
             HStack {
@@ -136,9 +153,66 @@ struct WhatsNewView: View {
             .padding(.bottom, InkletTheme.Spacing.lg)
         }
         .padding(.horizontal, InkletTheme.Spacing.xl)
-        .frame(width: 480, alignment: .leading)
-        .fixedSize(horizontal: false, vertical: true)
+        .frame(width: 480, height: style == .changelog ? 560 : nil, alignment: .topLeading)
+        .fixedSize(horizontal: false, vertical: style == .update)
         .background(InkletTheme.surface)
+    }
+
+    @ViewBuilder
+    private var header: some View {
+        switch style {
+        case .update:
+            VStack(alignment: .leading, spacing: InkletTheme.Spacing.xxs) {
+                Text(L10n.text("whatsNew.title"))
+                    .font(InkletTheme.Typography.pageTitle)
+                    .foregroundStyle(InkletTheme.label)
+                Text(L10n.format("whatsNew.version", releases.first?.version ?? ""))
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+            }
+        case .changelog:
+            Text(L10n.text("whatsNew.changelog.title"))
+                .font(InkletTheme.Typography.pageTitle)
+                .foregroundStyle(InkletTheme.label)
+        }
+    }
+
+    private func changelogSection(_ release: WhatsNewRelease) -> some View {
+        let isCurrent = release.version == currentVersion
+        return VStack(alignment: .leading, spacing: InkletTheme.Spacing.sm) {
+            HStack(spacing: InkletTheme.Spacing.xs) {
+                Text(L10n.format("whatsNew.version", release.version))
+                    .font(InkletTheme.Typography.title)
+                    .foregroundStyle(InkletTheme.label)
+                if isCurrent {
+                    Text(L10n.text("whatsNew.changelog.current"))
+                        .font(InkletTheme.Typography.caption)
+                        .foregroundStyle(InkletTheme.accentText)
+                        .padding(.horizontal, InkletTheme.Spacing.xs)
+                        .padding(.vertical, 2)
+                        .background(InkletTheme.accentSoft, in: Capsule())
+                }
+            }
+            featureList(release.features)
+        }
+        .padding(InkletTheme.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            isCurrent ? InkletTheme.accentSoft.opacity(0.5) : Color.clear,
+            in: RoundedRectangle(cornerRadius: InkletTheme.Radius.card)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: InkletTheme.Radius.card)
+                .stroke(isCurrent ? InkletTheme.accentSoft : InkletTheme.hairline)
+        }
+    }
+
+    private func featureList(_ features: [WhatsNewFeature]) -> some View {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.md) {
+            ForEach(features, id: \.titleKey) { feature in
+                featureRow(feature)
+            }
+        }
     }
 
     private func featureRow(_ feature: WhatsNewFeature) -> some View {

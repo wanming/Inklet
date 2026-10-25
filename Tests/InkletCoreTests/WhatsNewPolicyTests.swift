@@ -64,7 +64,9 @@ final class WhatsNewPolicyTests: XCTestCase {
             XCTAssertFalse(release.features.isEmpty, release.version)
             XCTAssertLessThanOrEqual(release.features.count, 4, release.version)
         }
-        XCTAssertEqual(WhatsNewCatalog.latestRelease(upTo: "1.2.5")?.version, "1.2.0")
-        XCTAssertNil(WhatsNewCatalog.latestRelease(upTo: "1.1.12"))
+        XCTAssertEqual(WhatsNewCatalog.changelog(upTo: "1.2.5").first?.version, "1.2.0")
+        XCTAssertTrue(WhatsNewCatalog.changelog(upTo: "1.1.12").isEmpty)
+        let changelog = WhatsNewCatalog.changelog(upTo: "99.0.0").map(\.version)
+        XCTAssertEqual(changelog, changelog.sorted { WhatsNewPolicy.isNewer($0, than: $1) })
     }
 }
