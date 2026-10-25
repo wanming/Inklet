@@ -170,10 +170,10 @@ struct InkletFieldModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(InkletTheme.fieldBackground, in: RoundedRectangle(cornerRadius: 7))
+            .background(InkletTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: InkletTheme.Radius.control))
             .overlay {
-                RoundedRectangle(cornerRadius: 7)
-                    .stroke(isFocused ? InkletTheme.primary.opacity(0.55) : InkletTheme.subtleBorder)
+                RoundedRectangle(cornerRadius: InkletTheme.Radius.control)
+                    .stroke(isFocused ? InkletTheme.accent : InkletTheme.strokeStrong)
             }
     }
 }
