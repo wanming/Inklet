@@ -40,6 +40,7 @@ if [[ "$actual_revision" != "$llama_cpp_revision" ]]; then
 fi
 
 # A single static binary with the Metal shaders embedded, so the app bundle needs no extra libraries.
+# OpenMP stays off so a Homebrew libomp on the build Mac is never linked in.
 cmake -S "$source_dir" -B "$build_dir" \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_OSX_ARCHITECTURES=arm64 \
@@ -48,6 +49,7 @@ cmake -S "$source_dir" -B "$build_dir" \
   -DGGML_METAL=ON \
   -DGGML_METAL_EMBED_LIBRARY=ON \
   -DGGML_NATIVE=OFF \
+  -DGGML_OPENMP=OFF \
   -DLLAMA_BUILD_SERVER=ON \
   -DLLAMA_BUILD_TOOLS=ON \
   -DLLAMA_BUILD_APP=OFF \
