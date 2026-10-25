@@ -101,6 +101,21 @@ extension VoiceInputConfig {
     }
 }
 
+enum BuiltInDictationScript {
+    /// Chinese dictation is written in Traditional characters when Inklet is in Traditional
+    /// Chinese, or when the first Chinese in the system's preferred languages is Traditional.
+    static func writesTraditionalChinese(
+        interfaceLanguage: InterfaceLanguage = L10n.resolvedLanguage,
+        preferredLanguages: [String] = Locale.preferredLanguages
+    ) -> Bool {
+        if interfaceLanguage == .traditionalChinese {
+            return true
+        }
+        let chinese = preferredLanguages.filter { $0.lowercased().hasPrefix("zh") }
+        return !chinese.isEmpty && L10n.resolveLanguage(preferredLanguages: chinese) == .traditionalChinese
+    }
+}
+
 /// Keeps the dictation model ready to listen. On Macs with 16 GB of memory or more it stays loaded
 /// while dictation is on. On smaller Macs it starts when the writing popover opens, the only place
 /// dictation works, and the server unloads it after a few idle minutes.
@@ -206,7 +221,8 @@ enum BuiltInDictationRecovery {
     static func transcribe(
         recordingURL: URL,
         model: BuiltInDictationModel = .recommended,
-        server: BuiltInModelServer = .dictation
+        server: BuiltInModelServer = .dictation,
+        writesTraditionalChinese: Bool = BuiltInDictationScript.writesTraditionalChinese()
     ) async throws -> String {
         let wav = try wavData(fromRecordingAt: recordingURL)
         let tuning = BuiltInRealtimeTranscriptionClient.Tuning()
@@ -215,8 +231,12 @@ enum BuiltInDictationRecovery {
             projector: model.projector,
             startupTimeoutSeconds: tuning.minimumStartupTimeoutSeconds
         )
-        let text = try await BuiltInSpeechRecognizer(connection: connection, modelID: model.weights.id)
-            .transcribe(wav: wav, timeoutSeconds: 120)
+        let text = try await BuiltInSpeechRecognizer(
+            connection: connection,
+            modelID: model.weights.id,
+            writesTraditionalChinese: writesTraditionalChinese
+        )
+        .transcribe(wav: wav, timeoutSeconds: 120)
         guard !text.isEmpty else {
             throw SpeechTranscriptionError.emptyResponse
         }

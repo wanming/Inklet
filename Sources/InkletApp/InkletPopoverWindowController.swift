@@ -137,7 +137,10 @@ final class InkletPopoverWindowController: NSWindowController, NSWindowDelegate 
                     guard BuiltInModelDownloads.shared.isInstalled(dictationModel) else {
                         throw LocalModelError.modelNotInstalled(modelName: dictationModel.displayName)
                     }
-                    return BuiltInRealtimeTranscriptionClient(model: dictationModel)
+                    return BuiltInRealtimeTranscriptionClient(
+                        model: dictationModel,
+                        writesTraditionalChinese: BuiltInDictationScript.writesTraditionalChinese()
+                    )
                 }
                 guard let apiKey = apiKeyStore.loadAPIKey(
                     forProviderID: LLMProviderPreset.openAI.id

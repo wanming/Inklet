@@ -32,11 +32,20 @@ public struct BuiltInSpeechRecognizer: Sendable {
     private let connection: BuiltInModelServer.Connection
     private let modelID: String
     private let session: URLSession
+    private let writesTraditionalChinese: Bool
 
-    public init(connection: BuiltInModelServer.Connection, modelID: String, session: URLSession = .shared) {
+    /// Qwen3-ASR writes Mandarin in Simplified characters, including Taiwanese Mandarin, so
+    /// `writesTraditionalChinese` converts its Chinese to Traditional characters.
+    public init(
+        connection: BuiltInModelServer.Connection,
+        modelID: String,
+        session: URLSession = .shared,
+        writesTraditionalChinese: Bool = false
+    ) {
         self.connection = connection
         self.modelID = modelID
         self.session = session
+        self.writesTraditionalChinese = writesTraditionalChinese
     }
 
     public func transcribe(wav: Data, timeoutSeconds: TimeInterval) async throws -> String {
@@ -54,7 +63,13 @@ public struct BuiltInSpeechRecognizer: Sendable {
                 message: String(data: data, encoding: .utf8) ?? ""
             )
         }
-        return try Self.transcript(fromResponse: data)
+        let transcript = try Self.transcript(fromResponse: data)
+        return writesTraditionalChinese ? Self.traditionalChinese(transcript) : transcript
+    }
+
+    /// Converts Simplified Chinese characters to Traditional and leaves other text as it is.
+    public static func traditionalChinese(_ text: String) -> String {
+        text.applyingTransform(StringTransform("Hans-Hant"), reverse: false) ?? text
     }
 
     static func requestBody(wav: Data, modelID: String) throws -> Data {

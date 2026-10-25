@@ -92,6 +92,20 @@ final class BuiltInDictationTests: XCTestCase {
         }
     }
 
+    func testTraditionalChineseUsersGetTraditionalCharacters() {
+        XCTAssertEqual(BuiltInSpeechRecognizer.traditionalChinese("语音识别"), "語音識別")
+        XCTAssertEqual(BuiltInSpeechRecognizer.traditionalChinese("Hello, Inklet."), "Hello, Inklet.")
+    }
+
+    @MainActor
+    func testTraditionalCharactersFollowTheInterfaceOrTheSystemsChinese() {
+        XCTAssertTrue(BuiltInDictationScript.writesTraditionalChinese(interfaceLanguage: .traditionalChinese, preferredLanguages: ["en-US"]))
+        XCTAssertTrue(BuiltInDictationScript.writesTraditionalChinese(interfaceLanguage: .english, preferredLanguages: ["en-US", "zh-TW"]))
+        XCTAssertTrue(BuiltInDictationScript.writesTraditionalChinese(interfaceLanguage: .english, preferredLanguages: ["zh-Hant-HK"]))
+        XCTAssertFalse(BuiltInDictationScript.writesTraditionalChinese(interfaceLanguage: .simplifiedChinese, preferredLanguages: ["zh-Hans-CN", "zh-TW"]))
+        XCTAssertFalse(BuiltInDictationScript.writesTraditionalChinese(interfaceLanguage: .english, preferredLanguages: ["en-US", "ja-JP"]))
+    }
+
     // MARK: - Realtime client
 
     func testSegmentsJoinWithSpacesOnlyBetweenLatinWords() {

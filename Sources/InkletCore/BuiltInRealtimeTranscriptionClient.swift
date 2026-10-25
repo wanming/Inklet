@@ -86,7 +86,8 @@ public actor BuiltInRealtimeTranscriptionClient: RealtimeTranscriptionClient {
         model: BuiltInDictationModel = .recommended,
         server: BuiltInModelServer = .dictation,
         session: URLSession = .shared,
-        tuning: Tuning = Tuning()
+        tuning: Tuning = Tuning(),
+        writesTraditionalChinese: Bool = false
     ) {
         self.init(tuning: tuning) { timeoutSeconds in
             let connection = try await server.connection(
@@ -94,7 +95,12 @@ public actor BuiltInRealtimeTranscriptionClient: RealtimeTranscriptionClient {
                 projector: model.projector,
                 startupTimeoutSeconds: timeoutSeconds
             )
-            let recognizer = BuiltInSpeechRecognizer(connection: connection, modelID: model.weights.id, session: session)
+            let recognizer = BuiltInSpeechRecognizer(
+                connection: connection,
+                modelID: model.weights.id,
+                session: session,
+                writesTraditionalChinese: writesTraditionalChinese
+            )
             return { wav in
                 try await recognizer.transcribe(wav: wav, timeoutSeconds: tuning.requestTimeoutSeconds)
             }
