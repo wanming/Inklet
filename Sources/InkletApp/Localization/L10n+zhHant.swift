@@ -316,7 +316,7 @@ extension L10n {
         "welcome.action.finish": "開始寫作",
         "welcome.action.back": "返回",
         "welcome.intro.title": "歡迎使用 Inklet",
-        "welcome.intro.message": "在任何 App 中按 %@，就能改寫、翻譯、潤飾你寫的文字。接下來幾步幫你把 Inklet 設定好。",
+        "welcome.language.message": "選擇 Inklet 的介面語言，之後也可以在設定中修改。",
         "welcome.accessibility.title": "允許輔助使用",
         "welcome.accessibility.message": "Inklet 用這個權限讀取你選取的文字，並把結果貼回你正在使用的 App。",
         "welcome.permission.granted": "已開啟",

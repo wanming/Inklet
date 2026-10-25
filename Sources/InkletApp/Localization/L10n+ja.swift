@@ -316,7 +316,7 @@ extension L10n {
         "welcome.action.finish": "書きはじめる",
         "welcome.action.back": "戻る",
         "welcome.intro.title": "Inklet へようこそ",
-        "welcome.intro.message": "どのアプリでも %@ を押すと、書いた文章を書き直し・翻訳・推敲できます。いくつかの手順で準備が整います。",
+        "welcome.language.message": "Inklet の表示言語を選んでください。あとから設定で変更できます。",
         "welcome.accessibility.title": "アクセシビリティを許可",
         "welcome.accessibility.message": "Inklet はこの権限を使って選択したテキストを読み取り、結果を元のアプリに貼り付けます。",
         "welcome.permission.granted": "許可済み",
