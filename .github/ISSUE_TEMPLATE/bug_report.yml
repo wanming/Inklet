@@ -1,0 +1,43 @@
+name: Bug report
+description: Something in Inklet does not work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Never paste API keys, private text, or audio into this issue.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Press Option+Space in …
+        2. …
+  - type: input
+    id: version
+    attributes:
+      label: Inklet version
+      description: Shown in About Inklet, for example 1.1.12 (16).
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Provider and model
+      description: For example OpenAI · gpt-5.6-luna.
+  - type: input
+    id: target-app
+    attributes:
+      label: App you were writing in or selecting text from

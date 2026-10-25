@@ -197,6 +197,10 @@ If macOS blocks automatic access to the matching legacy container, Settings keep
 - Inklet fetches the public model catalog from `models.dev` at most once per day. This request does not include your text, audio, API keys, or app settings.
 - Do not send private text or audio to OpenAI or your selected provider unless you trust their data handling policies.
 
+## Feedback
+
+Choose **Send Feedback…** from the Inklet menu bar menu, or [open an issue](https://github.com/wanming/Inklet/issues/new/choose). Bug reports and feature ideas are welcome; never paste API keys or private text into an issue.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).

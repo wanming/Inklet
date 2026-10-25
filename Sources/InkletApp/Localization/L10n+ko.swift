@@ -12,6 +12,7 @@ extension L10n {
         "app.menu.selectAll": "모두 선택",
         "app.menu.openPopover": "Inklet 열기",
         "app.menu.settings": "설정",
+        "app.menu.sendFeedback": "피드백 보내기…",
         "app.menu.about": "Inklet 정보",
         "app.menu.quit": "종료",
         "app.menu.checkForUpdates": "업데이트 확인…",

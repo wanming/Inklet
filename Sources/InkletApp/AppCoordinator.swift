@@ -703,6 +703,13 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         menu.addItem(NSMenuItem.separator())
         menu.addItem(
             NSMenuItem(
+                title: L10n.text("app.menu.sendFeedback"),
+                action: #selector(sendFeedback),
+                keyEquivalent: ""
+            )
+        )
+        menu.addItem(
+            NSMenuItem(
                 title: L10n.text("app.menu.about"),
                 action: #selector(openAbout),
                 keyEquivalent: ""
@@ -754,6 +761,14 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         selectionActions.forceDismissSelectionActions(reason: "openAbout")
         aboutController.show()
     }
+
+    @objc func sendFeedback() {
+        guard !isStopping else { return }
+        selectionActions.forceDismissSelectionActions(reason: "sendFeedback")
+        NSWorkspace.shared.open(Self.feedbackURL)
+    }
+
+    private static let feedbackURL = URL(string: "https://github.com/wanming/Inklet/issues/new/choose")!
 
     private func showSettings(section: SettingsSection) {
         windowController.hide()

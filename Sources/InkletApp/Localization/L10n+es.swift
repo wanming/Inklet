@@ -12,6 +12,7 @@ extension L10n {
         "app.menu.selectAll": "Seleccionar todo",
         "app.menu.openPopover": "Abrir Inklet",
         "app.menu.settings": "Ajustes",
+        "app.menu.sendFeedback": "Enviar comentarios…",
         "app.menu.about": "Acerca de Inklet",
         "app.menu.quit": "Salir",
         "app.menu.checkForUpdates": "Buscar actualizaciones…",
