@@ -73,7 +73,7 @@ final class SettingsProviderSelectionTests: XCTestCase {
         XCTAssertFalse(didFinish)
 
         guide.goBack()
-        XCTAssertEqual(guide.step, .shortcuts)
+        XCTAssertEqual(guide.step, .dictation)
         guide.performPrimaryAction()
         guide.performPrimaryAction()
         XCTAssertTrue(didFinish)
@@ -126,21 +126,22 @@ final class SettingsProviderSelectionTests: XCTestCase {
     }
 
     @MainActor
-    func testWelcomeGuideShortcutStepSavesTheChosenShortcuts() throws {
+    func testWelcomeGuideSavesShortcutsOnTheModelAndDictationSteps() throws {
         let (settings, configStore) = try makeModel(keychain: ProviderSelectionKeychainClient())
         let guide = WelcomeGuideViewModel(settings: settings)
-        while guide.step != .shortcuts {
+        while guide.step != .writingModel {
             guide.performPrimaryAction()
         }
 
         settings.config.hotkey = "⌘⇧K"
+        guide.performPrimaryAction()
+        XCTAssertEqual(guide.step, .dictation)
+        XCTAssertEqual(try configStore.load().hotkey, "⌘⇧K")
+
         settings.config.voiceInput.shortcut = .leftCommand
         guide.performPrimaryAction()
-
         XCTAssertEqual(guide.step, .ready)
-        let saved = try configStore.load()
-        XCTAssertEqual(saved.hotkey, "⌘⇧K")
-        XCTAssertEqual(saved.voiceInput.shortcut, .leftCommand)
+        XCTAssertEqual(try configStore.load().voiceInput.shortcut, .leftCommand)
     }
 
     @MainActor

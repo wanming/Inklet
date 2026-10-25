@@ -20,7 +20,7 @@ final class WelcomeGuideWindowController: NSWindowController {
         let model = WelcomeGuideViewModel(settings: settings)
         self.model = model
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 460),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 520),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -71,7 +71,6 @@ final class WelcomeGuideViewModel: ObservableObject {
         case accessibility
         case writingModel
         case dictation
-        case shortcuts
         case ready
     }
 
@@ -153,8 +152,6 @@ final class WelcomeGuideViewModel: ObservableObject {
             needsBuiltInDownload ? L10n.text("welcome.action.downloadAndContinue") : L10n.text("welcome.action.continue")
         case .dictation:
             microphoneStatus == .authorized ? L10n.text("welcome.action.continue") : L10n.text("welcome.action.later")
-        case .shortcuts:
-            L10n.text("welcome.action.continue")
         case .ready:
             L10n.text("welcome.action.finish")
         }
@@ -209,9 +206,9 @@ final class WelcomeGuideViewModel: ObservableObject {
                 settings.downloadBuiltInModel(builtInModel)
             }
             _ = settings.flushPendingEdits()
-        case .shortcuts:
+        case .dictation:
             _ = settings.flushPendingEdits()
-        case .welcome, .accessibility, .dictation:
+        case .welcome, .accessibility:
             break
         case .ready:
             onFinish?()
@@ -288,7 +285,7 @@ struct WelcomeGuideView: View {
             Divider().opacity(0.45)
             actionBar
         }
-        .frame(width: 560, height: 460)
+        .frame(width: 560, height: 520)
         .background(InkletTheme.panelBackground)
     }
 
@@ -315,8 +312,6 @@ struct WelcomeGuideView: View {
             writingModelStep
         case .dictation:
             dictationStep
-        case .shortcuts:
-            shortcutsStep
         case .ready:
             readyStep
         }
@@ -434,6 +429,18 @@ struct WelcomeGuideView: View {
                     }
                 }
             }
+            writingShortcutRow
+        }
+    }
+
+    /// The shortcut that opens Inklet, set where the writing model is chosen.
+    private var writingShortcutRow: some View {
+        shortcutRow(
+            title: L10n.text("welcome.shortcuts.writing"),
+            detail: L10n.text("welcome.shortcuts.writing.detail")
+        ) {
+            HotkeyRecorderField(hotkey: $settings.config.hotkey)
+                .frame(width: 160, height: 30)
         }
     }
 
@@ -480,23 +487,6 @@ struct WelcomeGuideView: View {
                 actionTitle: L10n.text("welcome.dictation.allow"),
                 action: { model.enableDictation() }
             )
-        }
-    }
-
-    private var shortcutsStep: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            stepHeader(
-                systemImage: "command",
-                title: L10n.text("welcome.shortcuts.title"),
-                message: L10n.text("welcome.shortcuts.message")
-            )
-            shortcutRow(
-                title: L10n.text("welcome.shortcuts.writing"),
-                detail: L10n.text("welcome.shortcuts.writing.detail")
-            ) {
-                HotkeyRecorderField(hotkey: $settings.config.hotkey)
-                    .frame(width: 180, height: 30)
-            }
             shortcutRow(
                 title: L10n.text("welcome.shortcuts.dictation"),
                 detail: L10n.text("welcome.shortcuts.dictation.detail")
@@ -507,7 +497,7 @@ struct WelcomeGuideView: View {
                     }
                 }
                 .labelsHidden()
-                .frame(width: 180)
+                .frame(width: 160)
             }
         }
     }
