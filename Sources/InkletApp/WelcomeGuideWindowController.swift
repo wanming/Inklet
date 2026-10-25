@@ -310,11 +310,10 @@ struct WelcomeGuideView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .padding(.horizontal, 44)
                 .padding(.top, 26)
-            Divider().opacity(0.45)
             actionBar
         }
         .frame(width: 560, height: 520)
-        .background(InkletTheme.panelBackground)
+        .background(InkletTheme.surface)
     }
 
     private var stepIndicator: some View {
@@ -394,17 +393,20 @@ struct WelcomeGuideView: View {
         } label: {
             Text(language.localizedDisplayName)
                 .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
-                .foregroundStyle(isSelected ? InkletTheme.primary : InkletTheme.textPrimary)
+                .foregroundStyle(InkletTheme.label)
                 .lineLimit(1)
-                .frame(maxWidth: .infinity, minHeight: 32)
+                .frame(maxWidth: .infinity, minHeight: InkletTheme.ControlHeight.large)
                 .background(
-                    isSelected ? InkletTheme.primary.opacity(0.10) : InkletTheme.elevatedBackground,
-                    in: RoundedRectangle(cornerRadius: InkletTheme.controlRadius)
+                    isSelected ? InkletTheme.surfaceRaised : InkletTheme.fill,
+                    in: RoundedRectangle(cornerRadius: InkletTheme.Radius.control)
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: InkletTheme.controlRadius)
-                        .stroke(isSelected ? InkletTheme.primary.opacity(0.6) : InkletTheme.subtleBorder)
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: InkletTheme.Radius.control)
+                            .stroke(InkletTheme.strokeStrong)
+                    }
                 }
+                .shadow(color: .black.opacity(isSelected ? 0.06 : 0), radius: 1, y: 1)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -629,8 +631,9 @@ struct WelcomeGuideView: View {
             .controlSize(.large)
             .keyboardShortcut(.defaultAction)
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, InkletTheme.Spacing.xl)
         .frame(height: 64)
+        .background(InkletTheme.surfaceSunken)
     }
 
     private func stepHeader(systemImage: String? = nil, title: String, message: String) -> some View {
@@ -642,8 +645,9 @@ struct WelcomeGuideView: View {
                         .foregroundStyle(InkletTheme.primary)
                 }
                 Text(title)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(InkletTheme.textPrimary)
+                    .font(InkletTheme.Typography.pageTitle)
+                    .tracking(-0.2)
+                    .foregroundStyle(InkletTheme.label)
             }
             Text(message)
                 .font(.system(size: 13))
@@ -717,7 +721,7 @@ struct WelcomeGuideView: View {
         .background(InkletTheme.elevatedBackground, in: RoundedRectangle(cornerRadius: InkletTheme.cornerRadius))
         .overlay {
             RoundedRectangle(cornerRadius: InkletTheme.cornerRadius)
-                .stroke(isSelected ? InkletTheme.primary.opacity(0.6) : InkletTheme.subtleBorder)
+                .stroke(isSelected ? InkletTheme.strokeStrong : InkletTheme.hairline)
         }
     }
 }

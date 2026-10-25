@@ -185,6 +185,9 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - In System Settings > Appearance, switch the accent color through blue, purple, pink, red, orange, yellow, green and graphite with the popover open. The primary button, mode chip icon, selected mode row and listening waveform follow the accent; button text stays readable (dark text on orange, yellow and green).
 - Hover every icon button, shortcut hint, mode row and selection bar button: each shows a neutral fill, and every icon-only control has a tooltip.
 - Turn on Reduce Motion and check that results appear with a fade only.
+- Open Settings: the window has the system traffic lights and drags from its top strip, Esc closes it, there is no custom close button, and the selected sidebar item is a neutral fill with an accent icon. Check every pane in Chinese and English, Light and Dark.
+- In Prompt modes, long names such as "To Simple and Correct English" show in full; the visibility and delete icons appear on hover or selection, a hidden mode keeps its crossed-out eye and dims its name, reordering by drag still works, and delete asks for confirmation and is unavailable when only one mode is left.
+- Open About and check the tile, title, links and copyright in both appearances.
 
 ## Exact Signed Release Matrix
 

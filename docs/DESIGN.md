@@ -11,6 +11,17 @@ Visual reference (light and dark, every surface): [Inklet design language canvas
 3. **Native first.** macOS materials, SF Pro, SF Symbols, system focus, menus and window behaviour. Inklet should feel like part of macOS, not a web page in a panel.
 4. **Roomy, not big.** A 4 pt grid with 16–20 pt edges gives air. No text below 11 pt, no control below 24 pt.
 5. **Calm motion.** Short, springy transitions that explain a change of state. Fade only when Reduce Motion is on.
+6. **Refined by subtraction.** Premium comes from what is left out, not from effects. When a view feels busy, remove a line, a color or a control before adding anything (see Refinement rules).
+
+## Refinement rules
+
+Approved with the Settings refinement pass ("Refinement pass" board on the canvas). They apply to every surface.
+
+1. **Quiet selection.** A selected navigation item is a neutral fill (`fillHover`) with a medium-weight label; only its icon takes `accentText`. List rows use `accentSoft` at most. Solid accent blocks are for the primary button and switches.
+2. **Fewer lines, more layers.** Separate groups with spacing and the surface ladder (`surface`, `surfaceRaised`, `surfaceSunken`), not with dividers, dashed boxes or outlines around everything. A hairline is allowed where two scrolling regions meet.
+3. **Clear type hierarchy.** One `pageTitle` per pane, `fieldLabel` (12 semibold, `secondaryLabel`) above fields, `body` for content. Headings are not all bold.
+4. **Actions on demand.** Rows show their content first; row actions such as visibility and delete appear on hover or selection, so long names keep their width. A state the user must notice (a hidden mode's crossed-out eye) stays visible.
+5. **Native window chrome.** Windows use the system titlebar, traffic lights, corners and shadow. No custom close buttons.
 
 ## Color
 
@@ -50,12 +61,13 @@ SF Pro through `InkletTheme.Typography`. Nothing is smaller than 11 pt.
 
 | Token | Size / line | Weight | Use |
 | --- | --- | --- | --- |
-| `pageTitle` | 20 / 26 | semibold | Settings pane title |
+| `pageTitle` | 22 / 28, tracking −0.2 | semibold | Settings pane title, About title |
 | `title` | 15 / 20 | semibold | Section and panel titles |
 | `editor` | 15 / 21 (`editorLineSpacing` 3 when measuring) | regular | The user's text in editors and results |
 | `control` | 13 / 18 | medium | Buttons, menu items, mode names |
 | `body` | 13 / 18 | regular | Row labels, interface text |
 | `help` | 12 / 16 | regular | Help under a setting, descriptions, banners |
+| `fieldLabel` | 12 / 16 | semibold, `secondaryLabel` | The label above a field or a group |
 | `caption` | 11 / 14 | medium | Shortcut hints, badges, small headers |
 | `keycap` | 11 | medium, monospaced | Key labels inside keycaps |
 
@@ -104,6 +116,8 @@ Read `@Environment(\.accessibilityReduceMotion)` and pass it to `appear(reduceMo
 | Mode chip | (popover header) | 28 pt, radius 8, `fill` background; mode icon in `accentText`, name in `control` semibold, chevron. Opens the mode picker. |
 | Card | `.inkletCard()` | Settings groups and the result card. Rows inside are separated by `InkletRowDivider`. |
 | List row | `InkletRowBackground` | 40 pt rows in the mode picker. Selected: `accentSoft` with an `accentText` icon. Hover: `fill`. |
+| Settings sidebar item | `SettingsSidebarLabel` | 30 pt, radius 6, `secondaryLabel` icon. Selected: `fillHover`, medium weight, `accentText` icon. Hover: `fill`. |
+| Field | `InkletFieldModifier` | `surfaceRaised`, radius 8, `strokeStrong` border, `accent` border when focused. |
 | Status banner | `InkletStatusBanner(tone:message:action:)` | Neutral `surfaceSunken`, tone icon, message in `label`, one inline action that resolves the problem (Open Settings, Retry, Copy). |
 | Floating panel | `.inkletFloatingPanel()` | See Elevation. |
 | Material | `InkletMaterialBackground(material:)` | `.popover` for floating panels, `.sidebar` for the settings sidebar. |
@@ -120,7 +134,9 @@ Interaction states follow `AGENTS.md` § Interaction Details: loading replaces t
 
 **Translation card** (floating, 300 wide by default, resizable, radius 12). Translated text in 14 pt with 3 pt line spacing directly on the surface; a toolbar under a hairline with the copy icon button on the left and the original and translated audio buttons on the right. Errors show a warning icon, the message in `body`, and a Retry button. Planned: the target language as a menu in the toolbar.
 
-**Settings** (borderless 860 × 560 window, radius 16, the window's own shadow). A 210 pt sidebar on the sidebar material: the Inklet mark and name in a 68 pt header, then 30 pt items (14 pt icon, `body` label that wraps for long translations, radius 6); the selected item uses the `accent` fill with `onAccent` text, hover uses `fill`. About sits apart at the bottom of the sidebar. The pane, on `surface`, has a 68 pt header with the `pageTitle`, the last save status as a `caption` (success icon in `statusSuccess`, errors in `statusError`) and a close icon button; the header is as tall as the window's drag strip, so no control sits where a click would move the window. Below it, grouped cards (`settingsGroup`) with an optional 12 pt semibold `secondaryLabel` title: each row (`settingsRow`) is at least 44 pt, label in `body` with optional `help` below on the left, the control on the right, rows separated by inset hairlines. Controls that need the full width (prompt editors, the selection menu list) use a stacked row (`settingsStackedRow`) with the label above and an optional ghost action such as Restore Default on the right. Pickers are native menus at their natural width, booleans are switches, text fields are 220 pt. Prompt Modes is a 240 pt list card (34 pt rows: drag handle, name, and visibility and delete icons that appear on hover or selection; a hidden mode keeps its crossed-out eye and dims its name) next to the mode's cards. Section order: General, Write Assistant, Prompt Modes, Live Dictation, Selection Assistant, History, About. Expert options go in an Advanced disclosure at the end of a pane.
+**Settings** (860 × 560, native titled window with a transparent titlebar: the system draws the traffic lights, corners and shadow, and Esc closes it). A 210 pt sidebar on the sidebar material, starting 52 pt down to clear the traffic lights, with 30 pt items (14 pt icon, `body` label that wraps for long translations, radius 6); the selected item is a `fillHover` background with a medium-weight label and an `accentText` icon, hover uses `fill`. About sits apart at the bottom of the sidebar. The pane, on `surface`, has a 68 pt header with the `pageTitle` and the last save status as a `caption` (success icon in `statusSuccess`, errors in `statusError`); there is no custom close button. Below it, grouped cards (`settingsGroup`) with an optional 12 pt semibold `secondaryLabel` title: each row (`settingsRow`) is at least 44 pt, label in `body` with optional `help` below on the left, the control on the right, rows separated by inset hairlines. Controls that need the full width (prompt editors, the selection menu list) use a stacked row (`settingsStackedRow`) with the label above and an optional ghost action such as Restore Default on the right. Pickers are native menus at their natural width, booleans are switches, text fields are 220 pt. Prompt Modes is a 240 pt list card (34 pt rows: drag handle, name, and visibility and delete icons that appear on hover or selection; a hidden mode keeps its crossed-out eye and dims its name) next to the mode's cards. Section order: General, Write Assistant, Prompt Modes, Live Dictation, Selection Assistant, History, About. Expert options go in an Advanced disclosure at the end of a pane.
+
+**About** (380 wide, native window). The pen nib on a 76 pt `accentSoft` tile, "Inklet" in `pageTitle`, version in `caption`, tagline in `body` `secondaryLabel`, links in `control` `accentText`, copyright in `caption`.
 
 ## Do and don't
 
@@ -139,7 +155,9 @@ Interaction states follow `AGENTS.md` § Interaction Details: loading replaces t
 
 ## Migration from the earlier style
 
-The tokens above were introduced alongside the earlier ones. Surfaces move over one at a time, and the earlier tokens in `InkletTheme.swift` are removed once nothing uses them.
+The tokens above were introduced alongside the earlier ones. The earlier names in `InkletTheme.swift` now return the new palette (for example `textSecondary` returns `secondaryLabel`), so surfaces that still use them already get the new colors. Surfaces move to the new names and components one at a time, and the earlier names are removed once nothing uses them.
+
+Status: the writing popover, mode picker, selection bar, translation card, Settings, About and the welcome guide's language picker, step titles and action bar are migrated. What's New and the rest of the welcome guide use the new colors through the earlier names.
 
 | Earlier | Now |
 | --- | --- |
@@ -157,4 +175,3 @@ The tokens above were introduced alongside the earlier ones. Surfaces move over 
 | `.shadow(color: .black.opacity(0.75), radius: 48, …)` | `.inkletFloatingPanel()` |
 | 8–10 pt labels | `Typography.caption` (11 pt) |
 
-Migrated: the writing popover, the mode picker, the selection bar, the translation card and Settings. Next: the About window and the welcome guide.

@@ -114,11 +114,7 @@ struct SettingsView: View {
         }
         .frame(width: 860, height: 560)
         .environment(\.locale, Locale(identifier: localeIdentifier))
-        .clipShape(RoundedRectangle(cornerRadius: InkletTheme.Radius.panel))
-        .overlay {
-            RoundedRectangle(cornerRadius: InkletTheme.Radius.panel)
-                .stroke(InkletTheme.strokeStrong)
-        }
+        .ignoresSafeArea()
         .task {
             await model.refreshModelCatalogIfNeeded()
         }
@@ -173,20 +169,9 @@ struct SettingsView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: InkletTheme.Spacing.xs) {
-                PenNibShape()
-                    .stroke(style: StrokeStyle(lineWidth: 1.45, lineCap: .round, lineJoin: .round))
-                    .foregroundStyle(InkletTheme.label)
-                    .padding(5)
-                    .frame(width: 26, height: 26)
-                    .background(InkletTheme.fill, in: RoundedRectangle(cornerRadius: InkletTheme.Radius.small))
-                Text("Inklet")
-                    .font(InkletTheme.Typography.title)
-                    .foregroundStyle(InkletTheme.label)
-            }
-            .padding(.horizontal, InkletTheme.Spacing.xs)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: SettingsLayoutMetrics.headerHeight)
+            // Room for the system traffic lights in the transparent titlebar.
+            Color.clear
+                .frame(height: SettingsLayoutMetrics.titlebarInset)
 
             VStack(spacing: 2) {
                 ForEach(SettingsSection.allCases.filter { $0 != .about }) { section in
@@ -262,26 +247,19 @@ struct SettingsView: View {
         }
     }
 
-    /// As tall as the window's drag strip, so no control sits where a click would move the window.
+    /// The window closes with its traffic lights or Esc, so the header holds only the title
+    /// and the last save status.
     private var detailHeader: some View {
         HStack(spacing: InkletTheme.Spacing.sm) {
             Text(selectedSection.title)
                 .font(InkletTheme.Typography.pageTitle)
+                .tracking(-0.2)
                 .foregroundStyle(InkletTheme.label)
                 .lineLimit(1)
             Spacer(minLength: InkletTheme.Spacing.md)
             saveStatus
-            Button {
-                NSApp.keyWindow?.close()
-            } label: {
-                Image(systemName: "xmark")
-            }
-            .buttonStyle(InkletIconButtonStyle())
-            .help(L10n.text("popover.hint.close"))
-            .accessibilityLabel(L10n.text("popover.hint.close"))
         }
-        .padding(.leading, InkletTheme.Spacing.xl)
-        .padding(.trailing, InkletTheme.Spacing.md)
+        .padding(.horizontal, InkletTheme.Spacing.xl)
         .frame(height: SettingsLayoutMetrics.headerHeight)
     }
 
@@ -1683,11 +1661,11 @@ struct SettingsSidebarLabel: View {
         HStack(spacing: InkletTheme.Spacing.xs) {
             Image(systemName: section.icon)
                 .font(.system(size: InkletTheme.IconSize.regular, weight: .medium))
-                .foregroundStyle(isSelected ? InkletTheme.onAccent : InkletTheme.secondaryLabel)
+                .foregroundStyle(isSelected ? InkletTheme.accentText : InkletTheme.secondaryLabel)
                 .frame(width: SettingsLayoutMetrics.sidebarIconWidth)
             Text(section.title)
                 .font(InkletTheme.Typography.body.weight(isSelected ? .medium : .regular))
-                .foregroundStyle(isSelected ? InkletTheme.onAccent : InkletTheme.label)
+                .foregroundStyle(InkletTheme.label)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
@@ -1701,8 +1679,9 @@ struct SettingsSidebarLabel: View {
     }
 
     private var background: Color {
+        // A neutral selection; only the icon carries the accent (docs/DESIGN.md, Refinement rules).
         if isSelected {
-            return InkletTheme.accent
+            return InkletTheme.fillHover
         }
         return isHovered ? InkletTheme.fill : .clear
     }
@@ -1713,7 +1692,8 @@ enum SettingsLayoutMetrics {
     static let sidebarItemHeight: CGFloat = 30
     static let sidebarItemVerticalPadding: CGFloat = 6
     static let sidebarIconWidth: CGFloat = 18
-    /// Matches `SettingsWindowDragMetrics.draggableHeaderHeight`.
+    /// Clears the system traffic lights in the transparent titlebar.
+    static let titlebarInset: CGFloat = 52
     static let headerHeight: CGFloat = 68
     static let rowHeight: CGFloat = 44
     static let compactRowHeight: CGFloat = 36
