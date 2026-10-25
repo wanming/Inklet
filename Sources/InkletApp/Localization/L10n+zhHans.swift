@@ -244,6 +244,8 @@ extension L10n {
         "welcome.model.builtIn.detail": "需要下载 %@。文字不会离开你的 Mac，离线也能用。",
         "welcome.model.cloud.title": "云端模型",
         "welcome.model.cloud.detail": "使用你的 OpenAI API key。其他服务商可以在设置里选择。",
+        "welcome.model.keep.title": "继续使用 %@",
+        "welcome.model.keep.detail": "保留你现在的设置。",
         "welcome.dictation.title": "实时听写（可选）",
         "welcome.dictation.message": "按住 %@ 说话，Inklet 会把你说的话打出来。需要使用麦克风。",
         "welcome.dictation.pending": "还没有允许使用麦克风。",

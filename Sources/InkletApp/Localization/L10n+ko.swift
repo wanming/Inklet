@@ -306,6 +306,8 @@ extension L10n {
         "welcome.model.builtIn.detail": "%@ 다운로드가 필요합니다. 텍스트가 Mac 밖으로 나가지 않으며 오프라인에서도 작동합니다.",
         "welcome.model.cloud.title": "클라우드 모델",
         "welcome.model.cloud.detail": "OpenAI API 키를 사용합니다. 다른 제공자는 설정에서 고를 수 있습니다.",
+        "welcome.model.keep.title": "%@ 계속 사용",
+        "welcome.model.keep.detail": "지금 설정을 그대로 유지합니다.",
         "welcome.dictation.title": "실시간 받아쓰기(선택)",
         "welcome.dictation.message": "%@ 키를 누른 채 말하면 Inklet이 받아 적습니다. 마이크가 필요합니다.",
         "welcome.dictation.pending": "아직 마이크 접근이 허용되지 않았습니다.",

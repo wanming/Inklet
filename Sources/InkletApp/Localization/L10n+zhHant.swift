@@ -306,6 +306,8 @@ extension L10n {
         "welcome.model.builtIn.detail": "需要下載 %@。文字不會離開你的 Mac，離線也能用。",
         "welcome.model.cloud.title": "雲端模型",
         "welcome.model.cloud.detail": "使用你的 OpenAI API key。其他服務商可以在設定中選擇。",
+        "welcome.model.keep.title": "繼續使用 %@",
+        "welcome.model.keep.detail": "保留你目前的設定。",
         "welcome.dictation.title": "即時聽寫（選用）",
         "welcome.dictation.message": "按住 %@ 說話，Inklet 會把你說的話打出來。需要使用麥克風。",
         "welcome.dictation.pending": "尚未允許使用麥克風。",

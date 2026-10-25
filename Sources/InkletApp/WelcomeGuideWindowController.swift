@@ -85,17 +85,30 @@ final class WelcomeGuideViewModel: ObservableObject {
     @Published private(set) var microphoneStatus: AVAuthorizationStatus
 
     let settings: SettingsViewModel
+    /// The provider the person had before the guide, or OpenAI on a new install. Picking it again
+    /// switches back to it.
+    let otherProviderID: String
+    /// An existing user's provider that already works, so the guide offers to keep it as it is.
+    let isOtherProviderSetUp: Bool
     var onAccessibilityTrusted: (() -> Void)?
     var onFinish: (() -> Void)?
     private var accessibilityPollTask: Task<Void, Never>?
 
     init(settings: SettingsViewModel) {
         self.settings = settings
-        self.writingChoice = settings.isBuiltInEngineAvailable && settings.selectedProvider.isBuiltIn
+        let currentProvider = settings.selectedProvider
+        self.otherProviderID = currentProvider.isBuiltIn ? LLMProviderPreset.openAI.id : currentProvider.id
+        self.isOtherProviderSetUp = !currentProvider.isBuiltIn
+            && (!currentProvider.requiresAPIKey || !settings.providerAPIKey.isEmpty)
+        self.writingChoice = settings.isBuiltInEngineAvailable && currentProvider.isBuiltIn
             ? .builtIn
             : .cloud
         self.isAccessibilityTrusted = settings.isAccessibilityTrusted
         self.microphoneStatus = AVCaptureDevice.authorizationStatus(for: .audio)
+    }
+
+    var otherProviderName: String {
+        LLMProviderPreset.preset(id: otherProviderID).localizedPickerName
     }
 
     var canUseBuiltIn: Bool {
@@ -143,7 +156,7 @@ final class WelcomeGuideViewModel: ObservableObject {
         case .builtIn:
             settings.selectProvider(LLMProviderPreset.builtIn.id)
         case .cloud:
-            settings.selectProvider(LLMProviderPreset.openAI.id)
+            settings.selectProvider(otherProviderID)
         }
     }
 
@@ -320,11 +333,15 @@ struct WelcomeGuideView: View {
             }
             choiceCard(
                 isSelected: model.writingChoice == .cloud,
-                title: L10n.text("welcome.model.cloud.title"),
-                detail: L10n.text("welcome.model.cloud.detail"),
+                title: model.isOtherProviderSetUp
+                    ? L10n.format("welcome.model.keep.title", model.otherProviderName)
+                    : L10n.text("welcome.model.cloud.title"),
+                detail: model.isOtherProviderSetUp
+                    ? L10n.text("welcome.model.keep.detail")
+                    : L10n.text("welcome.model.cloud.detail"),
                 action: { model.selectWritingChoice(.cloud) }
             ) {
-                if model.writingChoice == .cloud {
+                if model.writingChoice == .cloud, !model.isOtherProviderSetUp {
                     SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $settings.providerAPIKey)
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: 320)

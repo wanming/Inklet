@@ -306,6 +306,8 @@ extension L10n {
         "welcome.model.builtIn.detail": "%@ のダウンロードが必要です。テキストは Mac の外に出ず、オフラインでも使えます。",
         "welcome.model.cloud.title": "クラウドモデル",
         "welcome.model.cloud.detail": "OpenAI の API キーを使います。ほかのプロバイダは設定で選べます。",
+        "welcome.model.keep.title": "%@ を使い続ける",
+        "welcome.model.keep.detail": "今の設定をそのまま使います。",
         "welcome.dictation.title": "ライブ音声入力（任意）",
         "welcome.dictation.message": "%@ を押したまま話すと、Inklet が文字にします。マイクを使います。",
         "welcome.dictation.pending": "マイクへのアクセスはまだ許可されていません。",

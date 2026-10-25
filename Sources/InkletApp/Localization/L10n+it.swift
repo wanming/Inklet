@@ -306,6 +306,8 @@ extension L10n {
         "welcome.model.builtIn.detail": "Download di %@. Il testo non lascia mai il tuo Mac e funziona offline.",
         "welcome.model.cloud.title": "Modello cloud",
         "welcome.model.cloud.detail": "Usa la tua chiave API OpenAI. Gli altri fornitori sono nelle Impostazioni.",
+        "welcome.model.keep.title": "Continua a usare %@",
+        "welcome.model.keep.detail": "La configurazione attuale resta invariata.",
         "welcome.dictation.title": "Dettatura dal vivo (facoltativa)",
         "welcome.dictation.message": "Tieni premuto %@ e parla: Inklet scrive ciò che dici. Serve il microfono.",
         "welcome.dictation.pending": "L'accesso al microfono non è ancora consentito.",

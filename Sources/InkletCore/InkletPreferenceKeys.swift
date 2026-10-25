@@ -3,7 +3,7 @@ public enum InkletPreferenceKeys {
     public static let modelCatalogSnapshot = "modelCatalogSnapshot"
     public static let interfaceLanguage = "InkletInterfaceLanguage"
     public static let didCompleteOnboarding = "didCompleteOnboarding"
-    public static let isWelcomeGuidePending = "isWelcomeGuidePending"
+    public static let completedWelcomeGuideVersion = "completedWelcomeGuideVersion"
     public static let translationPanelSize = "SelectionActionWindowController.translationPanelSize"
     public static let lastWritingPromptModeID = "lastWritingPromptModeID"
     public static let lastAutomaticUpdateCheckDate = "lastAutomaticUpdateCheckDate"
