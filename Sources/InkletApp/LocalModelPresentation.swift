@@ -7,10 +7,15 @@ extension LLMProviderPreset {
         case LLMProviderPreset.customOpenAICompatible.id:
             L10n.text("settings.provider.customOpenAICompatible")
         case LLMProviderPreset.builtIn.id:
-            L10n.text("settings.provider.builtIn")
+            L10n.text("settings.provider.builtInShort")
         default:
             name
         }
+    }
+
+    /// The provider picker has room to say where the built-in model runs; the popover header does not.
+    var localizedPickerName: String {
+        isBuiltIn ? L10n.text("settings.provider.builtIn") : localizedName
     }
 
     /// The model name people recognize, for the built-in models that are stored under a short ID.

@@ -272,6 +272,7 @@ extension L10n {
         "settings.model.customized": "사용자 지정 모델 *",
         "settings.model.refreshing": "모델 목록 새로 고침 중…",
         "settings.provider.builtIn": "내장(이 Mac에서 실행)",
+        "settings.provider.builtInShort": "내장",
         "settings.row.localModel": "로컬 모델",
         "settings.help.localModel": "이 Mac에서 실행되므로 텍스트가 밖으로 나가지 않습니다. 한 번 내려받으면 오프라인에서도 쓸 수 있습니다.",
         "settings.localModel.recommendedOption": "%@(추천)",

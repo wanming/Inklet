@@ -122,7 +122,7 @@ final class SettingsViewModel: ObservableObject {
     }
 
     func providerDisplayName(_ preset: LLMProviderPreset) -> String {
-        preset.localizedName
+        preset.localizedPickerName
     }
 
     var cloudProviders: [LLMProviderPreset] {

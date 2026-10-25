@@ -210,6 +210,7 @@ extension L10n {
         "settings.model.custom": "Custom...",
         "settings.model.refreshing": "Refreshing model list...",
         "settings.provider.builtIn": "Built-in (runs on this Mac)",
+        "settings.provider.builtInShort": "Built-in",
         "settings.row.localModel": "Local Model",
         "settings.help.localModel": "Runs on this Mac, so your text never leaves it. Download once, then it works offline.",
         "settings.localModel.recommendedOption": "%@ (Recommended)",

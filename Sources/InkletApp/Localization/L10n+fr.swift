@@ -272,6 +272,7 @@ extension L10n {
         "settings.model.customized": "Modèle personnalisé *",
         "settings.model.refreshing": "Actualisation des modèles…",
         "settings.provider.builtIn": "Intégré (sur ce Mac)",
+        "settings.provider.builtInShort": "Intégré",
         "settings.row.localModel": "Modèle local",
         "settings.help.localModel": "Il fonctionne sur ce Mac : votre texte ne le quitte pas. Téléchargez-le une fois, puis il marche hors ligne.",
         "settings.localModel.recommendedOption": "%@ (recommandé)",
