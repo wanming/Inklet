@@ -25,7 +25,8 @@ public struct RealtimeTranscriptAccumulator: Equatable, Sendable {
         let eventID: String?
         let sequence: Int?
         switch event {
-        case let .delta(id, sequenceValue, itemID, contentIndex, _):
+        case let .delta(id, sequenceValue, itemID, contentIndex, _),
+             let .replaced(id, sequenceValue, itemID, contentIndex, _):
             eventIdentity = StreamIdentity(itemID: itemID, contentIndex: contentIndex)
             eventID = id
             sequence = sequenceValue
@@ -58,6 +59,9 @@ public struct RealtimeTranscriptAccumulator: Equatable, Sendable {
         switch event {
         case let .delta(_, _, _, _, text):
             transcript.append(text)
+            return .provisional(transcript)
+        case let .replaced(_, _, _, _, revisedTranscript):
+            transcript = revisedTranscript
             return .provisional(transcript)
         case let .completed(_, _, _, _, authoritativeTranscript):
             transcript = authoritativeTranscript

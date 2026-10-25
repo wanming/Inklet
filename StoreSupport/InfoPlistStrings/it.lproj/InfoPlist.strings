@@ -1,1 +1,1 @@
-"NSMicrophoneUsageDescription" = "Durante una pressione valida per la dettatura, Inklet trasmette l’audio del microfono a OpenAI e conserva una registrazione temporanea di recupero per la sessione.";
+"NSMicrophoneUsageDescription" = "Inklet usa il microfono solo durante una pressione valida per la dettatura. Il parlato viene riconosciuto su questo Mac, o da OpenAI se lo scegli, e viene conservata una registrazione temporanea di recupero per la sessione.";

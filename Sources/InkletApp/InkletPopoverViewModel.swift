@@ -22,6 +22,8 @@ final class InkletPopoverViewModel: ObservableObject {
     @Published private(set) var dictationPhase: WritingDictationCoordinator.Phase = .idle
     /// Set while the selected built-in model can't run yet, so the popover shows its download.
     @Published private(set) var builtInModelDownloadState: BuiltInModelDownloadState?
+    /// Set while built-in dictation is on but its speech model isn't ready yet.
+    @Published private(set) var dictationModelDownloadState: BuiltInModelDownloadState?
 
     var onHidePopover: (() -> Void)?
     var onFocusPopover: (() -> Void)?
@@ -81,6 +83,41 @@ final class InkletPopoverViewModel: ObservableObject {
 
     var builtInModelDownloadActionTitle: String? {
         switch builtInModelDownloadState {
+        case .notDownloaded:
+            L10n.text("settings.localModel.download")
+        case .failed:
+            L10n.text("settings.localModel.retry")
+        case .downloading, .verifying, .ready, nil:
+            nil
+        }
+    }
+
+    /// The writing model's download comes first, so the dictation strip waits until it's done.
+    var dictationModelDownloadStatusText: String? {
+        guard builtInModelDownloadState == nil, let state = dictationModelDownloadState else {
+            return nil
+        }
+        let dictationModel = BuiltInDictationModel.recommended
+        switch state {
+        case .notDownloaded:
+            return L10n.format(
+                "popover.dictationModel.needsDownload",
+                dictationModel.displayName,
+                dictationModel.localizedDownloadSize
+            )
+        case .downloading(let fraction):
+            return L10n.format("popover.localModel.downloading", dictationModel.displayName, fraction * 100)
+        case .verifying:
+            return L10n.format("popover.localModel.verifying", dictationModel.displayName)
+        case .ready:
+            return nil
+        case .failed(let message):
+            return message
+        }
+    }
+
+    var dictationModelDownloadActionTitle: String? {
+        switch dictationModelDownloadState {
         case .notDownloaded:
             L10n.text("settings.localModel.download")
         case .failed:
@@ -241,6 +278,7 @@ final class InkletPopoverViewModel: ObservableObject {
         modes = Self.resolvedVisibleModes(from: config)
         refreshBuiltInModelDownloadState(BuiltInModelDownloads.shared.states)
         warmUpLocalModelIfNeeded()
+        BuiltInDictationResidency.shared.popoverWillOpen(voiceInput: config.voiceInput)
         popoverSession = WritingPopoverSessionState(selectedModeID: selectedModeID)
         modePickerState = WritingModePickerState(
             items: Self.modePickerItems(for: modes),
@@ -304,6 +342,7 @@ final class InkletPopoverViewModel: ObservableObject {
 
     /// `states` is passed in because the published value is sent before the store holds it.
     private func refreshBuiltInModelDownloadState(_ states: [String: BuiltInModelDownloadState]) {
+        refreshDictationModelDownloadState(states)
         guard config.resolvedProviderPreset.isBuiltIn, let builtInModel = BuiltInModel.model(id: config.model) else {
             builtInModelDownloadState = nil
             return
@@ -315,6 +354,19 @@ final class InkletPopoverViewModel: ObservableObject {
     func downloadBuiltInModel() {
         guard let builtInModel = BuiltInModel.model(id: config.model) else { return }
         BuiltInModelDownloads.shared.download(builtInModel)
+    }
+
+    private func refreshDictationModelDownloadState(_ states: [String: BuiltInModelDownloadState]) {
+        guard config.voiceInput.isEnabled, config.voiceInput.usesBuiltInEngine else {
+            dictationModelDownloadState = nil
+            return
+        }
+        let state = BuiltInModelDownloads.shared.state(of: BuiltInDictationModel.recommended, in: states)
+        dictationModelDownloadState = state == .ready ? nil : state
+    }
+
+    func downloadDictationModel() {
+        BuiltInModelDownloads.shared.download(BuiltInDictationModel.recommended)
     }
 
     private func refreshVoiceShortcutHint() {

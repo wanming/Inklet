@@ -97,6 +97,7 @@ struct InkletPopoverView: View {
             + (displayedResultText.isEmpty ? 0 : dividerHeight + resultPanelHeight)
             + (model.errorMessage == nil ? 0 : dividerHeight + min(statusMeasuredHeight, 120))
             + (model.builtInModelDownloadStatusText == nil ? 0 : dividerHeight + builtInModelStripHeight)
+            + (model.dictationModelDownloadStatusText == nil ? 0 : dividerHeight + builtInModelStripHeight)
             + dividerHeight
             + max(actionBarHeight, actionBarMeasuredHeight)
     }
@@ -174,6 +175,7 @@ struct InkletPopoverView: View {
             resultPanel
             statusStrip
             builtInModelStrip
+            dictationModelStrip
             Divider().opacity(0.45)
             actionBar
         }
@@ -345,36 +347,61 @@ struct InkletPopoverView: View {
     @ViewBuilder
     private var builtInModelStrip: some View {
         if let state = model.builtInModelDownloadState, let statusText = model.builtInModelDownloadStatusText {
-            Divider().opacity(0.45)
-            HStack(spacing: 10) {
-                switch state {
-                case .downloading(let fraction):
-                    ProgressView(value: fraction)
-                        .frame(width: 72)
-                case .verifying:
-                    ProgressView()
-                        .controlSize(.small)
-                case .notDownloaded, .ready, .failed:
-                    Image(systemName: "arrow.down.circle")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(InkletTheme.primary.opacity(0.82))
-                }
-                Text(statusText)
-                    .font(.system(size: 11))
-                    .foregroundStyle(InkletTheme.textSecondary)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let actionTitle = model.builtInModelDownloadActionTitle {
-                    Button(actionTitle) {
-                        model.downloadBuiltInModel()
-                    }
+            modelDownloadStrip(
+                state: state,
+                statusText: statusText,
+                actionTitle: model.builtInModelDownloadActionTitle,
+                action: { model.downloadBuiltInModel() }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var dictationModelStrip: some View {
+        if let state = model.dictationModelDownloadState, let statusText = model.dictationModelDownloadStatusText {
+            modelDownloadStrip(
+                state: state,
+                statusText: statusText,
+                actionTitle: model.dictationModelDownloadActionTitle,
+                action: { model.downloadDictationModel() }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func modelDownloadStrip(
+        state: BuiltInModelDownloadState,
+        statusText: String,
+        actionTitle: String?,
+        action: @escaping @MainActor () -> Void
+    ) -> some View {
+        Divider().opacity(0.45)
+        HStack(spacing: 10) {
+            switch state {
+            case .downloading(let fraction):
+                ProgressView(value: fraction)
+                    .frame(width: 72)
+            case .verifying:
+                ProgressView()
+                    .controlSize(.small)
+            case .notDownloaded, .ready, .failed:
+                Image(systemName: "arrow.down.circle")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(InkletTheme.primary.opacity(0.82))
+            }
+            Text(statusText)
+                .font(.system(size: 11))
+                .foregroundStyle(InkletTheme.textSecondary)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if let actionTitle {
+                Button(actionTitle, action: action)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
-                }
             }
-            .padding(.horizontal, 14)
-            .frame(height: builtInModelStripHeight)
         }
+        .padding(.horizontal, 14)
+        .frame(height: builtInModelStripHeight)
     }
 
     private var header: some View {

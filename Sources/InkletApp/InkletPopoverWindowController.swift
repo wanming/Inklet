@@ -132,6 +132,13 @@ final class InkletPopoverWindowController: NSWindowController, NSWindowDelegate 
             configProvider: { model.currentVoiceInputConfig },
             audioCapture: audioRecorder,
             makeRealtimeClient: {
+                if model.currentVoiceInputConfig.usesBuiltInEngine {
+                    let dictationModel = BuiltInDictationModel.recommended
+                    guard BuiltInModelDownloads.shared.isInstalled(dictationModel) else {
+                        throw LocalModelError.modelNotInstalled(modelName: dictationModel.displayName)
+                    }
+                    return BuiltInRealtimeTranscriptionClient(model: dictationModel)
+                }
                 guard let apiKey = apiKeyStore.loadAPIKey(
                     forProviderID: LLMProviderPreset.openAI.id
                 )?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -145,6 +152,9 @@ final class InkletPopoverWindowController: NSWindowController, NSWindowDelegate 
                 sourceEditorBridge.beginTransaction(model: model)
             },
             transcribeFallback: { recordingURL, config in
+                if config.usesBuiltInEngine {
+                    return try await BuiltInDictationRecovery.transcribe(recordingURL: recordingURL)
+                }
                 guard let apiKey = apiKeyStore.loadAPIKey(
                     forProviderID: LLMProviderPreset.openAI.id
                 )?.trimmingCharacters(in: .whitespacesAndNewlines),

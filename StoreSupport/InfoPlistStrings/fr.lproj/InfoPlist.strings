@@ -1,1 +1,1 @@
-"NSMicrophoneUsageDescription" = "Lors d’un appui valide pour la dictée, Inklet diffuse l’audio du microphone vers OpenAI et conserve un enregistrement temporaire de récupération pour cette session.";
+"NSMicrophoneUsageDescription" = "Inklet utilise le microphone uniquement lors d’un appui valide pour la dictée. La parole est reconnue sur ce Mac, ou par OpenAI si vous le choisissez, et un enregistrement temporaire de récupération est conservé pour cette session.";

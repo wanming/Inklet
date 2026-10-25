@@ -226,6 +226,40 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
+    // MARK: Built-in dictation
+
+    var dictationModel: BuiltInDictationModel {
+        .recommended
+    }
+
+    var usesBuiltInDictation: Bool {
+        config.voiceInput.usesBuiltInEngine
+    }
+
+    var dictationModelState: BuiltInModelDownloadState {
+        builtInModelDownloads.state(of: dictationModel, in: builtInModelStates)
+    }
+
+    func downloadDictationModel() {
+        guard !isMigrationMaintenanceActive else { return }
+        builtInModelDownloads.download(dictationModel)
+    }
+
+    func cancelDictationModelDownload() {
+        builtInModelDownloads.cancel(dictationModel)
+    }
+
+    func deleteDictationModel() {
+        guard !isMigrationMaintenanceActive, !builtInModelDownloads.isDownloading(dictationModel) else { return }
+        let server = BuiltInModelServer.dictation
+        Task { await server.stop() }
+        do {
+            try builtInModelDownloads.delete(dictationModel)
+        } catch {
+            message = L10n.format("settings.error.saveFailed", String(describing: error))
+        }
+    }
+
     func refreshLocalServerModels() {
         guard !isMigrationMaintenanceActive, isLocalServerProvider,
               let modelsEndpoint = selectedProvider.modelsEndpoint

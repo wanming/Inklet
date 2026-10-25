@@ -467,15 +467,27 @@ struct SettingsView: View {
         }
     }
 
-    @ViewBuilder
     private func builtInModelDownloadControls(for builtInModel: BuiltInModel) -> some View {
-        switch model.builtInModelState(builtInModel) {
+        modelDownloadControls(
+            state: model.builtInModelState(builtInModel),
+            download: { model.downloadBuiltInModel(builtInModel) },
+            cancel: { model.cancelBuiltInModelDownload(builtInModel) },
+            delete: { model.deleteBuiltInModel(builtInModel) }
+        )
+    }
+
+    @ViewBuilder
+    private func modelDownloadControls(
+        state: BuiltInModelDownloadState,
+        download: @escaping @MainActor () -> Void,
+        cancel: @escaping @MainActor () -> Void,
+        delete: @escaping @MainActor () -> Void
+    ) -> some View {
+        switch state {
         case .notDownloaded:
-            Button(L10n.text("settings.localModel.download")) {
-                model.downloadBuiltInModel(builtInModel)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
+            Button(L10n.text("settings.localModel.download"), action: download)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
         case .downloading(let fraction):
             HStack(spacing: 10) {
                 ProgressView(value: fraction)
@@ -483,11 +495,9 @@ struct SettingsView: View {
                 Text(L10n.format("settings.localModel.downloading", fraction * 100))
                     .font(.system(size: 11).monospacedDigit())
                     .foregroundStyle(InkletTheme.textSecondary)
-                Button(L10n.text("settings.localModel.cancel")) {
-                    model.cancelBuiltInModelDownload(builtInModel)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+                Button(L10n.text("settings.localModel.cancel"), action: cancel)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
             }
         case .verifying:
             HStack(spacing: 8) {
@@ -502,11 +512,9 @@ struct SettingsView: View {
                 Label(L10n.text("settings.localModel.ready"), systemImage: "checkmark.circle.fill")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(InkletTheme.primary)
-                Button(L10n.text("settings.localModel.delete")) {
-                    model.deleteBuiltInModel(builtInModel)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+                Button(L10n.text("settings.localModel.delete"), action: delete)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
             }
         case .failed(let message):
             VStack(alignment: .leading, spacing: 6) {
@@ -514,11 +522,9 @@ struct SettingsView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(InkletTheme.warning)
                     .fixedSize(horizontal: false, vertical: true)
-                Button(L10n.text("settings.localModel.retry")) {
-                    model.downloadBuiltInModel(builtInModel)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                Button(L10n.text("settings.localModel.retry"), action: download)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
             }
         }
     }
@@ -768,6 +774,25 @@ struct SettingsView: View {
             }
 
             Group {
+                if model.isBuiltInEngineAvailable {
+                    settingsRow(
+                        L10n.text("settings.row.dictationEngine"),
+                        help: L10n.text("settings.help.dictationEngine")
+                    ) {
+                        Picker("", selection: $model.config.voiceInput.engine) {
+                            ForEach(VoiceInputConfig.Engine.allCases) { engine in
+                                Text(engine.localizedName).tag(engine)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: 320, alignment: .leading)
+                    }
+                }
+
+                if model.usesBuiltInDictation {
+                    dictationModelRow
+                }
+
                 settingsRow(
                     L10n.text("settings.row.dictationShortcut"),
                     help: L10n.text("settings.help.dictationShortcut")
@@ -791,29 +816,58 @@ struct SettingsView: View {
                     .frame(maxWidth: 320, alignment: .leading)
                 }
 
-                DisclosureGroup {
-                    VStack(alignment: .leading, spacing: 12) {
-                        settingsRow(
-                            L10n.text("settings.row.fallbackSpeechModel"),
-                            help: L10n.text("settings.help.fallbackSpeechModel")
-                        ) {
-                            TextField(
-                                VoiceInputConfig.defaultSpeechModel,
-                                text: $model.config.voiceInput.speechModel
-                            )
-                            .textFieldStyle(.roundedBorder)
-                        }
-                    }
-                    .padding(.top, 10)
-                } label: {
-                    Text(L10n.text("settings.group.dictationAdvanced"))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(InkletTheme.textPrimary)
+                if !model.usesBuiltInDictation {
+                    openAIDictationAdvancedSettings
                 }
-                .tint(InkletTheme.textSecondary)
             }
             .disabled(!model.config.voiceInput.isEnabled)
         }
+    }
+
+    private var dictationModelRow: some View {
+        let dictationModel = model.dictationModel
+        return settingsRow(L10n.text("settings.row.dictationModel"), help: L10n.text("settings.help.dictationModel")) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(dictationModel.displayName)
+                    .font(.system(size: 13))
+                    .foregroundStyle(InkletTheme.textPrimary)
+
+                Text(L10n.format("settings.dictationModel.detail", dictationModel.localizedDownloadSize))
+                    .font(.system(size: 11))
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                modelDownloadControls(
+                    state: model.dictationModelState,
+                    download: { model.downloadDictationModel() },
+                    cancel: { model.cancelDictationModelDownload() },
+                    delete: { model.deleteDictationModel() }
+                )
+            }
+        }
+    }
+
+    private var openAIDictationAdvancedSettings: some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 12) {
+                settingsRow(
+                    L10n.text("settings.row.fallbackSpeechModel"),
+                    help: L10n.text("settings.help.fallbackSpeechModel")
+                ) {
+                    TextField(
+                        VoiceInputConfig.defaultSpeechModel,
+                        text: $model.config.voiceInput.speechModel
+                    )
+                    .textFieldStyle(.roundedBorder)
+                }
+            }
+            .padding(.top, 10)
+        } label: {
+            Text(L10n.text("settings.group.dictationAdvanced"))
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(InkletTheme.textPrimary)
+        }
+        .tint(InkletTheme.textSecondary)
     }
 
     private var selectionActionsPanel: some View {

@@ -2,6 +2,8 @@ import Foundation
 
 public enum RealtimeTranscriptionEvent: Equatable, Sendable {
     case delta(eventID: String?, sequence: Int?, itemID: String, contentIndex: Int, text: String)
+    /// The whole provisional transcript so far, for engines that revise earlier words as they hear more.
+    case replaced(eventID: String?, sequence: Int?, itemID: String, contentIndex: Int, transcript: String)
     case completed(eventID: String?, sequence: Int?, itemID: String, contentIndex: Int, transcript: String)
 }
 

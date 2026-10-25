@@ -194,7 +194,45 @@ final class VoiceInputConfigTests: XCTestCase {
             JSONSerialization.jsonObject(with: JSONEncoder().encode(decoded)) as? [String: Any]
         )
         XCTAssertEqual(Set(object.keys), [
-            "isEnabled", "shortcut", "speechEndpoint", "speechModel", "microphoneDeviceID"
+            "isEnabled", "engine", "shortcut", "speechEndpoint", "speechModel", "microphoneDeviceID"
         ])
+    }
+
+    func testNewConfigsDictateOnTheBuiltInEngine() {
+        XCTAssertEqual(VoiceInputConfig.defaultConfig().engine, .builtIn)
+        XCTAssertEqual(AppConfig.defaultConfig().voiceInput.engine, .builtIn)
+    }
+
+    func testSavedConfigWithoutEngineKeepsOpenAIDictation() throws {
+        let data = try JSONSerialization.data(withJSONObject: [
+            "isEnabled": true,
+            "shortcut": "rightOption",
+            "speechModel": "gpt-4o-mini-transcribe"
+        ])
+
+        let decoded = try JSONDecoder().decode(VoiceInputConfig.self, from: data)
+
+        XCTAssertEqual(decoded.engine, .openAI)
+    }
+
+    func testEngineRoundTrips() throws {
+        for engine in VoiceInputConfig.Engine.allCases {
+            var config = VoiceInputConfig.defaultConfig()
+            config.engine = engine
+
+            let decoded = try JSONDecoder().decode(VoiceInputConfig.self, from: JSONEncoder().encode(config))
+
+            XCTAssertEqual(decoded.engine, engine)
+        }
+    }
+
+    func testDictationFallsBackToOpenAIWithoutTheBuiltInEngine() {
+        var config = VoiceInputConfig.defaultConfig()
+
+        XCTAssertEqual(config.resolvedEngine(isBuiltInEngineAvailable: true), .builtIn)
+        XCTAssertEqual(config.resolvedEngine(isBuiltInEngineAvailable: false), .openAI)
+
+        config.engine = .openAI
+        XCTAssertEqual(config.resolvedEngine(isBuiltInEngineAvailable: true), .openAI)
     }
 }

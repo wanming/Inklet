@@ -276,6 +276,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
 
         registerConfiguredHotkey()
         windowController.reloadDictationConfiguration()
+        BuiltInDictationResidency.shared.start()
         selectionActions.configureSelectionActions()
         showPermissionSettingsIfNeeded()
         installSettingsShortcutMonitor()
@@ -322,6 +323,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         await windowController.cancelDictationAndWait()
         await selectionActions.finishStopping()
         BuiltInModelServer.shared.terminateImmediately()
+        BuiltInDictationResidency.shared.terminateImmediately()
     }
 
     private func configureMainMenu() {
@@ -636,6 +638,14 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         let downloads = BuiltInModelDownloads.shared
         if !downloads.isInstalled(model) {
             downloads.download(model)
+        }
+        // Live Dictation also runs on this Mac by default; its smaller model downloads next.
+        let dictationModel = BuiltInDictationModel.recommended
+        if !downloads.isInstalled(dictationModel) {
+            Task { @MainActor in
+                await downloads.waitForAll()
+                downloads.download(dictationModel)
+            }
         }
     }
 

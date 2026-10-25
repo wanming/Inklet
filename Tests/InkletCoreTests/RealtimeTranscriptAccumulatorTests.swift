@@ -146,4 +146,21 @@ final class RealtimeTranscriptAccumulatorTests: XCTestCase {
             eventID: "reusable", sequence: 3, itemID: "item", contentIndex: 0, text: "accepted"
         )), .provisional("startaccepted"))
     }
+
+    func testReplacedTranscriptRevisesTheProvisionalText() {
+        var accumulator = RealtimeTranscriptAccumulator()
+
+        XCTAssertEqual(accumulator.accept(.replaced(
+            eventID: nil, sequence: 1, itemID: "built-in", contentIndex: 0, transcript: "我想"
+        )), .provisional("我想"))
+        XCTAssertEqual(accumulator.accept(.replaced(
+            eventID: nil, sequence: 2, itemID: "built-in", contentIndex: 0, transcript: "我想写一封邮件"
+        )), .provisional("我想写一封邮件"))
+        XCTAssertEqual(accumulator.accept(.replaced(
+            eventID: nil, sequence: 1, itemID: "built-in", contentIndex: 0, transcript: "stale"
+        )), .ignored)
+        XCTAssertEqual(accumulator.accept(.completed(
+            eventID: nil, sequence: 3, itemID: "built-in", contentIndex: 0, transcript: "我想写一封 email"
+        )), .final("我想写一封 email"))
+    }
 }

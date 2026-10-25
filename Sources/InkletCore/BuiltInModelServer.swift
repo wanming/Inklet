@@ -12,10 +12,15 @@ public actor BuiltInModelServer {
     }
 
     public static let shared = BuiltInModelServer()
+    /// A second server for Live Dictation, so the speech model and the writing model can stay
+    /// loaded side by side.
+    public static let dictation = BuiltInModelServer(
+        keepsModelLoadedMemoryGB: BuiltInDictationModel.keepsModelLoadedMemoryGB
+    )
     public static let executableName = "llama-server"
     static let defaultIdleUnloadSeconds = 300
     /// Macs with at least this much memory keep the model loaded, so it answers without a reload.
-    static let keepsModelLoadedMemoryGB: UInt64 = 24
+    public static let keepsModelLoadedMemoryGB: UInt64 = 24
     static let contextTokens = 8192
 
     private struct Running {
@@ -25,6 +30,7 @@ public actor BuiltInModelServer {
     }
 
     private let store: BuiltInModelStore
+    private let keepsModelLoadedMemoryGB: UInt64
     private let executableURL: @Sendable () -> URL?
     private let session: URLSession
     private var running: Running?
@@ -34,10 +40,12 @@ public actor BuiltInModelServer {
 
     public init(
         store: BuiltInModelStore = .current(),
+        keepsModelLoadedMemoryGB: UInt64 = BuiltInModelServer.keepsModelLoadedMemoryGB,
         executableURL: @escaping @Sendable () -> URL? = BuiltInModelServer.bundledExecutableURL,
         session: URLSession = .shared
     ) {
         self.store = store
+        self.keepsModelLoadedMemoryGB = keepsModelLoadedMemoryGB
         self.executableURL = executableURL
         self.session = session
         let memoryPressureSource = DispatchSource.makeMemoryPressureSource(
@@ -53,8 +61,19 @@ public actor BuiltInModelServer {
     }
 
     /// `nil` keeps the model loaded; otherwise the server unloads it after that many idle seconds.
-    static func idleUnloadSeconds(forPhysicalMemoryBytes memoryBytes: UInt64) -> Int? {
+    static func idleUnloadSeconds(
+        forPhysicalMemoryBytes memoryBytes: UInt64,
+        keepsModelLoadedMemoryGB: UInt64 = BuiltInModelServer.keepsModelLoadedMemoryGB
+    ) -> Int? {
         memoryBytes >= keepsModelLoadedMemoryGB * 1_073_741_824 ? nil : defaultIdleUnloadSeconds
+    }
+
+    /// Whether this server keeps its model loaded on this Mac, instead of unloading it when idle.
+    public nonisolated var keepsModelLoaded: Bool {
+        Self.idleUnloadSeconds(
+            forPhysicalMemoryBytes: ProcessInfo.processInfo.physicalMemory,
+            keepsModelLoadedMemoryGB: keepsModelLoadedMemoryGB
+        ) == nil
     }
 
     /// A model that stays loaded gives its memory back when macOS runs short; the next request
@@ -88,7 +107,12 @@ public actor BuiltInModelServer {
         #endif
     }
 
-    public func connection(for model: BuiltInModel, startupTimeoutSeconds: TimeInterval) async throws -> Connection {
+    /// `projector` is the audio or image encoder a multimodal model needs (`--mmproj`).
+    public func connection(
+        for model: BuiltInModel,
+        projector: BuiltInModel? = nil,
+        startupTimeoutSeconds: TimeInterval
+    ) async throws -> Connection {
         if let running, running.modelID == model.id, running.process.isRunning {
             return running.connection
         }
@@ -100,7 +124,7 @@ public actor BuiltInModelServer {
         }
 
         stop()
-        let task = Task { try await start(model, startupTimeoutSeconds: startupTimeoutSeconds) }
+        let task = Task { try await start(model, projector: projector, startupTimeoutSeconds: startupTimeoutSeconds) }
         starting = task
         defer {
             if starting == task {
@@ -123,11 +147,15 @@ public actor BuiltInModelServer {
         }
     }
 
-    private func start(_ model: BuiltInModel, startupTimeoutSeconds: TimeInterval) async throws -> Connection {
+    private func start(
+        _ model: BuiltInModel,
+        projector: BuiltInModel?,
+        startupTimeoutSeconds: TimeInterval
+    ) async throws -> Connection {
         guard let executableURL = executableURL() else {
             throw LocalModelError.engineMissing
         }
-        guard store.isInstalled(model) else {
+        guard store.isInstalled(model), projector.map({ store.isInstalled($0) }) ?? true else {
             throw LocalModelError.modelNotInstalled(modelName: model.displayName)
         }
 
@@ -137,10 +165,14 @@ public actor BuiltInModelServer {
         process.executableURL = executableURL
         process.arguments = Self.arguments(
             modelPath: store.fileURL(for: model).path,
+            projectorPath: projector.map { store.fileURL(for: $0).path },
             modelID: model.id,
             port: port,
             apiKey: apiKey,
-            idleUnloadSeconds: Self.idleUnloadSeconds(forPhysicalMemoryBytes: ProcessInfo.processInfo.physicalMemory)
+            idleUnloadSeconds: Self.idleUnloadSeconds(
+                forPhysicalMemoryBytes: ProcessInfo.processInfo.physicalMemory,
+                keepsModelLoadedMemoryGB: keepsModelLoadedMemoryGB
+            )
         )
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = FileHandle.nullDevice
@@ -170,6 +202,7 @@ public actor BuiltInModelServer {
 
     static func arguments(
         modelPath: String,
+        projectorPath: String? = nil,
         modelID: String,
         port: Int,
         apiKey: String,
@@ -186,6 +219,9 @@ public actor BuiltInModelServer {
             "--reasoning", "off",
             "--no-webui"
         ]
+        if let projectorPath {
+            flags += ["--mmproj", projectorPath]
+        }
         if let idleUnloadSeconds {
             flags += ["--sleep-idle-seconds", String(idleUnloadSeconds)]
         }
