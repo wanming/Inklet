@@ -57,6 +57,49 @@ final class LocalModelTests: XCTestCase {
         }
     }
 
+    func testStreamParserShowsTextAsItArrivesAndHidesThinking() {
+        var parser = ChatCompletionProvider.StreamParser()
+
+        XCTAssertNil(parser.consume(line: ": keep-alive"))
+        XCTAssertEqual(parser.consume(line: #"data: {"choices":[{"delta":{"content":"<think>plan"}}]}"#), "")
+        XCTAssertEqual(parser.consume(line: #"data: {"choices":[{"delta":{"content":"</think>Hi"}}]}"#), "Hi")
+        XCTAssertNil(parser.consume(line: #"data: {"choices":[{"delta":{}}]}"#))
+        XCTAssertEqual(parser.consume(line: #"data: {"choices":[{"delta":{"content":" there."}}]}"#), "Hi there.")
+        XCTAssertNil(parser.consume(line: "data: [DONE]"))
+        XCTAssertEqual(parser.outputText, "Hi there.")
+    }
+
+    func testLocalServerStreamsPartialOutput() async throws {
+        let recorded = RecordedRequest()
+        MockLocalServerURLProtocol.handler = { request in
+            recorded.body = request.httpBody ?? request.httpBodyStream.map(Self.readStream)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let events = [
+                #"data: {"choices":[{"delta":{"content":"Hi"}}]}"#,
+                #"data: {"choices":[{"delta":{"content":" there."}}]}"#,
+                "data: [DONE]"
+            ]
+            return (response, Data(events.joined(separator: "\n\n").utf8))
+        }
+        let provider = ChatCompletionProvider(
+            name: "Ollama",
+            apiKeyProvider: { "" },
+            endpoint: LLMProviderPreset.ollama.endpoint,
+            runsLocally: true,
+            session: mockSession()
+        )
+        let partials = PartialOutputs()
+
+        let result = try await provider.streamTransform(request) { partials.append($0) }
+
+        XCTAssertEqual(result.outputText, "Hi there.")
+        XCTAssertEqual(partials.values.last, "Hi there.")
+        let body = try XCTUnwrap(recorded.body)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        XCTAssertEqual(json["stream"] as? Bool, true)
+        XCTAssertEqual(json["reasoning_effort"] as? String, "none")
+    }
+
     func testBuiltInCatalogPinsDownloadsAndRecommendsByMemory() {
         let gigabyte: UInt64 = 1_073_741_824
         XCTAssertEqual(BuiltInModel.all.map(\.id), ["qwen3.5-4b", "gemma-4-e4b"])
@@ -181,6 +224,19 @@ final class LocalModelTests: XCTestCase {
 private final class RecordedRequest: @unchecked Sendable {
     var request: URLRequest?
     var body: Data?
+}
+
+private final class PartialOutputs: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [String] = []
+
+    var values: [String] {
+        lock.withLock { storage }
+    }
+
+    func append(_ value: String) {
+        lock.withLock { storage.append(value) }
+    }
 }
 
 private final class MockLocalServerURLProtocol: URLProtocol {

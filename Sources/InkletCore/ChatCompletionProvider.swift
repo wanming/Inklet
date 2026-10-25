@@ -11,11 +11,58 @@ public struct ChatCompletionProvider: LLMProvider {
         public var messages: [Message]
         /// Sent as "none" to local servers so small reasoning models answer directly.
         public var reasoningEffort: String?
+        public var stream: Bool?
 
         private enum CodingKeys: String, CodingKey {
             case model
             case messages
             case reasoningEffort = "reasoning_effort"
+            case stream
+        }
+    }
+
+    /// Accumulates the output text from chat completion server-sent events.
+    public struct StreamParser: Sendable {
+        private struct Chunk: Decodable {
+            struct Choice: Decodable {
+                struct Delta: Decodable {
+                    var content: String?
+                }
+
+                var delta: Delta?
+            }
+
+            var choices: [Choice]
+        }
+
+        private var receivedText = ""
+
+        public init() {}
+
+        public var outputText: String {
+            ChatCompletionProvider.removingThinkingBlock(from: receivedText)
+        }
+
+        /// Consumes one stream line and returns the visible output so far when the line added text.
+        public mutating func consume(line: String) -> String? {
+            guard line.hasPrefix("data:") else {
+                return nil
+            }
+
+            let payload = line.dropFirst("data:".count).trimmingCharacters(in: .whitespaces)
+            guard payload != "[DONE]",
+                  let data = payload.data(using: .utf8),
+                  let chunk = try? JSONDecoder().decode(Chunk.self, from: data)
+            else {
+                return nil
+            }
+
+            let delta = chunk.choices.compactMap(\.delta?.content).joined()
+            guard !delta.isEmpty else {
+                return nil
+            }
+            receivedText += delta
+            return outputText
         }
     }
 
@@ -60,16 +107,10 @@ public struct ChatCompletionProvider: LLMProvider {
     }
 
     public func transform(_ request: TransformationRequest) async throws -> TransformationResult {
-        let apiKey = try apiKeyProvider().trimmingCharacters(in: .whitespacesAndNewlines)
-        let bodyData = try JSONEncoder().encode(Self.makeRequestBody(for: request, disablesReasoning: runsLocally))
-
-        var urlRequest = URLRequest(url: endpoint, timeoutInterval: request.timeoutSeconds)
-        urlRequest.httpMethod = "POST"
-        if !apiKey.isEmpty {
-            urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        }
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpBody = bodyData
+        let urlRequest = try makeURLRequest(
+            body: Self.makeRequestBody(for: request, disablesReasoning: runsLocally),
+            timeoutSeconds: request.timeoutSeconds
+        )
 
         let started = Date()
         let data: Data
@@ -90,19 +131,64 @@ public struct ChatCompletionProvider: LLMProvider {
         }
 
         let outputText = try Self.parseOutputText(from: data)
-        return TransformationResult(
-            outputText: outputText,
-            providerMetadata: [
-                "provider": name,
-                "model": request.model
-            ],
-            elapsedMilliseconds: elapsedMilliseconds
+        return makeResult(outputText: outputText, model: request.model, elapsedMilliseconds: elapsedMilliseconds)
+    }
+
+    public func streamTransform(
+        _ request: TransformationRequest,
+        onPartialOutput: @escaping @Sendable (String) -> Void
+    ) async throws -> TransformationResult {
+        // Local models are slow enough that partial output matters; cloud chat providers keep the
+        // one-shot request until each one has been checked with streaming.
+        guard runsLocally else {
+            return try await transform(request)
+        }
+
+        let urlRequest = try makeURLRequest(
+            body: Self.makeRequestBody(for: request, disablesReasoning: true, stream: true),
+            timeoutSeconds: request.timeoutSeconds
         )
+
+        let started = Date()
+        let bytes: URLSession.AsyncBytes
+        let response: URLResponse
+        do {
+            (bytes, response) = try await session.bytes(for: urlRequest)
+        } catch let error as URLError where error.code == .cannotConnectToHost {
+            throw LocalModelError.serverUnreachable(providerName: name)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw TransformationError.provider("\(name) 请求失败：HTTP unknown")
+        }
+
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            var data = Data()
+            for try await byte in bytes {
+                data.append(byte)
+            }
+            throw TransformationError.provider(providerErrorMessage(from: data, statusCode: httpResponse.statusCode))
+        }
+
+        var parser = StreamParser()
+        for try await line in bytes.lines {
+            if let outputText = parser.consume(line: line), !outputText.isEmpty {
+                onPartialOutput(outputText)
+            }
+        }
+
+        let outputText = parser.outputText
+        guard !outputText.isEmpty else {
+            throw TransformationError.emptyResponse
+        }
+        let elapsedMilliseconds = Int(Date().timeIntervalSince(started) * 1_000)
+        return makeResult(outputText: outputText, model: request.model, elapsedMilliseconds: elapsedMilliseconds)
     }
 
     public static func makeRequestBody(
         for request: TransformationRequest,
-        disablesReasoning: Bool = false
+        disablesReasoning: Bool = false,
+        stream: Bool = false
     ) -> RequestBody {
         RequestBody(
             model: request.model,
@@ -110,7 +196,31 @@ public struct ChatCompletionProvider: LLMProvider {
                 RequestBody.Message(role: "system", content: request.systemPrompt),
                 RequestBody.Message(role: "user", content: request.sourceText)
             ],
-            reasoningEffort: disablesReasoning ? "none" : nil
+            reasoningEffort: disablesReasoning ? "none" : nil,
+            stream: stream ? true : nil
+        )
+    }
+
+    private func makeURLRequest(body: RequestBody, timeoutSeconds: TimeInterval) throws -> URLRequest {
+        let apiKey = try apiKeyProvider().trimmingCharacters(in: .whitespacesAndNewlines)
+        var urlRequest = URLRequest(url: endpoint, timeoutInterval: timeoutSeconds)
+        urlRequest.httpMethod = "POST"
+        if !apiKey.isEmpty {
+            urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.httpBody = try JSONEncoder().encode(body)
+        return urlRequest
+    }
+
+    private func makeResult(outputText: String, model: String, elapsedMilliseconds: Int) -> TransformationResult {
+        TransformationResult(
+            outputText: outputText,
+            providerMetadata: [
+                "provider": name,
+                "model": model
+            ],
+            elapsedMilliseconds: elapsedMilliseconds
         )
     }
 

@@ -221,17 +221,27 @@ public struct BuiltInModelProvider: LLMProvider {
     }
 
     public func transform(_ request: TransformationRequest) async throws -> TransformationResult {
+        try await chatProvider(for: request).transform(request)
+    }
+
+    public func streamTransform(
+        _ request: TransformationRequest,
+        onPartialOutput: @escaping @Sendable (String) -> Void
+    ) async throws -> TransformationResult {
+        try await chatProvider(for: request).streamTransform(request, onPartialOutput: onPartialOutput)
+    }
+
+    private func chatProvider(for request: TransformationRequest) async throws -> ChatCompletionProvider {
         guard let model = BuiltInModel.model(id: request.model) else {
             throw LocalModelError.unknownModel(request.model)
         }
         let connection = try await server.connection(for: model, startupTimeoutSeconds: request.timeoutSeconds)
         let apiKey = connection.apiKey
-        let provider = ChatCompletionProvider(
+        return ChatCompletionProvider(
             name: LLMProviderPreset.builtIn.name,
             apiKeyProvider: { apiKey },
             endpoint: connection.chatCompletionsURL,
             runsLocally: true
         )
-        return try await provider.transform(request)
     }
 }
