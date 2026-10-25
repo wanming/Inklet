@@ -3,19 +3,23 @@ set -euo pipefail
 
 scope_name=""
 remove_installed_app=0
+keep_models=0
 dry_run=0
 
 usage() {
   cat <<'EOF'
 Usage: scripts/reset-local-state.sh --scope local|production|all [options]
 
-Reset the selected Inklet preferences, permissions, Keychain API key, data
-directories, and temporary selection diagnostics. A scope is always required.
+Reset the selected Inklet preferences, permissions, API keys (the local key
+file and every provider's Keychain item), data directories, and temporary
+selection diagnostics. A scope is always required.
 
 Options:
   --scope local|production|all
                           Select the exact app state to reset.
   --remove-installed-app  Also delete the selected app from /Applications.
+  --keep-models           Keep downloaded built-in models; remove everything else
+                          in Application Support.
   --dry-run               Print the selected targets and commands without running them.
   -h, --help              Show this help.
 EOF
@@ -61,6 +65,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --remove-installed-app)
       remove_installed_app=1
+      shift
+      ;;
+    --keep-models)
+      keep_models=1
       shift
       ;;
     --dry-run)
@@ -203,7 +211,14 @@ legacy_container_paths=()
 keychain_services=()
 diagnostic_paths=()
 installed_apps=()
-keychain_account="openai"
+preference_paths=()
+# Every provider preset ID in Sources/InkletCore/LLMProviderPreset.swift, because API keys
+# are stored per provider. test-reset-local-state.sh keeps this list in sync.
+keychain_accounts=(
+  openai custom-openai-compatible inklet-built-in ollama lm-studio anthropic gemini
+  deepseek qwen moonshot zhipu minimax siliconflow volcengine tencent-hunyuan baichuan
+  lingyiwanwu xai groq mistral openrouter perplexity together cerebras
+)
 
 append_scope() {
   local selected_scope="$1"
@@ -213,6 +228,7 @@ append_scope() {
   local installed_app
   local application_support_path
   local legacy_container_path
+  local preference_path
   local diagnostic_path
 
   case "$selected_scope" in
@@ -232,6 +248,7 @@ append_scope() {
 
   application_support_path="${home_directory}/Library/Application Support/${bundle_id}"
   legacy_container_path="${home_directory}/Library/Containers/${bundle_id}"
+  preference_path="${home_directory}/Library/Preferences/${bundle_id}"
   diagnostic_path="${temporary_directory}/InkletSelectionActions.${bundle_id}.log"
 
   validate_exact_target \
@@ -276,9 +293,27 @@ append_scope() {
   app_names+=("$app_name")
   application_support_paths+=("$application_support_path")
   legacy_container_paths+=("$legacy_container_path")
+  preference_paths+=("$preference_path")
   keychain_services+=("$keychain_service")
   diagnostic_paths+=("$diagnostic_path")
   installed_apps+=("$installed_app")
+}
+
+remove_application_support_except_models() {
+  local application_support_path="$1"
+  local entry
+
+  if [[ -L "$application_support_path" || ! -d "$application_support_path" ]]; then
+    return
+  fi
+  shopt -s dotglob nullglob
+  for entry in "${application_support_path}"/*; do
+    if [[ "${entry##*/}" == "Models" ]]; then
+      continue
+    fi
+    run rm -rf "$entry"
+  done
+  shopt -u dotglob nullglob
 }
 
 case "$scope_name" in
@@ -300,10 +335,16 @@ for target_index in "${!bundle_ids[@]}"; do
   echo "  Bundle ID: ${bundle_ids[$target_index]}"
   echo "  Application Support: ${application_support_paths[$target_index]}"
   echo "  Legacy container: ${legacy_container_paths[$target_index]}"
+  echo "  Preferences: ${preference_paths[$target_index]}"
   echo "  Keychain service: ${keychain_services[$target_index]}"
   echo "  Diagnostics: ${diagnostic_paths[$target_index]}"
   echo "  Installed app: ${installed_apps[$target_index]}"
 done
+if [[ "$keep_models" == "1" ]]; then
+  echo "Built-in models: kept"
+else
+  echo "Built-in models: removed"
+fi
 if [[ "$remove_installed_app" == "1" ]]; then
   echo "Installed app removal: requested"
 else
@@ -317,13 +358,22 @@ for target_index in "${!bundle_ids[@]}"; do
   run_silently_allow_failure osascript -e "tell application \"${app_name}\" to quit"
   run_silently_allow_failure pkill -x "$app_name"
   run_silently_allow_failure defaults delete "$bundle_id"
+  # When a legacy sandbox container exists, the bundle ID can resolve to the container's
+  # preferences, so also delete the unsandboxed plist by path.
+  run_silently_allow_failure defaults delete "${preference_paths[$target_index]}"
   run_silently_allow_failure tccutil reset Accessibility "$bundle_id"
   run_silently_allow_failure tccutil reset Microphone "$bundle_id"
-  run_silently_allow_failure \
-    security delete-generic-password \
-    -s "${keychain_services[$target_index]}" \
-    -a "$keychain_account"
-  run rm -rf "${application_support_paths[$target_index]}"
+  for keychain_account in "${keychain_accounts[@]}"; do
+    run_silently_allow_failure \
+      security delete-generic-password \
+      -s "${keychain_services[$target_index]}" \
+      -a "$keychain_account"
+  done
+  if [[ "$keep_models" == "1" ]]; then
+    remove_application_support_except_models "${application_support_paths[$target_index]}"
+  else
+    run rm -rf "${application_support_paths[$target_index]}"
+  fi
   run rm -rf "${legacy_container_paths[$target_index]}"
   run rm -f "${diagnostic_paths[$target_index]}"
 
