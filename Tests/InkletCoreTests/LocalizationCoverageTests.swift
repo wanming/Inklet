@@ -57,6 +57,15 @@ final class LocalizationCoverageTests: XCTestCase {
         XCTAssertEqual(mode.localizedName, "My Summary")
     }
 
+    func testRewriteModeNamesTheWritingLanguage() throws {
+        let mode = try XCTUnwrap(PromptModeStore.defaultStore().mode(id: PromptMode.rewriteID))
+
+        XCTAssertEqual(
+            mode.localizedName,
+            L10n.format("prompt.rewrite.name", InkletLanguageStore.writingLanguage.nameInInterfaceLanguage)
+        )
+    }
+
     func testSystemLanguageHonorsTheFirstSupportedPreferenceIncludingEnglish() {
         XCTAssertEqual(L10n.resolveLanguage(preferredLanguages: ["en-US", "ja-JP"]), .english)
         XCTAssertEqual(L10n.resolveLanguage(preferredLanguages: ["ja-JP", "en-US"]), .japanese)

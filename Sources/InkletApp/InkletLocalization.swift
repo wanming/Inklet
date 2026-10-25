@@ -78,6 +78,19 @@ enum InkletLanguageStore {
             NotificationCenter.default.post(name: .inkletLanguageDidChange, object: nil)
         }
     }
+
+    /// The language the rewrite mode writes in. Summaries and translations use the interface language.
+    static var writingLanguage: SelectionTranslationLanguage {
+        get {
+            SelectionTranslationLanguage.writingLanguage(
+                rawValue: UserDefaults.standard.string(forKey: InkletPreferenceKeys.writingLanguage)
+            )
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: InkletPreferenceKeys.writingLanguage)
+            NotificationCenter.default.post(name: .inkletLanguageDidChange, object: nil)
+        }
+    }
 }
 
 enum L10n {
@@ -152,8 +165,8 @@ extension PromptMode {
             return name
         }
         switch id {
-        case PromptMode.translateToEnglishID:
-            return L10n.text("prompt.translateToEnglish.name")
+        case PromptMode.rewriteID:
+            return L10n.format("prompt.rewrite.name", InkletLanguageStore.writingLanguage.nameInInterfaceLanguage)
         case PromptMode.summaryID:
             return L10n.text("prompt.summary.name")
         case PromptMode.voiceCleanupID:
@@ -170,8 +183,34 @@ extension AppConfig {
         PromptLanguages(
             myLanguage: selectionActions.translationLanguage.resolvedPromptTargetName(
                 interfaceLanguageCode: L10n.resolvedLanguage.localeIdentifier
-            )
+            ),
+            writingLanguage: InkletLanguageStore.writingLanguage.promptTargetName
         )
+    }
+}
+
+extension SelectionTranslationLanguage {
+    var localizedDisplayName: String {
+        switch self {
+        case .followInterfaceLanguage: L10n.text("selection.language.followInterface")
+        case .english: "English"
+        case .simplifiedChinese: "简体中文"
+        case .traditionalChinese: "繁體中文"
+        case .japanese: "日本語"
+        case .korean: "한국어"
+        case .spanish: "Español"
+        case .french: "Français"
+        case .german: "Deutsch"
+        case .portuguese: "Português"
+        case .italian: "Italiano"
+        }
+    }
+
+    /// The language's name as a word in the interface language, such as "Japanese" or "日语".
+    var nameInInterfaceLanguage: String {
+        guard let languageCode else { return promptTargetName }
+        return Locale(identifier: L10n.resolvedLanguage.localeIdentifier)
+            .localizedString(forLanguageCode: languageCode) ?? promptTargetName
     }
 }
 

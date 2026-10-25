@@ -76,7 +76,7 @@ El atajo de Dictado solo funciona en el editor de origen y solo se mantiene puls
 - Reproduce directamente el texto seleccionado y, desde el resultado de la traducción, puede reproducir tanto el original como la traducción.
 - Te permite elegir qué botones muestra el menú de selección y en qué orden, en **Ajustes** › **Asistente de selección** › **Botones del menú**. **Traducir**, **Pronunciar** y cualquier modo de prompt pueden ser un botón; se muestran hasta cuatro a la vez y el resto va en **Más**. Un botón de modo de prompt ejecuta ese modo sobre el texto seleccionado y muestra el resultado en el panel con controles para copiar y reproducir.
 - Transforma texto con modos de prompt integrados:
-  - A inglés simple y correcto
+  - A inglés simple y correcto (en tu idioma de escritura, que eliges en Ajustes › General; inglés por defecto)
   - Resumir (en tu idioma de traducción, que por defecto sigue el idioma de la interfaz)
   - Limpieza de voz
 - Muestra el resultado en el popover a medida que se genera y después lo inserta en la app que tenía el foco o lo copia con el botón de copiar del resultado.

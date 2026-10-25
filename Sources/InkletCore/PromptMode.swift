@@ -1,12 +1,12 @@
 public struct PromptMode: Codable, Equatable, Identifiable, Sendable {
     public static let autoID = "auto"
-    public static let translateToEnglishID = "translate-to-english"
+    // Raw values below predate prompts that follow the user's languages; saved configs and menu buttons still use them.
+    public static let rewriteID = "translate-to-english"
     public static let improveWritingID = "improve-writing"
     public static let makeConciseID = "make-concise"
     public static let professionalToneID = "professional-tone"
     public static let friendlyReplyID = "friendly-reply"
     public static let customPromptID = "custom-prompt"
-    // The raw value predates summaries in the user's own language; saved configs and menu buttons still use it.
     public static let summaryID = "chinese-summary"
     public static let chineseToEnglishID = "chinese-to-english"
     public static let polishEnglishID = "polish-english"
@@ -65,16 +65,22 @@ public struct PromptMode: Codable, Equatable, Identifiable, Sendable {
 /// Languages that prompts can name with placeholders, so one English prompt serves every app language.
 public struct PromptLanguages: Equatable, Sendable {
     public static let myLanguagePlaceholder = "{myLanguage}"
+    public static let writingLanguagePlaceholder = "{writingLanguage}"
 
     /// English name of the language the user reads in, such as "Japanese".
     public var myLanguage: String
+    /// English name of the language the user writes to others in, such as "English".
+    public var writingLanguage: String
 
-    public init(myLanguage: String) {
+    public init(myLanguage: String, writingLanguage: String) {
         self.myLanguage = myLanguage
+        self.writingLanguage = writingLanguage
     }
 
     public func apply(to prompt: String) -> String {
-        prompt.replacingOccurrences(of: Self.myLanguagePlaceholder, with: myLanguage)
+        prompt
+            .replacingOccurrences(of: Self.myLanguagePlaceholder, with: myLanguage)
+            .replacingOccurrences(of: Self.writingLanguagePlaceholder, with: writingLanguage)
     }
 }
 
@@ -102,17 +108,11 @@ public struct PromptModeStore: Equatable, Sendable {
     public static func defaultStore() -> PromptModeStore {
         PromptModeStore(modes: [
             PromptMode(
-                id: PromptMode.translateToEnglishID,
+                id: PromptMode.rewriteID,
+                // The app shows this name with the user's writing language in place of English.
                 name: "To Simple and Correct English",
                 description: "",
-                systemPrompt: """
-                Rewrite the user's text into simple, correct, natural English.
-                If the input is not English, translate it into English first.
-                Fix grammar, spelling, word choice, and awkward phrasing.
-                Keep the original meaning, names, numbers, formatting, and intent.
-                Do not add explanations, alternatives, quotes, or markdown.
-                Return only the final rewritten text.
-                """,
+                systemPrompt: rewriteSystemPrompt,
                 shortcut: nil,
                 participatesInAuto: false,
                 autoRule: .none,
@@ -191,7 +191,7 @@ public struct PromptModeStore: Equatable, Sendable {
         }
 
         return visibleModes.first
-            ?? PromptModeStore.defaultTranslateToEnglishMode
+            ?? PromptModeStore.defaultRewriteMode
     }
 
     public func resolveForInternalUse(modeID: String, sourceText: String) -> PromptMode {
@@ -202,24 +202,18 @@ public struct PromptModeStore: Equatable, Sendable {
         return resolve(modeID: modeID, sourceText: sourceText)
     }
 
-    private static var defaultTranslateToEnglishMode: PromptMode {
-        PromptMode(
-            id: PromptMode.translateToEnglishID,
-            name: "To Simple and Correct English",
-            description: "",
-            systemPrompt: """
-            Rewrite the user's text into simple, correct, natural English.
-            If the input is not English, translate it into English first.
-            Fix grammar, spelling, word choice, and awkward phrasing.
-            Keep the original meaning, names, numbers, formatting, and intent.
-            Do not add explanations, alternatives, quotes, or markdown.
-            Return only the final rewritten text.
-            """,
-            shortcut: nil,
-            participatesInAuto: false,
-            autoRule: .none,
-            sortOrder: 0,
-            isVisible: true
-        )
+    private static var defaultRewriteMode: PromptMode {
+        defaultStore().modes[0]
+    }
+
+    private static var rewriteSystemPrompt: String {
+        """
+        Rewrite the user's text into simple, correct, natural \(PromptLanguages.writingLanguagePlaceholder).
+        If the input is not in \(PromptLanguages.writingLanguagePlaceholder), translate it into \(PromptLanguages.writingLanguagePlaceholder) first.
+        Fix grammar, spelling, word choice, and awkward phrasing.
+        Keep the original meaning, names, numbers, formatting, and intent.
+        Do not add explanations, alternatives, quotes, or markdown.
+        Return only the final rewritten text.
+        """
     }
 }

@@ -76,7 +76,7 @@ Der Diktat-Kurzbefehl wirkt nur im Quelleditor und nur durch Halten. Unter **Ein
 - Spielt ausgewählten Text direkt ab und kann im Übersetzungsergebnis sowohl den Original- als auch den übersetzten Text abspielen.
 - Unter **Einstellungen** › **Auswahlassistent** › **Menütasten** wählen Sie, welche Tasten das Auswahlmenü zeigt und in welcher Reihenfolge. **Übersetzen**, **Aussprechen** und jeder Prompt-Modus können eine Taste sein; bis zu vier werden gleichzeitig angezeigt, der Rest landet unter **Mehr**. Eine Prompt-Modus-Taste führt diesen Modus auf den ausgewählten Text aus und zeigt das Ergebnis im Bereich mit Kopier- und Wiedergabesteuerung.
 - Wandelt Text mit integrierten Prompt-Modi um:
-  - In einfaches, korrektes Englisch
+  - In einfaches, korrektes Englisch (in Ihrer Schreibsprache, wählbar unter Einstellungen › Allgemein; standardmäßig Englisch)
   - Zusammenfassen (in Ihrer Übersetzungssprache, standardmäßig die Sprache der Oberfläche)
   - Sprachbereinigung
 - Streamt das Ergebnis während der Generierung ins Popover und fügt es dann in die zuvor fokussierte App ein oder kopiert es über die Kopiertaste am Ergebnis.

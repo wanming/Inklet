@@ -76,7 +76,7 @@ O atalho de Ditado só funciona no editor de origem e só ao ser mantido pressio
 - Reproduz diretamente o texto selecionado e, no resultado da tradução, pode reproduzir tanto o texto original quanto o traduzido.
 - Permite escolher quais botões o menu de seleção mostra e em que ordem, em **Ajustes** › **Assistente de seleção** › **Botões do menu**. **Traduzir**, **Pronunciar** e qualquer modo de prompt podem ser um botão; até quatro aparecem ao mesmo tempo e o resto fica em **Mais**. Um botão de modo de prompt executa esse modo no texto selecionado e mostra o resultado no painel com controles de cópia e reprodução.
 - Transforma texto com modos de prompt integrados:
-  - Para inglês simples e correto
+  - Para inglês simples e correto (no seu idioma de escrita, escolhido em Ajustes › Geral; inglês por padrão)
   - Resumir (no seu idioma de tradução, que por padrão segue o idioma da interface)
   - Limpeza de voz
 - Mostra o resultado no popover conforme é gerado e depois o insere no app que estava em foco ou o copia com o botão de copiar do resultado.

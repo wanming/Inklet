@@ -366,7 +366,25 @@ struct WelcomeGuideView: View {
                     languageButton(language)
                 }
             }
+            writingLanguageRow
         }
+    }
+
+    /// The language the rewrite mode writes in, asked right after the interface language.
+    private var writingLanguageRow: some View {
+        HStack(spacing: 10) {
+            Text(L10n.text("welcome.writingLanguage.title"))
+                .font(.system(size: 13))
+                .foregroundStyle(InkletTheme.textSecondary)
+            Picker("", selection: $settings.writingLanguage) {
+                ForEach(SelectionTranslationLanguage.writingLanguageCases) { language in
+                    Text(language.localizedDisplayName).tag(language)
+                }
+            }
+            .labelsHidden()
+            .fixedSize()
+        }
+        .padding(.top, 4)
     }
 
     private func languageButton(_ language: InterfaceLanguage) -> some View {

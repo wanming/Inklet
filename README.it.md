@@ -76,7 +76,7 @@ La scorciatoia di dettatura funziona solo nell’editor sorgente e solo tenendol
 - Riproduce direttamente il testo selezionato e, dal risultato della traduzione, può riprodurre sia il testo originale sia quello tradotto.
 - Ti permette di scegliere quali pulsanti mostra il menu di selezione e in quale ordine, in **Impostazioni** › **Assistente di selezione** › **Pulsanti del menu**. **Traduci**, **Pronuncia** e qualsiasi modalità prompt possono diventare un pulsante; ne compaiono al massimo quattro alla volta e gli altri finiscono in **Altro**. Un pulsante di modalità prompt esegue quella modalità sul testo selezionato e mostra il risultato nel pannello con i controlli di copia e riproduzione.
 - Trasforma il testo con modalità prompt integrate:
-  - In inglese semplice e corretto
+  - In inglese semplice e corretto (nella tua lingua di scrittura, scelta in Impostazioni › Generale; inglese per impostazione predefinita)
   - Riassumere (nella tua lingua di traduzione, che per impostazione predefinita segue la lingua dell’interfaccia)
   - Pulizia della voce
 - Mostra il risultato nel popover man mano che viene generato, poi lo inserisce nell’app che aveva lo stato attivo o lo copia con il pulsante di copia del risultato.

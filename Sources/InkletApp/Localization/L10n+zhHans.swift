@@ -207,7 +207,7 @@ extension L10n {
         "settings.row.allowSimulatedCopyFallback": "允许模拟 Cmd+C",
         "settings.help.allowSimulatedCopyFallback": "菜单复制不可用时向前台 App 发送 Cmd+C，可能会干扰游戏或远程应用。",
         "settings.row.translationLanguage": "翻译语言",
-        "settings.help.translationLanguage": "选中文本翻译动作使用的目标语言。",
+        "settings.help.translationLanguage": "选中文本翻译和摘要模式使用的语言。",
         "settings.row.translationPrompt": "翻译 Prompt",
         "settings.help.translationPrompt": "选中文本翻译动作使用的指令。用 {targetLanguage} 表示所选语言。",
         "settings.translationPrompt.restoreDefault": "恢复默认",
@@ -411,8 +411,11 @@ extension L10n {
         "error.provider.prefix": "%@ 请求失败：%@",
         "hotkey.error.unsupported": "暂不支持快捷键“%@”。目前支持 ⌥Space、Option+Space、Alt+Space、⌘Space、Command+Space、Cmd+Space。",
         "hotkey.error.registrationFailed": "快捷键注册失败（%d）。",
-        "settings.help.systemPrompt": "{myLanguage} 会替换成你的翻译语言。",
-        "prompt.translateToEnglish.name": "改写成简单正确的英文",
+        "settings.row.writingLanguage": "写作语言",
+        "settings.help.writingLanguage": "你对外写作时用的语言，改写模式会写成这种语言。",
+        "welcome.writingLanguage.title": "我主要用这种语言写作",
+        "settings.help.systemPrompt": "{myLanguage} 会替换成你的翻译语言，{writingLanguage} 会替换成你的写作语言。",
+        "prompt.rewrite.name": "改写成简单正确的%@",
         "prompt.summary.name": "摘要",
         "prompt.voiceCleanup.name": "语音整理"
     ]

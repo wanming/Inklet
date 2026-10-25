@@ -140,7 +140,7 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.timeoutSeconds, 20)
         XCTAssertEqual(config.hotkey, "⌥Space")
         XCTAssertEqual(config.appearance, .system)
-        XCTAssertEqual(config.defaultVisibleModeID, PromptMode.translateToEnglishID)
+        XCTAssertEqual(config.defaultVisibleModeID, PromptMode.rewriteID)
         XCTAssertEqual(
             config.customOpenAICompatibleEndpoint,
             LLMProviderPreset.customOpenAICompatible.endpoint.absoluteString
@@ -461,14 +461,14 @@ final class ConfigStoreTests: XCTestCase {
 
         let config = try JSONDecoder().decode(AppConfig.self, from: data)
 
-        XCTAssertEqual(config.defaultVisibleModeID, PromptMode.translateToEnglishID)
+        XCTAssertEqual(config.defaultVisibleModeID, PromptMode.rewriteID)
         XCTAssertFalse(config.promptModes.contains { $0.id == PromptMode.autoID })
         XCTAssertFalse(config.promptModes.contains { $0.id == PromptMode.chineseToEnglishID })
         XCTAssertFalse(config.promptModes.contains { $0.id == PromptMode.improveWritingID })
         XCTAssertTrue(config.promptModes.contains { $0.id == "custom-saved" })
         XCTAssertEqual(
             config.promptModes.prefix(2).map(\.id),
-            [PromptMode.translateToEnglishID, PromptMode.summaryID]
+            [PromptMode.rewriteID, PromptMode.summaryID]
         )
         XCTAssertTrue(config.promptModes.allSatisfy { !$0.participatesInAuto && $0.autoRule == .none })
     }
@@ -478,7 +478,7 @@ final class ConfigStoreTests: XCTestCase {
         {
             "promptModes": [
                 {
-                    "id": "\(PromptMode.translateToEnglishID)",
+                    "id": "\(PromptMode.rewriteID)",
                     "name": "To Simple and Correct English",
                     "description": "",
                     "systemPrompt": "Translate prompt.",
@@ -506,7 +506,7 @@ final class ConfigStoreTests: XCTestCase {
         let config = try JSONDecoder().decode(AppConfig.self, from: data)
 
         XCTAssertEqual(config.promptModes.map(\.id), [
-            PromptMode.translateToEnglishID,
+            PromptMode.rewriteID,
             PromptMode.summaryID,
             PromptMode.voiceCleanupID
         ])
@@ -614,6 +614,52 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertFalse(mode.isVisible)
     }
 
+    func testConfigDecodeUpgradesUntouchedEnglishRewriteToWritingLanguage() throws {
+        let legacyRewritePrompt = """
+        Rewrite the user's text into simple, correct, natural English.
+        If the input is not English, translate it into English first.
+        Fix grammar, spelling, word choice, and awkward phrasing.
+        Keep the original meaning, names, numbers, formatting, and intent.
+        Do not add explanations, alternatives, quotes, or markdown.
+        Return only the final rewritten text.
+        """
+        let data = """
+        {
+            "promptModes": [
+                {
+                    "id": "\(PromptMode.rewriteID)",
+                    "name": "Fix My English",
+                    "description": "",
+                    "systemPrompt": \(try jsonString(legacyRewritePrompt)),
+                    "shortcut": null,
+                    "participatesInAuto": false,
+                    "autoRule": "none",
+                    "sortOrder": 0,
+                    "isVisible": true
+                }
+            ]
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+        let mode = try XCTUnwrap(config.promptModes.first { $0.id == PromptMode.rewriteID })
+        let defaultMode = try XCTUnwrap(PromptModeStore.defaultStore().mode(id: PromptMode.rewriteID))
+
+        XCTAssertEqual(mode.name, "Fix My English")
+        XCTAssertEqual(mode.systemPrompt, defaultMode.systemPrompt)
+        XCTAssertEqual(
+            mode.resolvingLanguages(PromptLanguages(myLanguage: "Japanese", writingLanguage: "English")).systemPrompt,
+            """
+            Rewrite the user's text into simple, correct, natural English.
+            If the input is not in English, translate it into English first.
+            Fix grammar, spelling, word choice, and awkward phrasing.
+            Keep the original meaning, names, numbers, formatting, and intent.
+            Do not add explanations, alternatives, quotes, or markdown.
+            Return only the final rewritten text.
+            """
+        )
+    }
+
     func testConfigDecodePreservesCustomizedChineseSummary() throws {
         let data = """
         {
@@ -645,7 +691,7 @@ final class ConfigStoreTests: XCTestCase {
         {
             "promptModes": [
                 {
-                    "id": "\(PromptMode.translateToEnglishID)",
+                    "id": "\(PromptMode.rewriteID)",
                     "name": "Fix My English",
                     "description": "",
                     "systemPrompt": "My English prompt.",
@@ -660,7 +706,7 @@ final class ConfigStoreTests: XCTestCase {
         """.data(using: .utf8)!
 
         let config = try JSONDecoder().decode(AppConfig.self, from: data)
-        let mode = try XCTUnwrap(config.promptModes.first { $0.id == PromptMode.translateToEnglishID })
+        let mode = try XCTUnwrap(config.promptModes.first { $0.id == PromptMode.rewriteID })
 
         XCTAssertEqual(mode.name, "Fix My English")
         XCTAssertEqual(mode.systemPrompt, "My English prompt.")

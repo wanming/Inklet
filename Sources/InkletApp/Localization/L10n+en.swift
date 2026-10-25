@@ -207,7 +207,7 @@ extension L10n {
         "settings.row.allowSimulatedCopyFallback": "Allow Simulated Cmd+C",
         "settings.help.allowSimulatedCopyFallback": "Sends Cmd+C to the foreground app when Menu Copy is unavailable. This may interfere with games or remote apps.",
         "settings.row.translationLanguage": "Translation Language",
-        "settings.help.translationLanguage": "Language used by the selected-text Translate action.",
+        "settings.help.translationLanguage": "Language for selected-text translations and the Summarize mode.",
         "settings.row.translationPrompt": "Translate Prompt",
         "settings.help.translationPrompt": "Instructions used by the selected-text Translate action. Use {targetLanguage} for the chosen language.",
         "settings.translationPrompt.restoreDefault": "Restore Default",
@@ -411,8 +411,11 @@ extension L10n {
         "error.provider.prefix": "%@ request failed: %@",
         "hotkey.error.unsupported": "Unsupported hotkey “%@”. Supported: ⌥Space, Option+Space, Alt+Space, ⌘Space, Command+Space, Cmd+Space.",
         "hotkey.error.registrationFailed": "Hotkey registration failed (%d).",
-        "settings.help.systemPrompt": "{myLanguage} is replaced with your Translation Language.",
-        "prompt.translateToEnglish.name": "To Simple and Correct English",
+        "settings.row.writingLanguage": "Writing Language",
+        "settings.help.writingLanguage": "The language you write to others in. The rewrite mode writes in it.",
+        "welcome.writingLanguage.title": "I mostly write in",
+        "settings.help.systemPrompt": "{myLanguage} becomes your Translation Language and {writingLanguage} your Writing Language.",
+        "prompt.rewrite.name": "To Simple and Correct %@",
         "prompt.summary.name": "Summarize",
         "prompt.voiceCleanup.name": "Voice Cleanup"
     ]

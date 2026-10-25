@@ -903,7 +903,7 @@ final class InkletPopoverViewModel: ObservableObject {
             return preferredModeID
         }
 
-        return visibleModes.first?.id ?? PromptMode.translateToEnglishID
+        return visibleModes.first?.id ?? PromptMode.rewriteID
     }
 
     private static func modePickerItems(for modes: [PromptMode]) -> [WritingModePickerItem] {

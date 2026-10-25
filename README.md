@@ -74,7 +74,7 @@ The Dictation shortcut is source-local and hold-only. You can change its modifie
 - Plays selected text directly, and can play both the original text and translated text from the translation result.
 - Lets you choose which buttons the selection menu shows and in what order, under Settings › Selection Assistant › Menu Buttons. Translate, Pronounce, and any prompt mode can be a button; up to four show at once and the rest go under **More**. A prompt mode button runs that mode on the selected text and shows the result in the panel with copy and playback controls.
 - Transforms text with built-in prompt modes:
-  - To Simple and Correct English
+  - To Simple and Correct English (into your Writing Language, set in Settings › General; English by default)
   - Summarize (into your Translation Language, which follows the interface language by default)
   - Voice Cleanup
 - Streams the result into the popover as it is generated, then inserts it back into the previously focused app or copies it with the result's copy button.

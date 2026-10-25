@@ -2,6 +2,7 @@ public enum InkletPreferenceKeys {
     public static let appConfig = "appConfig"
     public static let modelCatalogSnapshot = "modelCatalogSnapshot"
     public static let interfaceLanguage = "InkletInterfaceLanguage"
+    public static let writingLanguage = "InkletWritingLanguage"
     public static let didCompleteOnboarding = "didCompleteOnboarding"
     public static let completedWelcomeGuideVersion = "completedWelcomeGuideVersion"
     public static let lastSeenWhatsNewVersion = "lastSeenWhatsNewVersion"

@@ -23,6 +23,13 @@ final class SettingsViewModel: ObservableObject {
     @Published var openAIAPIKey: String
     @Published var selectedPromptModeID: String
     @Published var interfaceLanguage: InterfaceLanguage
+    /// Saved as soon as it changes, like the interface language it sits next to.
+    @Published var writingLanguage: SelectionTranslationLanguage {
+        didSet {
+            guard writingLanguage != oldValue else { return }
+            InkletLanguageStore.writingLanguage = writingLanguage
+        }
+    }
     @Published var cachedProviderModels: [String: [String]]
     @Published var isRefreshingModelCatalog: Bool
     @Published var isEditingCustomModel: Bool
@@ -80,6 +87,7 @@ final class SettingsViewModel: ObservableObject {
         self.savedConfig = loadedConfig
         self.message = ""
         self.interfaceLanguage = InkletLanguageStore.selectedLanguage
+        self.writingLanguage = InkletLanguageStore.writingLanguage
         self.savedInterfaceLanguage = InkletLanguageStore.selectedLanguage
         let loadedProviderAPIKey = apiKeyStore.loadAPIKey(forProviderID: loadedConfig.providerID) ?? ""
         self.providerAPIKey = loadedProviderAPIKey
@@ -88,7 +96,7 @@ final class SettingsViewModel: ObservableObject {
         self.openAIAPIKey = loadedOpenAIAPIKey
         self.savedOpenAIAPIKey = loadedOpenAIAPIKey
         self.selectedPromptModeID = loadedConfig.promptModes.sorted { $0.sortOrder < $1.sortOrder }.first?.id
-            ?? PromptMode.translateToEnglishID
+            ?? PromptMode.rewriteID
         self.cachedProviderModels = Dictionary(
             uniqueKeysWithValues: LLMProviderPreset.all.compactMap { preset in
                 guard let modelIDs = modelCatalogService.cachedModelIDs(for: preset.id) else {
@@ -608,7 +616,7 @@ final class SettingsViewModel: ObservableObject {
         }
 
         if selectedPromptModeID == modeID {
-            selectedPromptModeID = config.promptModes.first?.id ?? PromptMode.translateToEnglishID
+            selectedPromptModeID = config.promptModes.first?.id ?? PromptMode.rewriteID
         }
         save()
     }

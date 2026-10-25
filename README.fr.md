@@ -76,7 +76,7 @@ Le raccourci de dictée ne fonctionne que dans l’éditeur source et uniquement
 - Lit directement le texte sélectionné et peut lire, depuis le résultat de traduction, le texte original comme le texte traduit.
 - Vous laisse choisir les boutons du menu de sélection et leur ordre, dans **Réglages** › **Assistant de sélection** › **Boutons du menu**. **Traduire**, **Prononcer** et n’importe quel mode de prompt peuvent devenir un bouton ; jusqu’à quatre s’affichent à la fois, les autres sont regroupés sous **Plus**. Un bouton de mode de prompt exécute ce mode sur le texte sélectionné et affiche le résultat dans le panneau avec des commandes de copie et de lecture.
 - Transforme le texte avec des modes de prompt intégrés :
-  - En anglais simple et correct
+  - En anglais simple et correct (dans votre langue d’écriture, à choisir dans Réglages › Général ; anglais par défaut)
   - Résumer (dans votre langue de traduction, qui suit par défaut la langue de l’interface)
   - Nettoyage vocal
 - Affiche le résultat dans le popover au fur et à mesure de sa génération, puis l’insère dans l’app qui avait le focus ou le copie avec le bouton de copie du résultat.

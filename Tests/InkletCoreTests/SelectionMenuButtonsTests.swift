@@ -72,7 +72,7 @@ final class SelectionMenuButtonsTests: XCTestCase {
 
     func testMenuButtonsSurviveEncoding() throws {
         var config = SelectionActionsConfig.defaultConfig()
-        config.setMenuButton(.promptMode(PromptMode.translateToEnglishID), isEnabled: true, promptModes: modes)
+        config.setMenuButton(.promptMode(PromptMode.rewriteID), isEnabled: true, promptModes: modes)
 
         let decoded = try JSONDecoder().decode(
             SelectionActionsConfig.self,

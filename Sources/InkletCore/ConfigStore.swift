@@ -91,7 +91,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
     }
 
     public var defaultVisibleModeID: String {
-        visiblePromptModes.first?.id ?? PromptMode.translateToEnglishID
+        visiblePromptModes.first?.id ?? PromptMode.rewriteID
     }
 
     public func visibleModeID(preferredModeID: String) -> String {
@@ -209,6 +209,12 @@ public struct AppConfig: Codable, Equatable, Sendable {
                    let defaultVoiceCleanupMode = defaultModes.first(where: { $0.id == PromptMode.voiceCleanupID }) {
                     migratedMode.systemPrompt = defaultVoiceCleanupMode.systemPrompt
                 }
+                if migratedMode.id == PromptMode.rewriteID,
+                   migratedMode.systemPrompt == legacyEnglishRewriteSystemPrompt,
+                   let defaultRewriteMode = defaultModes.first(where: { $0.id == PromptMode.rewriteID }) {
+                    // Same behavior while the writing language is English, its default.
+                    migratedMode.systemPrompt = defaultRewriteMode.systemPrompt
+                }
                 if migratedMode.id == PromptMode.summaryID,
                    migratedMode.name == legacyChineseSummaryName,
                    migratedMode.systemPrompt == legacyChineseSummarySystemPrompt,
@@ -235,6 +241,17 @@ public struct AppConfig: Codable, Equatable, Sendable {
         Fix punctuation, capitalization, and minor grammar issues.
         If there is no meaningful content, return an empty string.
         Return only the final cleaned text.
+        """
+    }
+
+    private static var legacyEnglishRewriteSystemPrompt: String {
+        """
+        Rewrite the user's text into simple, correct, natural English.
+        If the input is not English, translate it into English first.
+        Fix grammar, spelling, word choice, and awkward phrasing.
+        Keep the original meaning, names, numbers, formatting, and intent.
+        Do not add explanations, alternatives, quotes, or markdown.
+        Return only the final rewritten text.
         """
     }
 
