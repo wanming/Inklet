@@ -31,6 +31,8 @@ final class SettingsViewModel: ObservableObject {
     @Published var permissionRefreshID: UUID
     @Published var historyItems: [HistoryItem]
     @Published var historyFilter: HistorySource?
+    @Published private(set) var builtInModelStates: [String: BuiltInModelDownloadState]
+    @Published private(set) var localServerStatus: LocalServerStatus?
     @Published private(set) var isMigrationMaintenanceActive = false
     @Published private(set) var isMigrationWorkflowIdle = true
 
@@ -45,6 +47,9 @@ final class SettingsViewModel: ObservableObject {
     private var pronunciationPreviewTaskID: UUID?
     private var modelCatalogRefreshTask: Task<Void, Never>?
     private var modelCatalogRefreshTaskID: UUID?
+    private let builtInModelStore: BuiltInModelStore
+    private var builtInModelDownloadTasks: [String: Task<Void, Never>] = [:]
+    private var localServerRefreshTask: Task<Void, Never>?
     private var savedConfig: AppConfig
     private var savedProviderAPIKey: String
     private var savedOpenAIAPIKey: String
@@ -57,7 +62,8 @@ final class SettingsViewModel: ObservableObject {
         apiKeyStore: LocalAPIKeyStore = LocalAPIKeyStore(),
         modelCatalogService: ModelCatalogService = ModelCatalogService(),
         historyStore: any HistoryStore = JSONLHistoryStore(),
-        microphoneDeviceCatalog: MicrophoneDeviceCatalog = MicrophoneDeviceCatalog()
+        microphoneDeviceCatalog: MicrophoneDeviceCatalog = MicrophoneDeviceCatalog(),
+        builtInModelStore: BuiltInModelStore = .current()
     ) {
         let loadedConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
         self.configStore = configStore
@@ -65,6 +71,11 @@ final class SettingsViewModel: ObservableObject {
         self.modelCatalogService = modelCatalogService
         self.historyStore = historyStore
         self.microphoneDeviceCatalog = microphoneDeviceCatalog
+        self.builtInModelStore = builtInModelStore
+        self.builtInModelStates = Dictionary(uniqueKeysWithValues: BuiltInModel.all.map { model in
+            (model.id, builtInModelStore.isInstalled(model) ? .ready : .notDownloaded)
+        })
+        self.localServerStatus = nil
         self.pronunciationPreviewPlaybackService = SpeechPlaybackService()
         self.config = loadedConfig
         self.savedConfig = loadedConfig
@@ -111,9 +122,28 @@ final class SettingsViewModel: ObservableObject {
     }
 
     func providerDisplayName(_ preset: LLMProviderPreset) -> String {
-        preset.id == LLMProviderPreset.customOpenAICompatible.id
-            ? L10n.text("settings.provider.customOpenAICompatible")
-            : preset.name
+        preset.localizedName
+    }
+
+    var cloudProviders: [LLMProviderPreset] {
+        LLMProviderPreset.all.filter { !$0.runsLocally && $0.id != LLMProviderPreset.customOpenAICompatible.id }
+    }
+
+    var localProviders: [LLMProviderPreset] {
+        LLMProviderPreset.all.filter { $0.runsLocally || $0.id == LLMProviderPreset.customOpenAICompatible.id }
+    }
+
+    var showsAPIKeyField: Bool {
+        !selectedProvider.runsLocally
+    }
+
+    var isBuiltInProvider: Bool {
+        selectedProvider.isBuiltIn
+    }
+
+    /// Ollama and LM Studio: servers the user runs, whose model list Inklet reads.
+    var isLocalServerProvider: Bool {
+        selectedProvider.runsLocally && !selectedProvider.isBuiltIn
     }
 
     func selectProvider(_ providerID: String) {
@@ -129,9 +159,131 @@ final class SettingsViewModel: ObservableObject {
         openAIAPIKey = loadedOpenAIAPIKey
         savedOpenAIAPIKey = loadedOpenAIAPIKey
         isEditingCustomModel = false
+        localServerStatus = nil
         config.providerID = preset.id
-        config.model = preset.defaultModel
+        config.model = preset.isBuiltIn
+            ? BuiltInModel.recommended(forPhysicalMemoryBytes: ProcessInfo.processInfo.physicalMemory).id
+            : preset.defaultModel
         save()
+        if isLocalServerProvider {
+            refreshLocalServerModels()
+        }
+    }
+
+    // MARK: Local models
+
+    var selectedBuiltInModel: BuiltInModel {
+        BuiltInModel.model(id: config.model) ?? .recommended
+    }
+
+    var recommendedBuiltInModel: BuiltInModel {
+        BuiltInModel.recommended(forPhysicalMemoryBytes: ProcessInfo.processInfo.physicalMemory)
+    }
+
+    var isBuiltInEngineAvailable: Bool {
+        BuiltInModelServer.isEngineAvailable
+    }
+
+    func builtInModelTitle(_ builtInModel: BuiltInModel) -> String {
+        builtInModel == recommendedBuiltInModel
+            ? L10n.format("settings.localModel.recommendedOption", builtInModel.displayName)
+            : builtInModel.displayName
+    }
+
+    func builtInModelState(_ builtInModel: BuiltInModel) -> BuiltInModelDownloadState {
+        builtInModelStates[builtInModel.id] ?? .notDownloaded
+    }
+
+    func selectBuiltInModel(_ modelID: String) {
+        guard BuiltInModel.model(id: modelID) != nil else { return }
+        isEditingCustomModel = false
+        config.model = modelID
+        save()
+    }
+
+    func downloadBuiltInModel(_ builtInModel: BuiltInModel) {
+        guard !isMigrationMaintenanceActive, builtInModelDownloadTasks[builtInModel.id] == nil else { return }
+        let store = builtInModelStore
+        builtInModelStates[builtInModel.id] = .downloading(fraction: 0)
+        let reportProgress: BuiltInModelDownloader.ProgressHandler = { [weak self] received, total in
+            let fraction = total > 0 ? Double(received) / Double(total) : 0
+            Task { @MainActor [weak self] in
+                self?.updateBuiltInModelProgress(builtInModel, fraction: fraction)
+            }
+        }
+        let task = Task { [weak self] in
+            do {
+                try await BuiltInModelDownloader().download(builtInModel, into: store, progress: reportProgress)
+                self?.finishBuiltInModelDownload(builtInModel, state: .ready)
+            } catch is CancellationError {
+                self?.finishBuiltInModelDownload(builtInModel, state: .notDownloaded)
+            } catch let error as LocalModelError {
+                self?.finishBuiltInModelDownload(builtInModel, state: .failed(message: error.userFacingMessage))
+            } catch {
+                self?.finishBuiltInModelDownload(
+                    builtInModel,
+                    state: .failed(message: error.localizedDescription)
+                )
+            }
+        }
+        builtInModelDownloadTasks[builtInModel.id] = task
+        refreshMigrationWorkflowIdle()
+    }
+
+    func cancelBuiltInModelDownload(_ builtInModel: BuiltInModel) {
+        builtInModelDownloadTasks[builtInModel.id]?.cancel()
+    }
+
+    func deleteBuiltInModel(_ builtInModel: BuiltInModel) {
+        guard !isMigrationMaintenanceActive, builtInModelDownloadTasks[builtInModel.id] == nil else { return }
+        let server = BuiltInModelServer.shared
+        Task { await server.stop() }
+        do {
+            try builtInModelStore.delete(builtInModel)
+            builtInModelStates[builtInModel.id] = .notDownloaded
+        } catch {
+            message = L10n.format("settings.error.saveFailed", String(describing: error))
+        }
+    }
+
+    private func updateBuiltInModelProgress(_ builtInModel: BuiltInModel, fraction: Double) {
+        guard builtInModelDownloadTasks[builtInModel.id] != nil else { return }
+        builtInModelStates[builtInModel.id] = fraction >= 1 ? .verifying : .downloading(fraction: fraction)
+    }
+
+    private func finishBuiltInModelDownload(_ builtInModel: BuiltInModel, state: BuiltInModelDownloadState) {
+        builtInModelDownloadTasks[builtInModel.id] = nil
+        // A cancelled download keeps its partial file, so the next download resumes.
+        builtInModelStates[builtInModel.id] = builtInModelStore.isInstalled(builtInModel) ? .ready : state
+        refreshMigrationWorkflowIdle()
+    }
+
+    func refreshLocalServerModels() {
+        guard !isMigrationMaintenanceActive, isLocalServerProvider,
+              let modelsEndpoint = selectedProvider.modelsEndpoint
+        else {
+            return
+        }
+        let preset = selectedProvider
+        localServerRefreshTask?.cancel()
+        localServerStatus = .checking
+        localServerRefreshTask = Task { [weak self] in
+            let modelIDs = try? await LocalModelListClient.fetchModelIDs(
+                from: modelsEndpoint,
+                providerName: preset.name
+            )
+            guard !Task.isCancelled, let self, self.config.providerID == preset.id else { return }
+            if let modelIDs {
+                self.cachedProviderModels[preset.id] = modelIDs
+                self.localServerStatus = .connected(modelCount: modelIDs.count)
+                if !modelIDs.isEmpty, !modelIDs.contains(self.config.model), self.selectedModelIsDefault {
+                    self.config.model = modelIDs[0]
+                }
+            } else {
+                self.localServerStatus = .unreachable
+            }
+            self.localServerRefreshTask = nil
+        }
     }
 
     var filteredHistoryItems: [HistoryItem] {
@@ -148,6 +300,9 @@ final class SettingsViewModel: ObservableObject {
     var selectedProviderModelOptions: [String] {
         guard !isCustomOpenAICompatibleProvider else {
             return []
+        }
+        if isBuiltInProvider {
+            return BuiltInModel.all.map(\.id)
         }
 
         var seen = Set<String>()
@@ -175,7 +330,8 @@ final class SettingsViewModel: ObservableObject {
     }
 
     var shouldShowCustomModelField: Bool {
-        isCustomOpenAICompatibleProvider || selectedModelMenuValue == Self.customModelMenuID
+        !isBuiltInProvider
+            && (isCustomOpenAICompatibleProvider || selectedModelMenuValue == Self.customModelMenuID)
     }
 
     var selectedModelIsDefault: Bool {
@@ -246,6 +402,9 @@ final class SettingsViewModel: ObservableObject {
     }
 
     func modelMenuTitle(for modelID: String) -> String {
+        if isBuiltInProvider, let builtInModel = BuiltInModel.model(id: modelID) {
+            return builtInModelTitle(builtInModel)
+        }
         if modelID == config.model, !selectedModelIsDefault {
             return "\(modelID) *"
         }
@@ -362,6 +521,7 @@ final class SettingsViewModel: ObservableObject {
         isRefreshingModelCatalog = false
         refreshMigrationWorkflowIdle()
         guard !isMigrationMaintenanceActive else { return }
+        let localServerModels = cachedProviderModels.filter { LLMProviderPreset.preset(id: $0.key).runsLocally }
         cachedProviderModels = Dictionary(
             uniqueKeysWithValues: LLMProviderPreset.all.compactMap { preset in
                 guard let modelIDs = modelCatalogService.cachedModelIDs(for: preset.id) else {
@@ -369,7 +529,7 @@ final class SettingsViewModel: ObservableObject {
                 }
                 return (preset.id, modelIDs)
             }
-        )
+        ).merging(localServerModels) { _, local in local }
     }
 
     func addPromptMode() {
@@ -600,6 +760,8 @@ final class SettingsViewModel: ObservableObject {
             autoSaveCancellable = nil
             pronunciationPreviewTasks.values.forEach { $0.cancel() }
             modelCatalogRefreshTask?.cancel()
+            builtInModelDownloadTasks.values.forEach { $0.cancel() }
+            localServerRefreshTask?.cancel()
             pronunciationPreviewPlaybackService.stop()
             pronunciationPreviewState = nil
             refreshMigrationWorkflowIdle()
@@ -612,6 +774,9 @@ final class SettingsViewModel: ObservableObject {
     func waitForMigrationMaintenanceQuiescence() async {
         let previewTasks = Array(pronunciationPreviewTasks.values)
         for task in previewTasks {
+            await task.value
+        }
+        for task in Array(builtInModelDownloadTasks.values) {
             await task.value
         }
 
@@ -630,6 +795,7 @@ final class SettingsViewModel: ObservableObject {
             && pronunciationPreviewTasks.isEmpty
             && modelCatalogRefreshTask == nil
             && !isRefreshingModelCatalog
+            && builtInModelDownloadTasks.isEmpty
     }
 
     func openAccessibilitySettings() {

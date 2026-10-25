@@ -9,25 +9,27 @@ public enum OnboardingPolicy {
             && shortcut != .disabled
     }
 
-    public static func needsProviderSetup(providerAPIKey: String?) -> Bool {
-        providerAPIKey?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+    public static func needsProviderSetup(providerAPIKey: String?, requiresAPIKey: Bool = true) -> Bool {
+        requiresAPIKey && providerAPIKey?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
     }
 
     public static func shouldShowProviderSetupAfterReturningFromPermissionSettings(
-        providerAPIKey: String?
+        providerAPIKey: String?,
+        requiresAPIKey: Bool = true
     ) -> Bool {
-        needsProviderSetup(providerAPIKey: providerAPIKey)
+        needsProviderSetup(providerAPIKey: providerAPIKey, requiresAPIKey: requiresAPIKey)
     }
 
     public static func shouldOpenPopoverAfterClosingSettings(
         didOpenAccessibilitySettings: Bool,
         isAccessibilityTrusted: Bool,
         providerAPIKey: String?,
+        requiresAPIKey: Bool = true,
         didCompleteOnboarding: Bool
     ) -> Bool {
         didOpenAccessibilitySettings
             && isAccessibilityTrusted
-            && !needsProviderSetup(providerAPIKey: providerAPIKey)
+            && !needsProviderSetup(providerAPIKey: providerAPIKey, requiresAPIKey: requiresAPIKey)
             && !didCompleteOnboarding
     }
 

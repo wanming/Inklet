@@ -43,6 +43,8 @@ Provider handling of your data is governed by the provider's own privacy policy 
 
 Inklet may fetch the public model catalog from `models.dev` periodically, currently no more than once per day. This request does not include your text, audio, API keys, or app settings.
 
+If you choose the Built-in, Ollama, or LM Studio provider, Inklet sends writing and translation text only to a server running on your Mac. When you download a built-in model, Inklet fetches the chosen model file from Hugging Face (`huggingface.co`). This request does not include your text, audio, API keys, or app settings.
+
 ## Update Checks
 
 Production builds check GitHub Releases for public metadata about the latest stable Inklet release about once every 24 hours. Inklet Local does not schedule automatic checks, although both builds can check manually. GitHub receives ordinary connection metadata associated with this network request. The request does not include Inklet prompts, text, audio, History, API keys, provider configuration, or settings.

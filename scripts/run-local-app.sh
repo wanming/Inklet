@@ -125,6 +125,15 @@ EOF
   exit 1
 fi
 
+# The built-in local model engine is optional for local runs; the app hides it when missing.
+llama_server_path="${INKLET_LLAMA_SERVER_PATH:-}"
+if [[ -z "$llama_server_path" && "$dry_run" == "0" ]]; then
+  if ! llama_server_path="$("${repo_root}/scripts/build-llama-server.sh")"; then
+    echo "Building the built-in engine failed; continuing without it." >&2
+    llama_server_path=""
+  fi
+fi
+
 run "env INKLET_APP_NAME=${app_name} INKLET_BUNDLE_ID=${bundle_id} INKLET_OUTPUT_DIR=${output_dir} INKLET_VERSION=${INKLET_VERSION} INKLET_BUILD_NUMBER=${INKLET_BUILD_NUMBER} INKLET_SIGN_IDENTITY=<hidden> scripts/build-macos-app-bundle.sh" \
   env \
   INKLET_APP_NAME="$app_name" \
@@ -133,6 +142,7 @@ run "env INKLET_APP_NAME=${app_name} INKLET_BUNDLE_ID=${bundle_id} INKLET_OUTPUT
   INKLET_VERSION="$INKLET_VERSION" \
   INKLET_BUILD_NUMBER="$INKLET_BUILD_NUMBER" \
   INKLET_SIGN_IDENTITY="$sign_identity" \
+  INKLET_LLAMA_SERVER_PATH="$llama_server_path" \
   "${repo_root}/scripts/build-macos-app-bundle.sh"
 
 run "${repo_root}/scripts/verify-direct-app.sh ${app_path} ${bundle_id}" \

@@ -15,6 +15,8 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
     public var keychainService: String
     public var kind: LLMProviderKind
     public var endpoint: URL
+    /// Local servers (Ollama, LM Studio, the built-in engine) run on this Mac and accept requests without a key.
+    public var runsLocally: Bool
 
     public init(
         id: String,
@@ -23,7 +25,8 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         apiKeyPlaceholder: String,
         keychainService: String,
         kind: LLMProviderKind,
-        endpoint: URL
+        endpoint: URL,
+        runsLocally: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -32,6 +35,28 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         self.keychainService = keychainService
         self.kind = kind
         self.endpoint = endpoint
+        self.runsLocally = runsLocally
+    }
+
+    /// A custom endpoint may be a local server too, so its key is optional.
+    public var requiresAPIKey: Bool {
+        !runsLocally && id != "custom-openai-compatible"
+    }
+
+    public var isBuiltIn: Bool {
+        id == Self.builtIn.id
+    }
+
+    /// The OpenAI-compatible model list that sits next to a `/chat/completions` endpoint.
+    public var modelsEndpoint: URL? {
+        guard kind == .openAICompatibleChat, endpoint.lastPathComponent == "completions" else {
+            return nil
+        }
+        let chatURL = endpoint.deletingLastPathComponent()
+        guard chatURL.lastPathComponent == "chat" else {
+            return nil
+        }
+        return chatURL.deletingLastPathComponent().appendingPathComponent("models")
     }
 
     public static let openAI = LLMProviderPreset(
@@ -51,6 +76,40 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
         placeholder: "sk-...",
         service: "Inklet.CustomOpenAICompatible",
         endpoint: "https://api.example.com/v1/chat/completions"
+    )
+
+    /// Runs a bundled llama.cpp server; its endpoint is resolved when the server starts.
+    public static let builtIn = LLMProviderPreset(
+        id: "inklet-built-in",
+        name: "Inklet Built-in",
+        defaultModel: BuiltInModel.recommended.id,
+        apiKeyPlaceholder: "",
+        keychainService: "Inklet.BuiltIn",
+        kind: .openAICompatibleChat,
+        endpoint: URL(string: "http://127.0.0.1/v1/chat/completions")!,
+        runsLocally: true
+    )
+
+    public static let ollama = LLMProviderPreset(
+        id: "ollama",
+        name: "Ollama",
+        defaultModel: "qwen3.5:4b",
+        apiKeyPlaceholder: "",
+        keychainService: "Inklet.Ollama",
+        kind: .openAICompatibleChat,
+        endpoint: URL(string: "http://localhost:11434/v1/chat/completions")!,
+        runsLocally: true
+    )
+
+    public static let lmStudio = LLMProviderPreset(
+        id: "lm-studio",
+        name: "LM Studio",
+        defaultModel: "qwen/qwen3.5-4b",
+        apiKeyPlaceholder: "",
+        keychainService: "Inklet.LMStudio",
+        kind: .openAICompatibleChat,
+        endpoint: URL(string: "http://localhost:1234/v1/chat/completions")!,
+        runsLocally: true
     )
 
     public static let all: [LLMProviderPreset] = [
@@ -209,6 +268,9 @@ public struct LLMProviderPreset: Codable, Equatable, Identifiable, Sendable {
             service: "Inklet.Cerebras",
             endpoint: "https://api.cerebras.ai/v1/chat/completions"
         ),
+        .builtIn,
+        .ollama,
+        .lmStudio,
         .customOpenAICompatible
     ]
 

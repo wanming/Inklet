@@ -73,6 +73,15 @@ public struct AppConfig: Codable, Equatable, Sendable {
         return preset
     }
 
+    /// Local models may first have to load into memory, so they get at least two minutes.
+    public static let localModelMinimumTimeoutSeconds: Double = 120
+
+    public var effectiveTimeoutSeconds: Double {
+        resolvedProviderPreset.runsLocally
+            ? max(timeoutSeconds, AppConfig.localModelMinimumTimeoutSeconds)
+            : timeoutSeconds
+    }
+
     public var promptModeStore: PromptModeStore {
         PromptModeStore(modes: promptModes)
     }

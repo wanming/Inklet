@@ -280,7 +280,8 @@ final class SettingsWindowController: NSWindowController {
 
         let providerAPIKey = apiKeyStore.loadAPIKey(forProviderID: configuredProviderID)
         guard !OnboardingPolicy.shouldShowProviderSetupAfterReturningFromPermissionSettings(
-            providerAPIKey: providerAPIKey
+            providerAPIKey: providerAPIKey,
+            requiresAPIKey: configuredProviderRequiresAPIKey
         ) else {
             show(section: .general)
             return
@@ -292,6 +293,10 @@ final class SettingsWindowController: NSWindowController {
 
     private var configuredProviderID: String {
         ((try? configStore.load()) ?? AppConfig.defaultConfig()).providerID
+    }
+
+    private var configuredProviderRequiresAPIKey: Bool {
+        ((try? configStore.load()) ?? AppConfig.defaultConfig()).resolvedProviderPreset.requiresAPIKey
     }
 
     private func schedulePermissionMonitor(for permission: PermissionSettingsDestination) {
@@ -327,6 +332,7 @@ final class SettingsWindowController: NSWindowController {
             didOpenAccessibilitySettings: didOpenAccessibilitySettings,
             isAccessibilityTrusted: AccessibilityPermissionService().isTrusted,
             providerAPIKey: providerAPIKey,
+            requiresAPIKey: configuredProviderRequiresAPIKey,
             didCompleteOnboarding: userDefaults.bool(forKey: InkletPreferenceKeys.didCompleteOnboarding)
         ) else {
             return

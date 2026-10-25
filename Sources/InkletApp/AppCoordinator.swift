@@ -316,6 +316,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
 
         await windowController.cancelDictationAndWait()
         await selectionActions.finishStopping()
+        BuiltInModelServer.shared.terminateImmediately()
     }
 
     private func configureMainMenu() {

@@ -370,7 +370,11 @@ struct SettingsView: View {
 
         settingsRow(L10n.text("settings.row.provider"), help: L10n.text("settings.help.provider")) {
             Picker("", selection: selectedProviderBinding) {
-                ForEach(LLMProviderPreset.all) { preset in
+                ForEach(model.cloudProviders) { preset in
+                    Text(model.providerDisplayName(preset)).tag(preset.id)
+                }
+                Divider()
+                ForEach(model.localProviders) { preset in
                     Text(model.providerDisplayName(preset)).tag(preset.id)
                 }
             }
@@ -384,9 +388,17 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
             }
         } else {
-            settingsRow(L10n.text("settings.row.apiKey"), help: L10n.text("settings.help.apiKey")) {
-                SecureField(model.selectedProvider.apiKeyPlaceholder, text: $model.providerAPIKey)
-                    .textFieldStyle(.roundedBorder)
+            if model.isBuiltInProvider {
+                builtInModelRow
+            } else if model.isLocalServerProvider {
+                localServerRow
+            }
+
+            if model.showsAPIKeyField {
+                settingsRow(L10n.text("settings.row.apiKey"), help: L10n.text("settings.help.apiKey")) {
+                    SecureField(model.selectedProvider.apiKeyPlaceholder, text: $model.providerAPIKey)
+                        .textFieldStyle(.roundedBorder)
+                }
             }
 
             if model.isCustomOpenAICompatibleProvider {
@@ -402,6 +414,140 @@ struct SettingsView: View {
             settingsRow(L10n.text("settings.row.openAIAPIKey"), help: L10n.text("settings.help.openAIAPIKey.voiceOnly")) {
                 SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $model.openAIAPIKey)
                     .textFieldStyle(.roundedBorder)
+            }
+        }
+    }
+
+    private var builtInModelRow: some View {
+        let builtInModel = model.selectedBuiltInModel
+        let selectedBuiltInModelBinding = Binding(
+            get: { model.selectedBuiltInModel.id },
+            set: { model.selectBuiltInModel($0) }
+        )
+
+        return settingsRow(L10n.text("settings.row.localModel"), help: L10n.text("settings.help.localModel")) {
+            VStack(alignment: .leading, spacing: 8) {
+                Picker("", selection: selectedBuiltInModelBinding) {
+                    ForEach(BuiltInModel.all) { option in
+                        Text(model.builtInModelTitle(option)).tag(option.id)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+
+                Text(L10n.format(
+                    "settings.localModel.detail",
+                    builtInModel.localizedDownloadSize,
+                    builtInModel.recommendedMemoryGB
+                ))
+                .font(.system(size: 11))
+                .foregroundStyle(InkletTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+                if model.isBuiltInEngineAvailable {
+                    builtInModelDownloadControls(for: builtInModel)
+                } else {
+                    Label(L10n.text("error.localModel.engineMissing"), systemImage: "exclamationmark.triangle")
+                        .font(.system(size: 11))
+                        .foregroundStyle(InkletTheme.warning)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func builtInModelDownloadControls(for builtInModel: BuiltInModel) -> some View {
+        switch model.builtInModelState(builtInModel) {
+        case .notDownloaded:
+            Button(L10n.text("settings.localModel.download")) {
+                model.downloadBuiltInModel(builtInModel)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+        case .downloading(let fraction):
+            HStack(spacing: 10) {
+                ProgressView(value: fraction)
+                    .frame(maxWidth: 200)
+                Text(L10n.format("settings.localModel.downloading", fraction * 100))
+                    .font(.system(size: 11).monospacedDigit())
+                    .foregroundStyle(InkletTheme.textSecondary)
+                Button(L10n.text("settings.localModel.cancel")) {
+                    model.cancelBuiltInModelDownload(builtInModel)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        case .verifying:
+            HStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.small)
+                Text(L10n.text("settings.localModel.verifying"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(InkletTheme.textSecondary)
+            }
+        case .ready:
+            HStack(spacing: 10) {
+                Label(L10n.text("settings.localModel.ready"), systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(InkletTheme.primary)
+                Button(L10n.text("settings.localModel.delete")) {
+                    model.deleteBuiltInModel(builtInModel)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 6) {
+                Text(message)
+                    .font(.system(size: 11))
+                    .foregroundStyle(InkletTheme.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(L10n.text("settings.localModel.retry")) {
+                    model.downloadBuiltInModel(builtInModel)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+        }
+    }
+
+    private var localServerRow: some View {
+        settingsRow(
+            L10n.text("settings.row.localServer"),
+            help: L10n.format("settings.help.localServer", model.selectedProvider.endpoint.absoluteString)
+        ) {
+            HStack(spacing: 10) {
+                switch model.localServerStatus {
+                case .checking:
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(L10n.text("settings.localServer.checking"))
+                        .foregroundStyle(InkletTheme.textSecondary)
+                case .connected(let modelCount):
+                    Label(
+                        L10n.format("settings.localServer.connected", modelCount),
+                        systemImage: "checkmark.circle.fill"
+                    )
+                    .foregroundStyle(InkletTheme.primary)
+                case .unreachable:
+                    Text(L10n.format("settings.localServer.unreachable", model.selectedProvider.name))
+                        .foregroundStyle(InkletTheme.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                case nil:
+                    EmptyView()
+                }
+                Button(L10n.text("settings.localServer.refresh")) {
+                    model.refreshLocalServerModels()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(model.localServerStatus == .checking)
+            }
+            .font(.system(size: 11, weight: .medium))
+        }
+        .onAppear {
+            if model.localServerStatus == nil {
+                model.refreshLocalServerModels()
             }
         }
     }
@@ -548,8 +694,10 @@ struct SettingsView: View {
                             ForEach(model.selectedProviderModelOptions, id: \.self) { modelID in
                                 Text(model.modelMenuTitle(for: modelID)).tag(modelID)
                             }
-                            Divider()
-                            Text(L10n.text("settings.model.custom")).tag(SettingsViewModel.customModelMenuID)
+                            if !model.isBuiltInProvider {
+                                Divider()
+                                Text(L10n.text("settings.model.custom")).tag(SettingsViewModel.customModelMenuID)
+                            }
                         }
                         .labelsHidden()
                         .frame(maxWidth: 320, alignment: .leading)

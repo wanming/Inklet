@@ -48,11 +48,11 @@ final class InkletPopoverViewModel: ObservableObject {
     }
 
     var currentProviderName: String {
-        LLMProviderPreset.preset(id: config.providerID).name
+        LLMProviderPreset.preset(id: config.providerID).localizedName
     }
 
     var currentModelName: String {
-        config.model
+        LLMProviderPreset.preset(id: config.providerID).displayModelName(config.model)
     }
 
     var currentVoiceInputConfig: VoiceInputConfig {
@@ -614,7 +614,7 @@ final class InkletPopoverViewModel: ObservableObject {
         )
         let transformationModeID = mode.id
         let model = config.model
-        let timeoutSeconds = config.timeoutSeconds
+        let timeoutSeconds = config.effectiveTimeoutSeconds
         let providerPreset = config.resolvedProviderPreset
         let providerID = config.providerID
         let apiKeyStore = self.apiKeyStore
@@ -622,7 +622,8 @@ final class InkletPopoverViewModel: ObservableObject {
             try LocalAPIKeyProvider(
                 apiKeyStore: apiKeyStore,
                 providerID: providerID,
-                providerName: providerPreset.name
+                providerName: providerPreset.name,
+                requiresAPIKey: providerPreset.requiresAPIKey
             ).loadAPIKey()
         }
         let transformationService = transformationServiceFactory(provider)
@@ -828,11 +829,15 @@ private struct LocalAPIKeyProvider: @unchecked Sendable {
     let apiKeyStore: LocalAPIKeyStore
     let providerID: String
     let providerName: String
+    let requiresAPIKey: Bool
 
     func loadAPIKey() throws -> String {
         guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: providerID),
               !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
+            if !requiresAPIKey {
+                return ""
+            }
             throw TransformationError.provider(L10n.format("popover.error.missingAPIKey", providerName))
         }
         return apiKey
@@ -841,6 +846,10 @@ private struct LocalAPIKeyProvider: @unchecked Sendable {
 
 private extension Error {
     var userFacingMessage: String {
+        if let localModelError = self as? LocalModelError {
+            return localModelError.userFacingMessage
+        }
+
         if let transformationError = self as? TransformationError {
             switch transformationError {
             case .emptySource:

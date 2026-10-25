@@ -148,6 +148,16 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - Feedback: choose **Send Feedback…** from the menu bar menu and confirm the browser opens the GitHub new-issue chooser with the bug report and feature request forms. Check the item label in English and Chinese.
 - Save behavior: quit and reopen Inklet and confirm changes persist in the matching bundle's defaults.
 
+## Local Models
+
+- Built-in on Apple silicon: choose **Built-in**, confirm the recommended model matches this Mac's memory, download it, cancel midway, download again, and confirm it resumes rather than restarting.
+- After the download shows **Ready**, transform text and translate a selection with Wi-Fi turned off. The first request may take longer while the model loads.
+- Switch between Qwen3.5 4B and Gemma 4 E4B, delete one model, and confirm writing then asks you to download it.
+- Leave Inklet idle for more than five minutes and confirm Activity Monitor shows `llama-server` releasing its memory; quit Inklet and confirm `llama-server` exits.
+- Ollama: with Ollama closed, choose **Ollama** and confirm the connection row says it can't reach Ollama; open Ollama, click **Refresh**, and confirm the downloaded models appear. Transform text and confirm no thinking text appears in the result.
+- LM Studio: repeat the Ollama check with LM Studio's local server.
+- Confirm the API key field is hidden for local providers and the optional OpenAI key field still controls dictation and pronunciation.
+
 ## Language Switching And Layout
 
 - Run `scripts/check-localization.sh --snapshots` and inspect the printed HTML gallery. Run `swift test` as well; record automated results separately from live checks below.
