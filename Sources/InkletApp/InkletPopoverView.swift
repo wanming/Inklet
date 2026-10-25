@@ -39,6 +39,7 @@ struct InkletPopoverView: View {
     private let actionBarHeight = InkletTheme.ControlHeight.bar
     private let dividerHeight: CGFloat = 1
     private let staleResultBannerHeight: CGFloat = 28
+    private let builtInModelStripHeight: CGFloat = 40
     private let resultCardInset = InkletTheme.Spacing.xs
     private let resultTextPadding = InkletTheme.Spacing.sm
     private let resultCopyButtonInset: CGFloat = 32
@@ -101,6 +102,8 @@ struct InkletPopoverView: View {
             + inputHeight
             + (displayedResultText.isEmpty ? 0 : resultPanelHeight)
             + (model.errorMessage == nil ? 0 : dividerHeight + min(statusMeasuredHeight, 120))
+            + (model.builtInModelDownloadStatusText == nil ? 0 : dividerHeight + builtInModelStripHeight)
+            + (model.dictationModelDownloadStatusText == nil ? 0 : dividerHeight + builtInModelStripHeight)
             + dividerHeight
             + max(actionBarHeight, actionBarMeasuredHeight)
     }
@@ -175,6 +178,8 @@ struct InkletPopoverView: View {
             commandInput
             resultPanel
             statusStrip
+            builtInModelStrip
+            dictationModelStrip
             hairline
             actionBar
         }
@@ -342,6 +347,65 @@ struct InkletPopoverView: View {
             }
             .frame(height: min(statusMeasuredHeight, 120))
         }
+    }
+
+    @ViewBuilder
+    private var builtInModelStrip: some View {
+        if let state = model.builtInModelDownloadState, let statusText = model.builtInModelDownloadStatusText {
+            modelDownloadStrip(
+                state: state,
+                statusText: statusText,
+                actionTitle: model.builtInModelDownloadActionTitle,
+                action: { model.downloadBuiltInModel() }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var dictationModelStrip: some View {
+        if let state = model.dictationModelDownloadState, let statusText = model.dictationModelDownloadStatusText {
+            modelDownloadStrip(
+                state: state,
+                statusText: statusText,
+                actionTitle: model.dictationModelDownloadActionTitle,
+                action: { model.downloadDictationModel() }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func modelDownloadStrip(
+        state: BuiltInModelDownloadState,
+        statusText: String,
+        actionTitle: String?,
+        action: @escaping @MainActor () -> Void
+    ) -> some View {
+        hairline
+        HStack(spacing: 10) {
+            switch state {
+            case .downloading(let fraction):
+                ProgressView(value: fraction)
+                    .frame(width: 72)
+            case .verifying:
+                ProgressView()
+                    .controlSize(.small)
+            case .notDownloaded, .ready, .failed:
+                Image(systemName: "arrow.down.circle")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(InkletTheme.accentText)
+            }
+            Text(statusText)
+                .font(InkletTheme.Typography.caption)
+                .foregroundStyle(InkletTheme.secondaryLabel)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if let actionTitle {
+                Button(actionTitle, action: action)
+                    .buttonStyle(InkletButtonStyle(kind: .primary, size: .small))
+            }
+        }
+        .padding(.horizontal, editorHorizontalPadding)
+        .frame(height: builtInModelStripHeight)
     }
 
     private var header: some View {

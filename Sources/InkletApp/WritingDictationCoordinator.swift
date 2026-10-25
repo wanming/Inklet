@@ -1013,6 +1013,10 @@ final class WritingDictationCoordinator {
             "dictation.error.recordingUnavailable"
         case AudioRecorder.AudioRecorderError.realtimeBufferOverflow:
             "dictation.error.realtimeBufferOverflow"
+        case LocalModelError.modelNotInstalled:
+            "dictation.error.builtInModelMissing"
+        case is LocalModelError:
+            "dictation.error.builtInEngine"
         default:
             "dictation.error.fallback"
         }

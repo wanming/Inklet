@@ -16,6 +16,21 @@ final class OnboardingPolicyTests: XCTestCase {
         )
     }
 
+    func testLocalProvidersNeedNoKeyToFinishSetup() {
+        XCTAssertFalse(OnboardingPolicy.needsProviderSetup(providerAPIKey: nil, requiresAPIKey: false))
+        XCTAssertFalse(OnboardingPolicy.shouldShowProviderSetupAfterReturningFromPermissionSettings(
+            providerAPIKey: nil,
+            requiresAPIKey: false
+        ))
+        XCTAssertTrue(OnboardingPolicy.shouldOpenPopoverAfterClosingSettings(
+            didOpenAccessibilitySettings: true,
+            isAccessibilityTrusted: true,
+            providerAPIKey: nil,
+            requiresAPIKey: false,
+            didCompleteOnboarding: false
+        ))
+    }
+
     func testShowsVoiceShortcutHintOnlyWhenVoiceInputIsConfiguredAndEnabled() {
         XCTAssertTrue(OnboardingPolicy.shouldShowVoiceShortcutHint(
             openAIAPIKey: "sk-openai",

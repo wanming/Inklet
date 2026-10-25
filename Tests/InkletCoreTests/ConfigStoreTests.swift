@@ -597,6 +597,30 @@ final class ConfigStoreTests: XCTestCase {
         )
     }
 
+    func testLocalModelsGetAtLeastTwoMinutesToAnswer() {
+        var config = AppConfig.defaultConfig()
+        config.timeoutSeconds = 20
+        XCTAssertEqual(config.effectiveTimeoutSeconds, 20)
+
+        config.providerID = LLMProviderPreset.ollama.id
+        XCTAssertEqual(config.effectiveTimeoutSeconds, AppConfig.localModelMinimumTimeoutSeconds)
+
+        config.providerID = LLMProviderPreset.builtIn.id
+        config.timeoutSeconds = 300
+        XCTAssertEqual(config.effectiveTimeoutSeconds, 300)
+    }
+
+    func testConfigKeepsSelectedBuiltInModelAcrossSaves() throws {
+        var config = AppConfig.defaultConfig()
+        config.providerID = LLMProviderPreset.builtIn.id
+        config.model = BuiltInModel.gemma4E4B.id
+
+        let decoded = try JSONDecoder().decode(AppConfig.self, from: JSONEncoder().encode(config))
+
+        XCTAssertEqual(decoded.providerID, LLMProviderPreset.builtIn.id)
+        XCTAssertEqual(decoded.model, BuiltInModel.gemma4E4B.id)
+    }
+
     func testResolvedProviderPresetIgnoresInvalidCustomEndpoint() {
         var config = AppConfig.defaultConfig()
         config.providerID = LLMProviderPreset.customOpenAICompatible.id

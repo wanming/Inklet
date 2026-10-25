@@ -29,6 +29,6 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 Inklet. All rights reserved.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Inklet streams microphone audio to OpenAI during a valid Dictation hold and keeps a temporary recovery recording for that session.</string>
+	<string>Inklet uses the microphone only during a valid Dictation hold. Speech is recognized on this Mac, or by OpenAI if you choose it, and a temporary recovery recording is kept for that session.</string>
 </dict>
 </plist>

@@ -26,6 +26,9 @@ final class LLMProviderTests: XCTestCase {
                 "perplexity",
                 "together",
                 "cerebras",
+                "inklet-built-in",
+                "ollama",
+                "lm-studio",
                 "custom-openai-compatible"
             ]
         )
@@ -43,6 +46,8 @@ final class LLMProviderTests: XCTestCase {
         XCTAssertEqual(defaults["groq"], "meta-llama/llama-4-scout-17b-16e-instruct")
         XCTAssertEqual(defaults["openrouter"], "openai/gpt-5.4-mini")
         XCTAssertEqual(defaults["custom-openai-compatible"], "gpt-5-mini")
+        XCTAssertEqual(defaults["ollama"], "qwen3.5:4b")
+        XCTAssertEqual(defaults["inklet-built-in"], "gemma-4-e4b")
         XCTAssertTrue(LLMProviderPreset.all.allSatisfy { !$0.defaultModel.isEmpty })
     }
 
@@ -55,6 +60,45 @@ final class LLMProviderTests: XCTestCase {
         XCTAssertEqual(json["model"] as? String, "test-model")
         XCTAssertEqual(messages.compactMap { $0["role"] as? String }, ["system", "user"])
         XCTAssertEqual(messages.compactMap { $0["content"] as? String }, ["Rewrite clearly.", "Hello"])
+    }
+
+    func testLocalProvidersNeedNoKeyAndCloudProvidersDo() {
+        XCTAssertEqual(
+            LLMProviderPreset.all.filter(\.runsLocally).map(\.id),
+            ["inklet-built-in", "ollama", "lm-studio"]
+        )
+        XCTAssertTrue(LLMProviderPreset.all.filter(\.runsLocally).allSatisfy { !$0.requiresAPIKey })
+        XCTAssertFalse(LLMProviderPreset.customOpenAICompatible.requiresAPIKey)
+        XCTAssertTrue(LLMProviderPreset.openAI.requiresAPIKey)
+        XCTAssertTrue(LLMProviderPreset.preset(id: "deepseek").requiresAPIKey)
+        XCTAssertTrue(LLMProviderPreset.builtIn.isBuiltIn)
+        XCTAssertFalse(LLMProviderPreset.ollama.isBuiltIn)
+    }
+
+    func testLocalServerModelListSitsNextToChatCompletions() {
+        XCTAssertEqual(LLMProviderPreset.ollama.modelsEndpoint?.absoluteString, "http://localhost:11434/v1/models")
+        XCTAssertEqual(LLMProviderPreset.lmStudio.modelsEndpoint?.absoluteString, "http://localhost:1234/v1/models")
+        XCTAssertNil(LLMProviderPreset.openAI.modelsEndpoint)
+    }
+
+    func testChatCompletionDisablesReasoningOnlyForLocalServers() throws {
+        let cloudBody = try encodedJSONObject(ChatCompletionProvider.makeRequestBody(for: request))
+        let localBody = try encodedJSONObject(ChatCompletionProvider.makeRequestBody(
+            for: request,
+            disablesReasoning: true
+        ))
+
+        XCTAssertNil(cloudBody["reasoning_effort"])
+        XCTAssertEqual(localBody["reasoning_effort"] as? String, "none")
+    }
+
+    func testChatCompletionDropsInlineThinking() throws {
+        let json = #"{"choices":[{"message":{"content":"<think>\nLet me rewrite.\n</think>\n\nHi there."}}]}"#
+        let data = try XCTUnwrap(json.data(using: .utf8))
+
+        XCTAssertEqual(try ChatCompletionProvider.parseOutputText(from: data), "Hi there.")
+        XCTAssertEqual(ChatCompletionProvider.removingThinkingBlock(from: "  keep spacing "), "  keep spacing ")
+        XCTAssertEqual(ChatCompletionProvider.removingThinkingBlock(from: "<think>unfinished"), "")
     }
 
     func testChatCompletionParsesResponseText() throws {

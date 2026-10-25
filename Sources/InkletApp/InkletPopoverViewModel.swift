@@ -20,6 +20,10 @@ final class InkletPopoverViewModel: ObservableObject {
     @Published var appearance: AppAppearance
     @Published var voiceShortcutHint: VoiceInputConfig.Shortcut?
     @Published private(set) var dictationPhase: WritingDictationCoordinator.Phase = .idle
+    /// Set while the selected built-in model can't run yet, so the popover shows its download.
+    @Published private(set) var builtInModelDownloadState: BuiltInModelDownloadState?
+    /// Set while built-in dictation is on but its speech model isn't ready yet.
+    @Published private(set) var dictationModelDownloadState: BuiltInModelDownloadState?
 
     var onHidePopover: (() -> Void)?
     var onFocusPopover: (() -> Void)?
@@ -48,11 +52,79 @@ final class InkletPopoverViewModel: ObservableObject {
     }
 
     var currentProviderName: String {
-        LLMProviderPreset.preset(id: config.providerID).name
+        LLMProviderPreset.preset(id: config.providerID).localizedName
     }
 
     var currentModelName: String {
-        config.model
+        LLMProviderPreset.preset(id: config.providerID).displayModelName(config.model)
+    }
+
+    var builtInModelDownloadStatusText: String? {
+        guard let state = builtInModelDownloadState, let builtInModel = BuiltInModel.model(id: config.model) else {
+            return nil
+        }
+        switch state {
+        case .notDownloaded:
+            return L10n.format(
+                "popover.localModel.needsDownload",
+                builtInModel.displayName,
+                builtInModel.localizedDownloadSize
+            )
+        case .downloading(let fraction):
+            return L10n.format("popover.localModel.downloading", builtInModel.displayName, fraction * 100)
+        case .verifying:
+            return L10n.format("popover.localModel.verifying", builtInModel.displayName)
+        case .ready:
+            return nil
+        case .failed(let message):
+            return message
+        }
+    }
+
+    var builtInModelDownloadActionTitle: String? {
+        switch builtInModelDownloadState {
+        case .notDownloaded:
+            L10n.text("settings.localModel.download")
+        case .failed:
+            L10n.text("settings.localModel.retry")
+        case .downloading, .verifying, .ready, nil:
+            nil
+        }
+    }
+
+    /// The writing model's download comes first, so the dictation strip waits until it's done.
+    var dictationModelDownloadStatusText: String? {
+        guard builtInModelDownloadState == nil, let state = dictationModelDownloadState else {
+            return nil
+        }
+        let dictationModel = BuiltInDictationModel.recommended
+        switch state {
+        case .notDownloaded:
+            return L10n.format(
+                "popover.dictationModel.needsDownload",
+                dictationModel.displayName,
+                dictationModel.localizedDownloadSize
+            )
+        case .downloading(let fraction):
+            return L10n.format("popover.localModel.downloading", dictationModel.displayName, fraction * 100)
+        case .verifying:
+            return L10n.format("popover.localModel.verifying", dictationModel.displayName)
+        case .ready:
+            return nil
+        case .failed(let message):
+            return message
+        }
+    }
+
+    var dictationModelDownloadActionTitle: String? {
+        switch dictationModelDownloadState {
+        case .notDownloaded:
+            L10n.text("settings.localModel.download")
+        case .failed:
+            L10n.text("settings.localModel.retry")
+        case .downloading, .verifying, .ready, nil:
+            nil
+        }
     }
 
     var currentVoiceInputConfig: VoiceInputConfig {
@@ -108,6 +180,8 @@ final class InkletPopoverViewModel: ObservableObject {
     private let apiKeyStore: LocalAPIKeyStore
     private let insertionService: InsertionService
     private let transformationServiceFactory: (any LLMProvider) -> TransformationService
+    private static let localModelWarmUpInterval: TimeInterval = 60
+    private var lastLocalModelWarmUp: (model: String, date: Date)?
     private let historyStore: any HistoryStore
     private let writingModePreferenceStore: WritingModePreferenceStore
     private let resultPasteboard: NSPasteboard
@@ -124,6 +198,7 @@ final class InkletPopoverViewModel: ObservableObject {
     private var sourceDictationPresentationSnapshot: SourceDictationPresentationSnapshot?
     private var isRestoringSourceDictationPresentation = false
     private var languageCancellable: AnyCancellable?
+    private var builtInModelDownloadsCancellable: AnyCancellable?
     private var dictationErrorMessage: String?
 
     init(
@@ -165,6 +240,12 @@ final class InkletPopoverViewModel: ObservableObject {
             .sink { [weak self] _ in
                 self?.refreshLocalizedContent()
             }
+        refreshBuiltInModelDownloadState(BuiltInModelDownloads.shared.states)
+        builtInModelDownloadsCancellable = BuiltInModelDownloads.shared.$states
+            .dropFirst()
+            .sink { [weak self] states in
+                self?.refreshBuiltInModelDownloadState(states)
+            }
     }
 
     private func refreshLocalizedContent() {
@@ -195,6 +276,9 @@ final class InkletPopoverViewModel: ObservableObject {
             config: config
         )
         modes = Self.resolvedVisibleModes(from: config)
+        refreshBuiltInModelDownloadState(BuiltInModelDownloads.shared.states)
+        warmUpLocalModelIfNeeded()
+        BuiltInDictationResidency.shared.popoverWillOpen(voiceInput: config.voiceInput)
         popoverSession = WritingPopoverSessionState(selectedModeID: selectedModeID)
         modePickerState = WritingModePickerState(
             items: Self.modePickerItems(for: modes),
@@ -236,6 +320,53 @@ final class InkletPopoverViewModel: ObservableObject {
         isTransforming = false
         isInserting = false
         streamingResultText = ""
+    }
+
+    /// Local models unload after a few idle minutes, so start loading as the popover opens and the
+    /// model is usually ready by the time the person has typed their text.
+    private func warmUpLocalModelIfNeeded(now: Date = Date()) {
+        let providerPreset = config.resolvedProviderPreset
+        guard providerPreset.runsLocally else { return }
+        let model = config.model
+        if let lastLocalModelWarmUp,
+           lastLocalModelWarmUp.model == model,
+           now.timeIntervalSince(lastLocalModelWarmUp.date) < Self.localModelWarmUpInterval {
+            return
+        }
+        lastLocalModelWarmUp = (model, now)
+        let provider = LLMProviderFactory.provider(for: providerPreset) { "" }
+        Task.detached(priority: .utility) {
+            await provider.warmUp(model: model)
+        }
+    }
+
+    /// `states` is passed in because the published value is sent before the store holds it.
+    private func refreshBuiltInModelDownloadState(_ states: [String: BuiltInModelDownloadState]) {
+        refreshDictationModelDownloadState(states)
+        guard config.resolvedProviderPreset.isBuiltIn, let builtInModel = BuiltInModel.model(id: config.model) else {
+            builtInModelDownloadState = nil
+            return
+        }
+        let state = states[builtInModel.id] ?? .notDownloaded
+        builtInModelDownloadState = state == .ready ? nil : state
+    }
+
+    func downloadBuiltInModel() {
+        guard let builtInModel = BuiltInModel.model(id: config.model) else { return }
+        BuiltInModelDownloads.shared.download(builtInModel)
+    }
+
+    private func refreshDictationModelDownloadState(_ states: [String: BuiltInModelDownloadState]) {
+        guard config.voiceInput.isEnabled, config.voiceInput.usesBuiltInEngine else {
+            dictationModelDownloadState = nil
+            return
+        }
+        let state = BuiltInModelDownloads.shared.state(of: BuiltInDictationModel.recommended, in: states)
+        dictationModelDownloadState = state == .ready ? nil : state
+    }
+
+    func downloadDictationModel() {
+        BuiltInModelDownloads.shared.download(BuiltInDictationModel.recommended)
     }
 
     private func refreshVoiceShortcutHint() {
@@ -427,6 +558,10 @@ final class InkletPopoverViewModel: ObservableObject {
         guard !isBusy else {
             return
         }
+        // Until the built-in model is downloaded, the download strip says why nothing is generated.
+        if builtInModelDownloadState != nil, resultText.isEmpty || isResultStale {
+            return
+        }
 
         errorMessage = nil
         if !resultText.isEmpty, isResultStale {
@@ -614,7 +749,7 @@ final class InkletPopoverViewModel: ObservableObject {
         )
         let transformationModeID = mode.id
         let model = config.model
-        let timeoutSeconds = config.timeoutSeconds
+        let timeoutSeconds = config.effectiveTimeoutSeconds
         let providerPreset = config.resolvedProviderPreset
         let providerID = config.providerID
         let apiKeyStore = self.apiKeyStore
@@ -622,7 +757,8 @@ final class InkletPopoverViewModel: ObservableObject {
             try LocalAPIKeyProvider(
                 apiKeyStore: apiKeyStore,
                 providerID: providerID,
-                providerName: providerPreset.name
+                providerName: providerPreset.name,
+                requiresAPIKey: providerPreset.requiresAPIKey
             ).loadAPIKey()
         }
         let transformationService = transformationServiceFactory(provider)
@@ -828,11 +964,15 @@ private struct LocalAPIKeyProvider: @unchecked Sendable {
     let apiKeyStore: LocalAPIKeyStore
     let providerID: String
     let providerName: String
+    let requiresAPIKey: Bool
 
     func loadAPIKey() throws -> String {
         guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: providerID),
               !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
+            if !requiresAPIKey {
+                return ""
+            }
             throw TransformationError.provider(L10n.format("popover.error.missingAPIKey", providerName))
         }
         return apiKey
@@ -841,6 +981,10 @@ private struct LocalAPIKeyProvider: @unchecked Sendable {
 
 private extension Error {
     var userFacingMessage: String {
+        if let localModelError = self as? LocalModelError {
+            return localModelError.userFacingMessage
+        }
+
         if let transformationError = self as? TransformationError {
             switch transformationError {
             case .emptySource:

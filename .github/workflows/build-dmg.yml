@@ -154,6 +154,8 @@ jobs:
         run: |
           set -euo pipefail
 
+          INKLET_LLAMA_SERVER_PATH="$(scripts/build-llama-server.sh)"
+          export INKLET_LLAMA_SERVER_PATH
           INKLET_SIGN_IDENTITY="$APPLE_SIGNING_IDENTITY" scripts/build-macos-app-bundle.sh
           scripts/verify-direct-app.sh "dist/release/Inklet.app" "com.tomwan.inklet" --release
 

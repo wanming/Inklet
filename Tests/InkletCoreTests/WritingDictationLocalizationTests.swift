@@ -19,6 +19,14 @@ final class WritingDictationLocalizationTests: XCTestCase {
         "settings.help.microphone",
         "settings.row.fallbackSpeechModel",
         "settings.help.fallbackSpeechModel",
+        "settings.row.dictationEngine",
+        "settings.help.dictationEngine",
+        "settings.dictationEngine.builtIn",
+        "settings.dictationEngine.openAI",
+        "settings.row.dictationModel",
+        "settings.help.dictationModel",
+        "settings.dictationModel.detail",
+        "popover.dictationModel.needsDownload",
         "dictation.hint.hold",
         "dictation.status.connecting",
         "dictation.status.listening",
@@ -46,6 +54,8 @@ final class WritingDictationLocalizationTests: XCTestCase {
         "dictation.error.finalTimeout",
         "dictation.error.fallback",
         "dictation.error.noSpeech",
+        "dictation.error.builtInModelMissing",
+        "dictation.error.builtInEngine",
     ]
 
     private let retiredKeysAndSymbols = [

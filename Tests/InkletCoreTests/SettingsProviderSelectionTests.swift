@@ -59,6 +59,92 @@ final class SettingsProviderSelectionTests: XCTestCase {
     }
 
     @MainActor
+    func testWelcomeGuideWalksEveryStepAndFinishesOnTheLast() throws {
+        let (settings, _) = try makeModel(keychain: ProviderSelectionKeychainClient())
+        let guide = WelcomeGuideViewModel(settings: settings)
+        var didFinish = false
+        guide.onFinish = { didFinish = true }
+
+        XCTAssertEqual(guide.step, .welcome)
+        for _ in 1..<WelcomeGuideViewModel.Step.allCases.count {
+            guide.performPrimaryAction()
+        }
+        XCTAssertEqual(guide.step, .ready)
+        XCTAssertFalse(didFinish)
+
+        guide.goBack()
+        XCTAssertEqual(guide.step, .dictation)
+        guide.performPrimaryAction()
+        guide.performPrimaryAction()
+        XCTAssertTrue(didFinish)
+    }
+
+    @MainActor
+    func testWelcomeGuideCloudChoiceSavesTheOpenAIKey() throws {
+        let keychain = ProviderSelectionKeychainClient()
+        let (settings, configStore) = try makeModel(keychain: keychain)
+        settings.selectProvider(LLMProviderPreset.builtIn.id)
+        let guide = WelcomeGuideViewModel(settings: settings)
+        guide.performPrimaryAction()
+        guide.performPrimaryAction()
+        XCTAssertEqual(guide.step, .writingModel)
+
+        guide.selectWritingChoice(.builtIn)
+        guide.selectWritingChoice(.cloud)
+        settings.providerAPIKey = "sk-guide"
+        guide.performPrimaryAction()
+
+        XCTAssertEqual(guide.step, .dictation)
+        XCTAssertEqual(try configStore.load().providerID, LLMProviderPreset.openAI.id)
+        XCTAssertEqual(keychain.value(forAccount: LLMProviderPreset.openAI.id), "sk-guide")
+    }
+
+    @MainActor
+    func testWelcomeGuideCloudCardCanPickAnyCloudProvider() throws {
+        let keychain = ProviderSelectionKeychainClient()
+        let (settings, configStore) = try makeModel(keychain: keychain)
+        settings.selectProvider(LLMProviderPreset.builtIn.id)
+        let guide = WelcomeGuideViewModel(settings: settings)
+        while guide.step != .writingModel {
+            guide.performPrimaryAction()
+        }
+
+        XCTAssertTrue(guide.cloudProviderOptions.contains { $0.id == "deepseek" })
+        XCTAssertFalse(guide.cloudProviderOptions.contains { $0.runsLocally })
+        guide.selectCloudProvider("deepseek")
+        XCTAssertEqual(guide.writingChoice, .cloud)
+        XCTAssertTrue(guide.needsCloudAPIKey)
+        settings.providerAPIKey = "sk-deepseek"
+        guide.performPrimaryAction()
+
+        XCTAssertEqual(try configStore.load().providerID, "deepseek")
+        XCTAssertEqual(keychain.value(forAccount: "deepseek"), "sk-deepseek")
+        guide.goBack()
+        guide.selectWritingChoice(.builtIn)
+        guide.selectWritingChoice(.cloud)
+        XCTAssertEqual(settings.config.providerID, "deepseek")
+    }
+
+    @MainActor
+    func testWelcomeGuideSavesShortcutsOnTheModelAndDictationSteps() throws {
+        let (settings, configStore) = try makeModel(keychain: ProviderSelectionKeychainClient())
+        let guide = WelcomeGuideViewModel(settings: settings)
+        while guide.step != .writingModel {
+            guide.performPrimaryAction()
+        }
+
+        settings.config.hotkey = "⌘⇧K"
+        guide.performPrimaryAction()
+        XCTAssertEqual(guide.step, .dictation)
+        XCTAssertEqual(try configStore.load().hotkey, "⌘⇧K")
+
+        settings.config.voiceInput.shortcut = .leftCommand
+        guide.performPrimaryAction()
+        XCTAssertEqual(guide.step, .ready)
+        XCTAssertEqual(try configStore.load().voiceInput.shortcut, .leftCommand)
+    }
+
+    @MainActor
     private func makeModel(
         keychain: ProviderSelectionKeychainClient
     ) throws -> (SettingsViewModel, UserDefaultsConfigStore) {
@@ -84,6 +170,71 @@ final class SettingsProviderSelectionTests: XCTestCase {
             historyStore: JSONLHistoryStore(fileURL: historyURL)
         )
         return (model, configStore)
+    }
+}
+
+final class LocalAPIKeyFileStoreTests: XCTestCase {
+    private func makeStore(
+        keychain: ProviderSelectionKeychainClient
+    ) -> (LocalAPIKeyStore, APIKeyFileStore) {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LocalAPIKeyFileStoreTests-\(UUID().uuidString)", isDirectory: true)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let fileStore = APIKeyFileStore(fileURL: directory.appendingPathComponent(APIKeyFileStore.fileName))
+        let store = LocalAPIKeyStore(fileStore: fileStore) { providerID in
+            KeychainStore(service: "file-store-test", account: providerID, client: keychain)
+        }
+        return (store, fileStore)
+    }
+
+    func testKeychainKeyFromAnEarlierVersionIsCopiedToTheFileAndKeptInTheKeychain() {
+        let keychain = ProviderSelectionKeychainClient(values: ["openai": "sk-old"])
+        let (store, fileStore) = makeStore(keychain: keychain)
+
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "openai"), "sk-old")
+        XCTAssertEqual(fileStore.loadAPIKey(forProviderID: "openai"), "sk-old")
+        // An earlier version only reads the Keychain, so going back keeps the key.
+        XCTAssertEqual(keychain.value(forAccount: "openai"), "sk-old")
+    }
+
+    func testFileKeyWinsOverADifferentKeychainKey() throws {
+        let keychain = ProviderSelectionKeychainClient(values: ["openai": "sk-keychain"])
+        let (store, fileStore) = makeStore(keychain: keychain)
+        try fileStore.saveAPIKey("sk-file", forProviderID: "openai")
+
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "openai"), "sk-file")
+    }
+
+    func testNewUserHasNoKeyAndNoFile() {
+        let (store, fileStore) = makeStore(keychain: ProviderSelectionKeychainClient())
+
+        XCTAssertNil(store.loadAPIKey(forProviderID: "openai"))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fileStore.fileURL.path))
+    }
+
+    func testClearingAKeyAlsoRemovesTheKeychainCopySoItDoesNotComeBack() throws {
+        let keychain = ProviderSelectionKeychainClient(values: ["openai": "sk-old"])
+        let (store, _) = makeStore(keychain: keychain)
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "openai"), "sk-old")
+
+        try store.saveAPIKey("", forProviderID: "openai")
+
+        XCTAssertNil(keychain.value(forAccount: "openai"))
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "openai"), "")
+
+        try store.deleteAPIKey(forProviderID: "openai")
+        XCTAssertNil(store.loadAPIKey(forProviderID: "openai"))
+    }
+
+    func testKeyFileIsReadableOnlyByTheCurrentUser() throws {
+        let (store, fileStore) = makeStore(keychain: ProviderSelectionKeychainClient())
+        try store.saveAPIKey("sk-new", forProviderID: "deepseek")
+
+        let attributes = try FileManager.default.attributesOfItem(atPath: fileStore.fileURL.path)
+        XCTAssertEqual((attributes[.posixPermissions] as? NSNumber)?.intValue, 0o600)
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "deepseek"), "sk-new")
     }
 }
 

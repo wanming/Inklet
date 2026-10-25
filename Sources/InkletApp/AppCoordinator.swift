@@ -53,6 +53,10 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     private let windowController: InkletPopoverWindowController
     private let settingsController: SettingsWindowController
     private let aboutController: AboutWindowController
+    private var welcomeGuideController: WelcomeGuideWindowController?
+    private var whatsNewController: WhatsNewWindowController?
+    private var pendingWhatsNewReleases: [WhatsNewRelease] = []
+    private var whatsNewTask: Task<Void, Never>?
     private let hotkeyManager: GlobalHotkeyManager
     private let configStore: UserDefaultsConfigStore
     private let accessibilityPermissionService: AccessibilityPermissionService
@@ -105,6 +109,11 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         let apiKeyStore = LocalAPIKeyStore()
         let migrationPresentationModel = LegacyMigrationPresentationModel(outcome: migrationOutcome)
         let accessibilityPermissionService = AccessibilityPermissionService()
+        AppCoordinator.prepareWelcomeGuideIfNewInstall(
+            configStore: configStore,
+            apiKeyStore: apiKeyStore,
+            migrationOutcome: migrationOutcome
+        )
 
         self.migrationOutcome = migrationOutcome
         self.migrator = migrator
@@ -271,8 +280,12 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
 
         registerConfiguredHotkey()
         windowController.reloadDictationConfiguration()
+        BuiltInDictationResidency.shared.start()
         selectionActions.configureSelectionActions()
-        showPermissionSettingsIfNeeded()
+        if !showWelcomeGuideIfPending() {
+            showPermissionSettingsIfNeeded()
+        }
+        prepareWhatsNew()
         installSettingsShortcutMonitor()
         refreshMigrationImportEligibility()
         settingsController.showMigrationNotice()
@@ -283,6 +296,8 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         isStopping = true
         updateCheckCoordinator.stop()
         automaticUpdatePresentationGate.cancel()
+        whatsNewTask?.cancel()
+        whatsNewTask = nil
         if let configObserver {
             NotificationCenter.default.removeObserver(configObserver)
             self.configObserver = nil
@@ -316,6 +331,8 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
 
         await windowController.cancelDictationAndWait()
         await selectionActions.finishStopping()
+        BuiltInModelServer.shared.terminateImmediately()
+        BuiltInDictationResidency.shared.terminateImmediately()
     }
 
     private func configureMainMenu() {
@@ -608,6 +625,139 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         showSettings(section: .general)
     }
 
+    /// A new install starts with the built-in model when this Mac can run it; the welcome guide then
+    /// downloads it. This runs before the settings and popover models load the config.
+    private static func prepareWelcomeGuideIfNewInstall(
+        configStore: UserDefaultsConfigStore,
+        apiKeyStore: LocalAPIKeyStore,
+        migrationOutcome: LegacySandboxMigrationOutcome
+    ) {
+        let userDefaults = UserDefaults.standard
+        guard !configStore.hasSavedConfig else { return }
+        let hasSavedAPIKey = LLMProviderPreset.all.contains { preset in
+            apiKeyStore.loadAPIKey(forProviderID: preset.id)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty == false
+        }
+        guard OnboardingPolicy.isNewInstall(
+            hasSavedConfig: false,
+            hasSavedAPIKey: hasSavedAPIKey,
+            didCompleteOnboarding: userDefaults.bool(forKey: InkletPreferenceKeys.didCompleteOnboarding),
+            hasPendingMigration: migrationOutcome.hasIncompleteComponents
+        ) else {
+            return
+        }
+        // Inklet otherwise starts in English; following the system opens the guide in the Mac's language.
+        if userDefaults.string(forKey: InkletPreferenceKeys.interfaceLanguage) == nil {
+            InkletLanguageStore.selectedLanguage = .system
+        }
+        if let config = OnboardingPolicy.initialConfig(
+            isEngineAvailable: BuiltInModelServer.isEngineAvailable,
+            physicalMemoryBytes: ProcessInfo.processInfo.physicalMemory
+        ) {
+            try? configStore.save(config)
+        }
+    }
+
+    /// Shown to new installs and, once per guide version, to existing users after an update. Returns
+    /// false when the guide is already done, so the usual permission check runs instead.
+    private func showWelcomeGuideIfPending() -> Bool {
+        guard OnboardingPolicy.shouldShowWelcomeGuide(
+            completedVersion: UserDefaults.standard.integer(forKey: InkletPreferenceKeys.completedWelcomeGuideVersion),
+            hasPendingMigration: migrationOutcome.hasIncompleteComponents
+        ) else {
+            return false
+        }
+        let controller = welcomeGuideController ?? WelcomeGuideWindowController(
+            settings: settingsController.settingsModel,
+            onAccessibilityTrusted: {
+                NotificationCenter.default.post(name: .inkletAccessibilityDidBecomeTrusted, object: nil)
+            },
+            onFinish: { [weak self] in
+                self?.finishWelcomeGuide()
+            }
+        )
+        welcomeGuideController = controller
+        controller.show()
+        return true
+    }
+
+    private func finishWelcomeGuide() {
+        let userDefaults = UserDefaults.standard
+        userDefaults.set(true, forKey: InkletPreferenceKeys.didCompleteOnboarding)
+        userDefaults.set(OnboardingPolicy.welcomeGuideVersion, forKey: InkletPreferenceKeys.completedWelcomeGuideVersion)
+        welcomeGuideController?.close()
+        welcomeGuideController = nil
+        openPopover()
+    }
+
+    /// Release notes show once, on the first launch after an update. People open the new version
+    /// themselves after installing it, so they are looking at Inklet; the window still waits until
+    /// Inklet is idle and never takes focus from another app.
+    private func prepareWhatsNew() {
+        let userDefaults = UserDefaults.standard
+        guard let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        else {
+            return
+        }
+        let lastSeenVersion = userDefaults.string(forKey: InkletPreferenceKeys.lastSeenWhatsNewVersion)
+        pendingWhatsNewReleases = WhatsNewCatalog.releases(for: WhatsNewPolicy.unseenVersions(
+            withNotes: WhatsNewCatalog.versions,
+            currentVersion: currentVersion,
+            lastSeenVersion: lastSeenVersion,
+            isWelcomeGuideShowing: welcomeGuideController != nil
+        ))
+        if lastSeenVersion.map({ WhatsNewPolicy.isNewer(currentVersion, than: $0) }) ?? true {
+            userDefaults.set(currentVersion, forKey: InkletPreferenceKeys.lastSeenWhatsNewVersion)
+        }
+        guard !pendingWhatsNewReleases.isEmpty else { return }
+        whatsNewTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(2.5))
+            while !Task.isCancelled {
+                guard let self, !self.pendingWhatsNewReleases.isEmpty else { return }
+                if self.canPresentWhatsNew {
+                    self.presentPendingWhatsNew()
+                    return
+                }
+                try? await Task.sleep(for: .seconds(3))
+            }
+        }
+    }
+
+    private var canPresentWhatsNew: Bool {
+        welcomeGuideController == nil
+            && whatsNewController?.window?.isVisible != true
+            && windowController.window?.isVisible != true
+            && canPresentAutomaticUpdate
+    }
+
+    private func presentPendingWhatsNew() {
+        let releases = pendingWhatsNewReleases
+        pendingWhatsNewReleases = []
+        whatsNewTask = nil
+        showWhatsNew(releases, style: .update, activating: false)
+    }
+
+    @objc func openChangelog() {
+        guard !isStopping else { return }
+        showWhatsNew(WhatsNewCatalog.changelog(upTo: currentAppVersion), style: .changelog, activating: true)
+    }
+
+    private var currentAppVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
+
+    private func showWhatsNew(_ releases: [WhatsNewRelease], style: WhatsNewView.Style, activating: Bool) {
+        whatsNewController?.close()
+        let controller = WhatsNewWindowController(
+            releases: releases,
+            style: style,
+            currentVersion: currentAppVersion
+        )
+        whatsNewController = controller
+        controller.show(activating: activating)
+    }
+
     private func configureStatusItemIcon() {
         statusItem.length = NSStatusItem.squareLength
         statusItem.button?.attributedTitle = NSAttributedString()
@@ -705,6 +855,13 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
             NSMenuItem(
                 title: L10n.text("app.menu.sendFeedback"),
                 action: #selector(sendFeedback),
+                keyEquivalent: ""
+            )
+        )
+        menu.addItem(
+            NSMenuItem(
+                title: L10n.text("app.menu.changelog"),
+                action: #selector(openChangelog),
                 keyEquivalent: ""
             )
         )

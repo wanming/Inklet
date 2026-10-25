@@ -107,7 +107,7 @@ final class UpdateCheckDocumentationTests: XCTestCase {
         }
         XCTAssertEqual(
             updateLines,
-            ["Last updated: September 5, 2026"],
+            ["Last updated: October 25, 2026"],
             "Privacy policy must carry the update-check disclosure date"
         )
 

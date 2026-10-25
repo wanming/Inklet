@@ -19,6 +19,8 @@ app_path="${output_dir}/${app_name}.app"
 contents_dir="${app_path}/Contents"
 resources_dir="${contents_dir}/Resources"
 macos_dir="${contents_dir}/MacOS"
+# Optional path to a llama-server binary from scripts/build-llama-server.sh for the built-in engine.
+llama_server_path="${INKLET_LLAMA_SERVER_PATH:-}"
 
 echo "Building ${app_name} release binary..."
 swift build --package-path "$repo_root" -c release --product Inklet
@@ -41,6 +43,13 @@ rm -rf "$app_path"
 mkdir -p "$macos_dir" "$resources_dir"
 
 cp "$executable_path" "${macos_dir}/${app_name}"
+if [[ -n "$llama_server_path" ]]; then
+  if [[ ! -x "$llama_server_path" ]]; then
+    echo "Missing llama-server binary: ${llama_server_path}" >&2
+    exit 1
+  fi
+  cp "$llama_server_path" "${macos_dir}/llama-server"
+fi
 cp "${support_dir}/Info.plist" "${contents_dir}/Info.plist"
 cp "${repo_root}/Assets/AppIcon.icns" "${resources_dir}/AppIcon.icns"
 ditto "$resource_bundle_path" "${resources_dir}/Inklet_InkletCore.bundle"
@@ -65,6 +74,18 @@ if ! signing_temp_dir="$(mktemp -d "${TMPDIR:-/tmp}/inklet-app-signing.XXXXXX" 2
   exit 1
 fi
 trap 'rm -rf "$signing_temp_dir" >/dev/null 2>&1' EXIT
+if [[ -n "$llama_server_path" ]]; then
+  # Nested code is signed first, without the app's entitlements.
+  helper_codesign_arguments=(--force --sign "$sign_identity" --options runtime)
+  if [[ "$require_timestamp" == "1" ]]; then
+    helper_codesign_arguments+=(--timestamp)
+  fi
+  if ! codesign "${helper_codesign_arguments[@]}" "${macos_dir}/llama-server" \
+    >"${signing_temp_dir}/codesign-helper.log" 2>&1; then
+    echo "Signing failed." >&2
+    exit 1
+  fi
+fi
 if ! codesign "${codesign_arguments[@]}" "$app_path" >"${signing_temp_dir}/codesign.log" 2>&1; then
   echo "Signing failed." >&2
   exit 1

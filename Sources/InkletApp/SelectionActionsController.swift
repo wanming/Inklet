@@ -555,6 +555,9 @@ final class SelectionActionsController {
                     guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: providerID),
                           !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     else {
+                        if !providerPreset.requiresAPIKey {
+                            return ""
+                        }
                         throw TransformationError.provider(L10n.format("popover.error.missingAPIKey", providerPreset.name))
                     }
                     return apiKey
@@ -575,7 +578,7 @@ final class SelectionActionsController {
                     systemPrompt: systemPrompt,
                     model: config.model,
                     providerID: providerID,
-                    timeoutSeconds: config.timeoutSeconds
+                    timeoutSeconds: config.effectiveTimeoutSeconds
                 )
                 guard !Task.isCancelled, !isStopping, !isMigrationMaintenanceActive else { return }
                 try? self.historyStore.append(HistoryItem(
@@ -596,7 +599,8 @@ final class SelectionActionsController {
             } catch {
                 if !self.isStopping, !self.isMigrationMaintenanceActive {
                     self.selectionActionWindowController.showTranslationError(
-                        L10n.text("selection.action.translationFailed")
+                        (error as? LocalModelError)?.userFacingMessage
+                            ?? L10n.text("selection.action.translationFailed")
                     )
                 }
             }

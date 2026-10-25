@@ -382,7 +382,11 @@ struct SettingsView: View {
 
         settingsRow(L10n.text("settings.row.provider"), help: L10n.text("settings.help.provider")) {
             Picker("", selection: selectedProviderBinding) {
-                ForEach(LLMProviderPreset.all) { preset in
+                ForEach(model.cloudProviders) { preset in
+                    Text(model.providerDisplayName(preset)).tag(preset.id)
+                }
+                Divider()
+                ForEach(model.localProviders) { preset in
                     Text(model.providerDisplayName(preset)).tag(preset.id)
                 }
             }
@@ -396,9 +400,17 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
             }
         } else {
-            settingsRow(L10n.text("settings.row.apiKey"), help: L10n.text("settings.help.apiKey")) {
-                SecureField(model.selectedProvider.apiKeyPlaceholder, text: $model.providerAPIKey)
-                    .textFieldStyle(.roundedBorder)
+            if model.isBuiltInProvider {
+                builtInModelRow
+            } else if model.isLocalServerProvider {
+                localServerRow
+            }
+
+            if model.showsAPIKeyField {
+                settingsRow(L10n.text("settings.row.apiKey"), help: L10n.text("settings.help.apiKey")) {
+                    SecureField(model.selectedProvider.apiKeyPlaceholder, text: $model.providerAPIKey)
+                        .textFieldStyle(.roundedBorder)
+                }
             }
 
             if model.isCustomOpenAICompatibleProvider {
@@ -410,10 +422,157 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 }
             }
+        }
+    }
 
-            settingsRow(L10n.text("settings.row.openAIAPIKey"), help: L10n.text("settings.help.openAIAPIKey.voiceOnly")) {
+    /// The OpenAI key that pronunciation and OpenAI dictation need when writing uses another provider.
+    /// It shows next to the feature that needs it instead of in General; every copy edits the same key.
+    @ViewBuilder
+    private func openAIVoiceKeyRow(help: String) -> some View {
+        if !model.usesOpenAIForWriting {
+            settingsRow(L10n.text("settings.row.openAIAPIKey"), help: help) {
                 SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $model.openAIAPIKey)
                     .textFieldStyle(.roundedBorder)
+            }
+        }
+    }
+
+    private var builtInModelRow: some View {
+        let builtInModel = model.selectedBuiltInModel
+        let selectedBuiltInModelBinding = Binding(
+            get: { model.selectedBuiltInModel.id },
+            set: { model.selectBuiltInModel($0) }
+        )
+
+        return settingsRow(L10n.text("settings.row.localModel"), help: L10n.text("settings.help.localModel")) {
+            VStack(alignment: .leading, spacing: 8) {
+                Picker("", selection: selectedBuiltInModelBinding) {
+                    ForEach(BuiltInModel.all) { option in
+                        Text(model.builtInModelTitle(option)).tag(option.id)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 320, alignment: .leading)
+
+                Text(L10n.format(
+                    "settings.localModel.detail",
+                    builtInModel.localizedDownloadSize,
+                    builtInModel.recommendedMemoryGB
+                ))
+                .font(.system(size: 11))
+                .foregroundStyle(InkletTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+                if model.isBuiltInEngineAvailable {
+                    builtInModelDownloadControls(for: builtInModel)
+                } else {
+                    Label(L10n.text("error.localModel.engineMissing"), systemImage: "exclamationmark.triangle")
+                        .font(.system(size: 11))
+                        .foregroundStyle(InkletTheme.warning)
+                }
+            }
+        }
+    }
+
+    private func builtInModelDownloadControls(for builtInModel: BuiltInModel) -> some View {
+        modelDownloadControls(
+            state: model.builtInModelState(builtInModel),
+            download: { model.downloadBuiltInModel(builtInModel) },
+            cancel: { model.cancelBuiltInModelDownload(builtInModel) },
+            delete: { model.deleteBuiltInModel(builtInModel) }
+        )
+    }
+
+    @ViewBuilder
+    private func modelDownloadControls(
+        state: BuiltInModelDownloadState,
+        download: @escaping @MainActor () -> Void,
+        cancel: @escaping @MainActor () -> Void,
+        delete: @escaping @MainActor () -> Void
+    ) -> some View {
+        switch state {
+        case .notDownloaded:
+            Button(L10n.text("settings.localModel.download"), action: download)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+        case .downloading(let fraction):
+            HStack(spacing: 10) {
+                ProgressView(value: fraction)
+                    .frame(maxWidth: 200)
+                Text(L10n.format("settings.localModel.downloading", fraction * 100))
+                    .font(.system(size: 11).monospacedDigit())
+                    .foregroundStyle(InkletTheme.textSecondary)
+                Button(L10n.text("settings.localModel.cancel"), action: cancel)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+        case .verifying:
+            HStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.small)
+                Text(L10n.text("settings.localModel.verifying"))
+                    .font(.system(size: 11))
+                    .foregroundStyle(InkletTheme.textSecondary)
+            }
+        case .ready:
+            HStack(spacing: 10) {
+                Label(L10n.text("settings.localModel.ready"), systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(InkletTheme.primary)
+                Button(L10n.text("settings.localModel.delete"), action: delete)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 6) {
+                Text(message)
+                    .font(.system(size: 11))
+                    .foregroundStyle(InkletTheme.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button(L10n.text("settings.localModel.retry"), action: download)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
+        }
+    }
+
+    private var localServerRow: some View {
+        settingsRow(
+            L10n.text("settings.row.localServer"),
+            help: L10n.format("settings.help.localServer", model.selectedProvider.endpoint.absoluteString)
+        ) {
+            HStack(spacing: 10) {
+                switch model.localServerStatus {
+                case .checking:
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(L10n.text("settings.localServer.checking"))
+                        .foregroundStyle(InkletTheme.textSecondary)
+                case .connected(let modelCount):
+                    Label(
+                        L10n.format("settings.localServer.connected", modelCount),
+                        systemImage: "checkmark.circle.fill"
+                    )
+                    .foregroundStyle(InkletTheme.primary)
+                case .unreachable:
+                    Text(L10n.format("settings.localServer.unreachable", model.selectedProvider.name))
+                        .foregroundStyle(InkletTheme.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                case nil:
+                    EmptyView()
+                }
+                Button(L10n.text("settings.localServer.refresh")) {
+                    model.refreshLocalServerModels()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(model.localServerStatus == .checking)
+            }
+            .font(.system(size: 11, weight: .medium))
+        }
+        .onAppear {
+            if model.localServerStatus == nil {
+                model.refreshLocalServerModels()
             }
         }
     }
@@ -560,8 +719,10 @@ struct SettingsView: View {
                             ForEach(model.selectedProviderModelOptions, id: \.self) { modelID in
                                 Text(model.modelMenuTitle(for: modelID)).tag(modelID)
                             }
-                            Divider()
-                            Text(L10n.text("settings.model.custom")).tag(SettingsViewModel.customModelMenuID)
+                            if !model.isBuiltInProvider {
+                                Divider()
+                                Text(L10n.text("settings.model.custom")).tag(SettingsViewModel.customModelMenuID)
+                            }
                         }
                         .labelsHidden()
                         .frame(maxWidth: 320, alignment: .leading)
@@ -620,6 +781,25 @@ struct SettingsView: View {
             }
 
             Group {
+                if model.isBuiltInEngineAvailable {
+                    settingsRow(
+                        L10n.text("settings.row.dictationEngine"),
+                        help: L10n.text("settings.help.dictationEngine")
+                    ) {
+                        Picker("", selection: $model.config.voiceInput.engine) {
+                            ForEach(VoiceInputConfig.Engine.allCases) { engine in
+                                Text(engine.localizedName).tag(engine)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: 320, alignment: .leading)
+                    }
+                }
+
+                if model.usesBuiltInDictation {
+                    dictationModelRow
+                }
+
                 settingsRow(
                     L10n.text("settings.row.dictationShortcut"),
                     help: L10n.text("settings.help.dictationShortcut")
@@ -643,29 +823,59 @@ struct SettingsView: View {
                     .frame(maxWidth: 320, alignment: .leading)
                 }
 
-                DisclosureGroup {
-                    VStack(alignment: .leading, spacing: 12) {
-                        settingsRow(
-                            L10n.text("settings.row.fallbackSpeechModel"),
-                            help: L10n.text("settings.help.fallbackSpeechModel")
-                        ) {
-                            TextField(
-                                VoiceInputConfig.defaultSpeechModel,
-                                text: $model.config.voiceInput.speechModel
-                            )
-                            .textFieldStyle(.roundedBorder)
-                        }
-                    }
-                    .padding(.top, 10)
-                } label: {
-                    Text(L10n.text("settings.group.dictationAdvanced"))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(InkletTheme.textPrimary)
+                if !model.usesBuiltInDictation {
+                    openAIVoiceKeyRow(help: L10n.text("settings.help.openAIAPIKey.dictation"))
+                    openAIDictationAdvancedSettings
                 }
-                .tint(InkletTheme.textSecondary)
             }
             .disabled(!model.config.voiceInput.isEnabled)
         }
+    }
+
+    private var dictationModelRow: some View {
+        let dictationModel = model.dictationModel
+        return settingsRow(L10n.text("settings.row.dictationModel"), help: L10n.text("settings.help.dictationModel")) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(dictationModel.displayName)
+                    .font(.system(size: 13))
+                    .foregroundStyle(InkletTheme.textPrimary)
+
+                Text(L10n.format("settings.dictationModel.detail", dictationModel.localizedDownloadSize))
+                    .font(.system(size: 11))
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                modelDownloadControls(
+                    state: model.dictationModelState,
+                    download: { model.downloadDictationModel() },
+                    cancel: { model.cancelDictationModelDownload() },
+                    delete: { model.deleteDictationModel() }
+                )
+            }
+        }
+    }
+
+    private var openAIDictationAdvancedSettings: some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 12) {
+                settingsRow(
+                    L10n.text("settings.row.fallbackSpeechModel"),
+                    help: L10n.text("settings.help.fallbackSpeechModel")
+                ) {
+                    TextField(
+                        VoiceInputConfig.defaultSpeechModel,
+                        text: $model.config.voiceInput.speechModel
+                    )
+                    .textFieldStyle(.roundedBorder)
+                }
+            }
+            .padding(.top, 10)
+        } label: {
+            Text(L10n.text("settings.group.dictationAdvanced"))
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(InkletTheme.textPrimary)
+        }
+        .tint(InkletTheme.textSecondary)
     }
 
     private var selectionActionsPanel: some View {
@@ -842,6 +1052,8 @@ struct SettingsView: View {
                 }
                 .frame(maxWidth: 320, alignment: .leading)
             }
+
+            openAIVoiceKeyRow(help: L10n.text("settings.help.openAIAPIKey.pronunciation"))
         }
     }
 
