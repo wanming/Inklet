@@ -128,6 +128,71 @@ final class SettingsProviderSelectionTests: XCTestCase {
     }
 }
 
+final class LocalAPIKeyFileStoreTests: XCTestCase {
+    private func makeStore(
+        keychain: ProviderSelectionKeychainClient
+    ) -> (LocalAPIKeyStore, APIKeyFileStore) {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LocalAPIKeyFileStoreTests-\(UUID().uuidString)", isDirectory: true)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let fileStore = APIKeyFileStore(fileURL: directory.appendingPathComponent(APIKeyFileStore.fileName))
+        let store = LocalAPIKeyStore(fileStore: fileStore) { providerID in
+            KeychainStore(service: "file-store-test", account: providerID, client: keychain)
+        }
+        return (store, fileStore)
+    }
+
+    func testKeychainKeyFromAnEarlierVersionIsCopiedToTheFileAndKeptInTheKeychain() {
+        let keychain = ProviderSelectionKeychainClient(values: ["openai": "sk-old"])
+        let (store, fileStore) = makeStore(keychain: keychain)
+
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "openai"), "sk-old")
+        XCTAssertEqual(fileStore.loadAPIKey(forProviderID: "openai"), "sk-old")
+        // An earlier version only reads the Keychain, so going back keeps the key.
+        XCTAssertEqual(keychain.value(forAccount: "openai"), "sk-old")
+    }
+
+    func testFileKeyWinsOverADifferentKeychainKey() throws {
+        let keychain = ProviderSelectionKeychainClient(values: ["openai": "sk-keychain"])
+        let (store, fileStore) = makeStore(keychain: keychain)
+        try fileStore.saveAPIKey("sk-file", forProviderID: "openai")
+
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "openai"), "sk-file")
+    }
+
+    func testNewUserHasNoKeyAndNoFile() {
+        let (store, fileStore) = makeStore(keychain: ProviderSelectionKeychainClient())
+
+        XCTAssertNil(store.loadAPIKey(forProviderID: "openai"))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fileStore.fileURL.path))
+    }
+
+    func testClearingAKeyAlsoRemovesTheKeychainCopySoItDoesNotComeBack() throws {
+        let keychain = ProviderSelectionKeychainClient(values: ["openai": "sk-old"])
+        let (store, _) = makeStore(keychain: keychain)
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "openai"), "sk-old")
+
+        try store.saveAPIKey("", forProviderID: "openai")
+
+        XCTAssertNil(keychain.value(forAccount: "openai"))
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "openai"), "")
+
+        try store.deleteAPIKey(forProviderID: "openai")
+        XCTAssertNil(store.loadAPIKey(forProviderID: "openai"))
+    }
+
+    func testKeyFileIsReadableOnlyByTheCurrentUser() throws {
+        let (store, fileStore) = makeStore(keychain: ProviderSelectionKeychainClient())
+        try store.saveAPIKey("sk-new", forProviderID: "deepseek")
+
+        let attributes = try FileManager.default.attributesOfItem(atPath: fileStore.fileURL.path)
+        XCTAssertEqual((attributes[.posixPermissions] as? NSNumber)?.intValue, 0o600)
+        XCTAssertEqual(store.loadAPIKey(forProviderID: "deepseek"), "sk-new")
+    }
+}
+
 private final class ProviderSelectionKeychainClient: KeychainClient, @unchecked Sendable {
     private var values: [String: String]
 

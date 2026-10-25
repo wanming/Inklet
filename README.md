@@ -186,8 +186,10 @@ Production and local QA builds use bundle-qualified storage and do not share set
 - Local Application Support: `~/Library/Application Support/com.tomwan.inklet.local/`
 - Production preferences: `~/Library/Preferences/com.tomwan.inklet.plist`
 - Local preferences: `~/Library/Preferences/com.tomwan.inklet.local.plist`
-- Production Keychain service: `Inklet.ProviderAPIKey`
-- Local Keychain service: `Inklet.Local.ProviderAPIKey`
+- Provider API keys: `api-keys.json` in the matching Application Support folder, readable only by your user account and excluded from Time Machine backups
+- Keychain services used by earlier versions: `Inklet.ProviderAPIKey` (production) and `Inklet.Local.ProviderAPIKey` (local)
+
+Earlier versions kept API keys in the Keychain. The first time a key is needed, Inklet copies it from the Keychain into `api-keys.json` and leaves the Keychain item in place, so going back to an earlier version still finds it. Changing or clearing a key in Settings removes the Keychain copy.
 
 On first launch after upgrading from the legacy sandboxed build, Inklet automatically copies recognized legacy preferences, provider API keys into the matching Keychain service, and History into the current bundle's storage. It does not delete or modify the legacy source, so the old data remains available for rollback or recovery. The disposable translation cache is not migrated.
 

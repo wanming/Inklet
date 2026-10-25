@@ -83,14 +83,14 @@ Production and local QA builds use separate bundle-qualified local stores:
 - Local preferences: `~/Library/Preferences/com.tomwan.inklet.local.plist`
 - Production Application Support: `~/Library/Application Support/com.tomwan.inklet/`
 - Local Application Support: `~/Library/Application Support/com.tomwan.inklet.local/`
-- Production Keychain service: `Inklet.ProviderAPIKey`
-- Local Keychain service: `Inklet.Local.ProviderAPIKey`
+- Provider API keys: `api-keys.json` in the matching Application Support folder
+- Keychain services used by earlier versions: `Inklet.ProviderAPIKey` (production) and `Inklet.Local.ProviderAPIKey` (local)
 
 Within each Application Support root, Inklet stores successful Write and Selection source/result text in `history.jsonl` until you clear History in Settings. Existing legacy Voice records remain readable but new Dictation drafts are not written there. Inklet stores successful Selection translations in `selection-translation-cache.json` for 7 days using hashed cache keys.
 
 Selection diagnostics use the bundle-qualified temporary filename `$TMPDIR/InkletSelectionActions.<bundle-identifier>.log`. Diagnostics may include event type, source app bundle identifier or process identifier, read status, character count, and window geometry; repeated identical event entries are rate-limited. They do not include selected-text contents, clipboard contents, typed characters, provider keys, prompt text, generated text, or audio.
 
-Provider API keys are stored as generic-password items in macOS Keychain, using the production or local service above and the provider identifier as the account. Inklet does not intentionally store active provider credentials in plaintext preferences.
+Provider API keys are stored in `api-keys.json` in the bundle's Application Support folder, keyed by provider identifier. The file is readable and writable only by your macOS user account and is excluded from Time Machine backups. It is not encrypted, so other software running as your user can read it. Earlier versions stored keys as generic-password items in macOS Keychain; the first time a key is needed, Inklet copies it into the file and leaves the Keychain item in place, and changing or clearing the key in Settings removes the Keychain item. Inklet does not store provider credentials in preferences.
 
 ## Legacy Data Migration
 

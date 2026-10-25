@@ -186,8 +186,10 @@ docs/                    手动测试说明和隐私政策
 - 本地版 Application Support：`~/Library/Application Support/com.tomwan.inklet.local/`
 - 正式版偏好设置：`~/Library/Preferences/com.tomwan.inklet.plist`
 - 本地版偏好设置：`~/Library/Preferences/com.tomwan.inklet.local.plist`
-- 正式版 Keychain service：`Inklet.ProviderAPIKey`
-- 本地版 Keychain service：`Inklet.Local.ProviderAPIKey`
+- Provider API keys：对应 Application Support 目录里的 `api-keys.json`，只有你的用户账户能读取，不会进入 Time Machine 备份
+- 旧版本使用的 Keychain service：`Inklet.ProviderAPIKey`（正式版）和 `Inklet.Local.ProviderAPIKey`（本地版）
+
+旧版本把 API key 存在 Keychain 里。第一次用到某个 key 时，Inklet 会把它从 Keychain 复制到 `api-keys.json`，并保留 Keychain 里的条目，所以退回旧版本仍然能读到。在 Settings 中修改或清空 key 时，会删除 Keychain 里的副本。
 
 从旧版 sandbox 构建升级后的第一次启动中，Inklet 会自动复制已识别的旧版偏好设置、把 provider API keys 写入对应 Keychain service，并把 History 复制到当前 bundle 的存储中。迁移不会删除或修改旧版来源，因此旧数据仍可用于回滚或恢复。可丢弃的翻译缓存不会迁移。
 
