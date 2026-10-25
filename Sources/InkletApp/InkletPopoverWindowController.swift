@@ -339,7 +339,7 @@ final class InkletPopoverWindowController: NSWindowController, NSWindowDelegate 
             guard self.dictationConfigurationGeneration == generation else { return }
 
             self.dictationShortcutMonitor.configure(
-                shortcut: config.activeShortcut,
+                shortcut: config.shortcut,
                 isEligible: { [weak self] in
                     guard let self, let window = self.window else { return false }
                     let sourceEditorBridge = self.sourceEditorBridge

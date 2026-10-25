@@ -38,22 +38,6 @@ final class SettingsViewSourceTests: XCTestCase {
         ))
     }
 
-    func testDictationHasItsOwnSectionWithASwitch() throws {
-        let source = try settingsViewSource()
-        let writePanelStart = try XCTUnwrap(source.range(of: "private var writeAssistantPanel: some View {"))
-        let dictationPanelStart = try XCTUnwrap(source.range(of: "private var dictationPanel: some View {"))
-        let writePanel = source[writePanelStart.lowerBound..<dictationPanelStart.lowerBound]
-        let providerRowsStart = try XCTUnwrap(source.range(of: "private var builtInModelRow: some View {"))
-        let beforeBuiltInRow = source[..<providerRowsStart.lowerBound]
-
-        XCTAssertTrue(source.contains("case dictation = \"Dictation\""))
-        XCTAssertTrue(source.contains("$model.config.voiceInput.isEnabled"))
-        XCTAssertTrue(source.contains(".disabled(!model.config.voiceInput.isEnabled)"))
-        XCTAssertTrue(source.contains("VoiceInputConfig.Shortcut.selectableCases"))
-        XCTAssertFalse(writePanel.contains("dictationSettingsPanel"))
-        XCTAssertFalse(beforeBuiltInRow.contains("settings.help.openAIAPIKey.voiceOnly"))
-    }
-
     func testWriteAssistantExposesRecoveryModelWithoutEditableEndpoint() throws {
         let source = try settingsViewSource()
 

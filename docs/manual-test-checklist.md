@@ -95,7 +95,7 @@ Record the tested Inklet version, artifact checksum, macOS version, hardware arc
 - [ ] Retention and diagnostics: verify temporary recovery-file deletion for every terminal path, no draft-only History, unchanged legacy Voice History, and no transcript or audio content, Authorization header, microphone identifier, or temporary path in logs.
 - [ ] Presentation and accessibility: at the actual popover width in English and Chinese, test long localized shortcut and microphone names, stable phase icons, VoiceOver labels for the source editor and status, and phase-only announcements that do not read inline error copy twice.
 - [ ] Recovery configuration: confirm Advanced Dictation exposes only the recovery model and the recovery endpoint is not editable. Force recovery and confirm exactly one request goes to `https://api.openai.com/v1/audio/transcriptions` with the same existing OpenAI API key as realtime dictation; the temporary recording remains local until that request begins and permits at most one upload.
-- [ ] Configuration: clear the shared OpenAI API key and verify the localized error without insertion. Change the Dictation shortcut among Right Command, Left Option, and Left Command; confirm only a hold in the active source editor can start capture. Turn off Enable Dictation and confirm the hold does nothing and the popover hides the dictation hint; turn it back on and confirm the previous shortcut returns.
+- [ ] Configuration: clear the shared OpenAI API key and verify the localized error without insertion. Change the Dictation shortcut among Right Command, Left Option, Left Command, and Disabled; confirm only a hold in the active source editor can start capture.
 
 ## Generic Selection Matrix
 
@@ -137,9 +137,9 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 
 - `Command+,`: open Settings while Inklet is active.
 - General: configure the OpenAI API key, then change language and appearance.
-- Provider: switch to another provider (for example DeepSeek), enter its key, and confirm the optional OpenAI API Key field appears in the Dictation section and no longer in the provider rows. Transform text in the popover and translate a selection with that provider; confirm dictation and pronunciation still use the OpenAI key. Choose Custom (OpenAI Compatible), set a local endpoint, and transform text. Switch back to OpenAI and confirm the shared key and default model return. Check the General panel in English and Chinese for fit.
+- Provider: switch to another provider (for example DeepSeek), enter its key, and confirm the OpenAI API Key field becomes the optional voice-only field. Transform text in the popover and translate a selection with that provider; confirm dictation and pronunciation still use the OpenAI key. Choose Custom (OpenAI Compatible), set a local endpoint, and transform text. Switch back to OpenAI and confirm the shared key and default model return. Check the General panel in English and Chinese for fit.
 - Write Assistant: configure the model for the selected provider, writing shortcut, and timeout.
-- Dictation: confirm it is its own section below Writing Assistant. Configure the hold shortcut and microphone, and confirm they are dimmed while Enable Dictation is off but the OpenAI API Key field stays editable for pronunciation. With OpenAI as the writing provider, confirm the key row says it uses the Write Assistant key. In Advanced Dictation, confirm only the recovery model is available and there is no endpoint field.
+- Writing Assistant: configure the Dictation hold shortcut and microphone. In Advanced Dictation, confirm only the recovery model is available and there is no endpoint field.
 - Selection Assistant: configure translation language, Translate prompt, Force Selection mode, pronunciation voice, and speed; preview the voice.
 - Prompt Modes: add, edit, hide, delete with confirmation, and reorder modes.
 - Permissions: verify Accessibility status and the System Settings button. Inklet should not steal focus while System Settings is open; close it and confirm the existing Settings window returns with refreshed status.
@@ -156,7 +156,7 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - Leave Inklet idle for more than five minutes and confirm Activity Monitor shows `llama-server` releasing its memory; quit Inklet and confirm `llama-server` exits.
 - Ollama: with Ollama closed, choose **Ollama** and confirm the connection row says it can't reach Ollama; open Ollama, click **Refresh**, and confirm the downloaded models appear. Transform text and confirm no thinking text appears in the result.
 - LM Studio: repeat the Ollama check with LM Studio's local server.
-- Confirm the API key field is hidden for local providers and the optional OpenAI key field in the Dictation section still controls dictation and pronunciation.
+- Confirm the API key field is hidden for local providers and the optional OpenAI key field still controls dictation and pronunciation.
 
 ## Language Switching And Layout
 

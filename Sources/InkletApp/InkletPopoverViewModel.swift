@@ -239,7 +239,7 @@ final class InkletPopoverViewModel: ObservableObject {
     }
 
     private func refreshVoiceShortcutHint() {
-        let shortcut = config.voiceInput.activeShortcut
+        let shortcut = config.voiceInput.shortcut
         voiceShortcutHint = shortcut == .disabled ? nil : shortcut
     }
 
