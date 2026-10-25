@@ -302,19 +302,101 @@ public struct UserDefaultsConfigStore: ConfigStore {
     }
 }
 
+/// Provider API keys in a JSON file in Inklet's Application Support folder that only the current user
+/// can read. Unlike the Keychain, it survives re-signing and reinstalling, and a reset only has to
+/// delete the file.
+public struct APIKeyFileStore: Sendable {
+    public static let fileName = "api-keys.json"
+    private static let lock = NSLock()
+
+    public let fileURL: URL
+
+    public init(fileURL: URL) {
+        self.fileURL = fileURL
+    }
+
+    public static func current() -> APIKeyFileStore {
+        APIKeyFileStore(
+            fileURL: InkletStoragePaths.currentOrLocalDevelopment().applicationSupportRootURL
+                .appendingPathComponent(fileName)
+        )
+    }
+
+    public func loadAPIKey(forProviderID providerID: String) -> String? {
+        Self.lock.withLock { readKeys()[providerID] }
+    }
+
+    public func saveAPIKey(_ apiKey: String, forProviderID providerID: String) throws {
+        try Self.lock.withLock {
+            var keys = readKeys()
+            keys[providerID] = apiKey
+            try write(keys)
+        }
+    }
+
+    public func deleteAPIKey(forProviderID providerID: String) throws {
+        try Self.lock.withLock {
+            var keys = readKeys()
+            guard keys.removeValue(forKey: providerID) != nil else { return }
+            try write(keys)
+        }
+    }
+
+    private func readKeys() -> [String: String] {
+        guard let data = try? Data(contentsOf: fileURL),
+              let keys = try? JSONDecoder().decode([String: String].self, from: data)
+        else {
+            return [:]
+        }
+        return keys
+    }
+
+    private func write(_ keys: [String: String]) throws {
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(keys).write(to: fileURL, options: .atomic)
+        try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
+        // Keep plaintext keys out of Time Machine backups.
+        var resourceValues = URLResourceValues()
+        resourceValues.isExcludedFromBackup = true
+        var backupURL = fileURL
+        try? backupURL.setResourceValues(resourceValues)
+    }
+}
+
 public struct LocalAPIKeyStore: Sendable {
     public static let defaultKeychainService = "Inklet.ProviderAPIKey"
     public static let localBundleIdentifier = InkletStoragePaths.localBundleIdentifier
     public static let localKeychainService = "Inklet.Local.ProviderAPIKey"
+    public static let defaultKeychainStore: @Sendable (String) -> KeychainStore = { providerID in
+        KeychainStore(service: LocalAPIKeyStore.resolvedKeychainService(), account: providerID)
+    }
 
+    private let fileStore: APIKeyFileStore?
     private let keychainStore: @Sendable (String) -> KeychainStore
 
+    /// Keys live in a file. A key that an earlier version saved in the Keychain is copied to the file the
+    /// first time it is read.
+    public init(fileStore: APIKeyFileStore = .current()) {
+        self.init(fileStore: fileStore, legacyKeychainStore: LocalAPIKeyStore.defaultKeychainStore)
+    }
+
+    /// Keeps keys in the Keychain only.
+    public init(keychainStore: @escaping @Sendable (String) -> KeychainStore) {
+        self.init(fileStore: nil, legacyKeychainStore: keychainStore)
+    }
+
     public init(
-        keychainStore: @escaping @Sendable (String) -> KeychainStore = { providerID in
-            KeychainStore(service: LocalAPIKeyStore.resolvedKeychainService(), account: providerID)
-        }
+        fileStore: APIKeyFileStore?,
+        legacyKeychainStore: @escaping @Sendable (String) -> KeychainStore
     ) {
-        self.keychainStore = keychainStore
+        self.fileStore = fileStore
+        self.keychainStore = legacyKeychainStore
     }
 
     public static func resolvedKeychainService(
@@ -324,14 +406,43 @@ public struct LocalAPIKeyStore: Sendable {
     }
 
     public func loadAPIKey(forProviderID providerID: String) -> String? {
-        try? keychainStore(providerID).loadAPIKey()
+        guard let fileStore else {
+            return try? keychainStore(providerID).loadAPIKey()
+        }
+        if let apiKey = fileStore.loadAPIKey(forProviderID: providerID) {
+            return apiKey
+        }
+        return moveKeychainKey(forProviderID: providerID, to: fileStore)
     }
 
     public func saveAPIKey(_ apiKey: String, forProviderID providerID: String) throws {
-        try keychainStore(providerID).saveAPIKey(apiKey)
+        guard let fileStore else {
+            try keychainStore(providerID).saveAPIKey(apiKey)
+            return
+        }
+        try fileStore.saveAPIKey(apiKey, forProviderID: providerID)
+        // A key left in the Keychain would come back after this one is cleared.
+        try? keychainStore(providerID).deleteAPIKey()
     }
 
     public func deleteAPIKey(forProviderID providerID: String) throws {
-        try keychainStore(providerID).deleteAPIKey()
+        guard let fileStore else {
+            try keychainStore(providerID).deleteAPIKey()
+            return
+        }
+        try fileStore.deleteAPIKey(forProviderID: providerID)
+        try? keychainStore(providerID).deleteAPIKey()
+    }
+
+    /// Copies a key an earlier version saved in the Keychain into the file. The Keychain copy stays
+    /// until the key is changed, so going back to an earlier version keeps working. Keys imported from
+    /// the sandboxed version also land in the Keychain, so this runs whenever the file has no key for a
+    /// provider, not only once.
+    private func moveKeychainKey(forProviderID providerID: String, to fileStore: APIKeyFileStore) -> String? {
+        guard let apiKey = try? keychainStore(providerID).loadAPIKey(), !apiKey.isEmpty else {
+            return nil
+        }
+        try? fileStore.saveAPIKey(apiKey, forProviderID: providerID)
+        return apiKey
     }
 }

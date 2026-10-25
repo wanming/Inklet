@@ -619,9 +619,8 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         showSettings(section: .general)
     }
 
-    /// A new install starts with the built-in model when this Mac can run it, and opens the welcome
-    /// guide, which walks through permissions and downloads the model. This runs before the settings and
-    /// popover models load the config.
+    /// A new install starts with the built-in model when this Mac can run it; the welcome guide then
+    /// downloads it. This runs before the settings and popover models load the config.
     private static func prepareWelcomeGuideIfNewInstall(
         configStore: UserDefaultsConfigStore,
         apiKeyStore: LocalAPIKeyStore,
@@ -648,15 +647,15 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         ) {
             try? configStore.save(config)
         }
-        userDefaults.set(true, forKey: InkletPreferenceKeys.isWelcomeGuidePending)
     }
 
-    /// Returns false when the guide is already done, so the usual permission check runs instead.
+    /// Shown to new installs and, once per guide version, to existing users after an update. Returns
+    /// false when the guide is already done, so the usual permission check runs instead.
     private func showWelcomeGuideIfPending() -> Bool {
-        let userDefaults = UserDefaults.standard
-        guard userDefaults.bool(forKey: InkletPreferenceKeys.isWelcomeGuidePending),
-              !userDefaults.bool(forKey: InkletPreferenceKeys.didCompleteOnboarding)
-        else {
+        guard OnboardingPolicy.shouldShowWelcomeGuide(
+            completedVersion: UserDefaults.standard.integer(forKey: InkletPreferenceKeys.completedWelcomeGuideVersion),
+            hasPendingMigration: migrationOutcome.hasIncompleteComponents
+        ) else {
             return false
         }
         let controller = welcomeGuideController ?? WelcomeGuideWindowController(
@@ -676,7 +675,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     private func finishWelcomeGuide() {
         let userDefaults = UserDefaults.standard
         userDefaults.set(true, forKey: InkletPreferenceKeys.didCompleteOnboarding)
-        userDefaults.removeObject(forKey: InkletPreferenceKeys.isWelcomeGuidePending)
+        userDefaults.set(OnboardingPolicy.welcomeGuideVersion, forKey: InkletPreferenceKeys.completedWelcomeGuideVersion)
         welcomeGuideController?.close()
         welcomeGuideController = nil
         openPopover()

@@ -33,6 +33,16 @@ public enum OnboardingPolicy {
             && !didCompleteOnboarding
     }
 
+    /// Bumped when the welcome guide changes enough that everyone, including existing users, should see
+    /// it again.
+    public static let welcomeGuideVersion = 1
+
+    /// Data still waiting to be imported from the sandboxed version would be overwritten by the guide's
+    /// choices, so the import notice goes first.
+    public static func shouldShowWelcomeGuide(completedVersion: Int, hasPendingMigration: Bool) -> Bool {
+        !hasPendingMigration && completedVersion < welcomeGuideVersion
+    }
+
     /// Nothing is saved yet and nothing waits to be imported from the sandboxed version.
     public static func isNewInstall(
         hasSavedConfig: Bool,

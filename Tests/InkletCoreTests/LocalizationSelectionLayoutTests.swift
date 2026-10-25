@@ -10,15 +10,15 @@ final class LocalizationSelectionLayoutTests: XCTestCase {
         for language in InterfaceLanguage.allCases where language != .system {
             withLanguage(language) {
                 let size = measure(.menu(errorMessage: nil, feedback: nil))
-                let font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+                let font = NSFont.systemFont(ofSize: 13, weight: .medium)
                 let titles = ["selection.action.translate", "selection.action.pronounce"]
                 let titleWidth = titles.reduce(CGFloat.zero) {
                     $0 + (L10n.text($1) as NSString).size(withAttributes: [.font: font]).width
                 }
-                // Two 15pt icons, 6pt icon gaps, 18pt button padding,
-                // a 6pt button gap, and 16pt panel padding.
-                XCTAssertEqual(size.width, titleWidth + 100, accuracy: 2, language.rawValue)
-                XCTAssertEqual(size.height, 46, accuracy: 1, language.rawValue)
+                // Two 14pt icons, 6pt icon gaps, 20pt button padding,
+                // a 2pt button gap, and 8pt panel padding.
+                XCTAssertEqual(size.width, titleWidth + 90, accuracy: 2, language.rawValue)
+                XCTAssertEqual(size.height, 36, accuracy: 1, language.rawValue)
                 XCTAssertLessThanOrEqual(size.width, 320, language.rawValue)
             }
         }
@@ -35,6 +35,26 @@ final class LocalizationSelectionLayoutTests: XCTestCase {
                     XCTAssertEqual(size.width, idle.width, accuracy: 1, language.rawValue)
                     XCTAssertEqual(size.height, idle.height, accuracy: 1, language.rawValue)
                 }
+            }
+        }
+    }
+
+    func testCustomMenuTruncatesLongModeNamesAndMovesExtrasUnderMore() {
+        let longName = String(repeating: "Very long prompt mode ", count: 4)
+        let items = SelectionMenuItem.defaults + (0..<3).map {
+            SelectionMenuItem(action: .promptMode("mode-\($0)"), promptModeName: longName)
+        }
+        for language in InterfaceLanguage.allCases where language != .system {
+            withLanguage(language) {
+                let view = SelectionActionView(
+                    state: .menu(errorMessage: nil, feedback: nil),
+                    menuItems: items,
+                    onTranslate: {}, onPronounce: {}, onPronounceOriginal: {},
+                    onPronounceTranslation: {}, onCopyTranslation: {}, onRetryTranslation: {}
+                )
+                let size = NSHostingView(rootView: view).fittingSize
+                XCTAssertLessThanOrEqual(size.width, 600, language.rawValue)
+                XCTAssertEqual(size.height, 36, accuracy: 1, language.rawValue)
             }
         }
     }

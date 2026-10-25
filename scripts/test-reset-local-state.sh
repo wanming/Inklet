@@ -312,6 +312,9 @@ assert_output_line "$local_output" "  Keychain service: ${local_service}"
 assert_output_line "$local_output" "  Diagnostics: ${local_diagnostic}"
 assert_output_line "$local_output" "  Installed app: ${local_app}"
 assert_log_line "$local_commands" $'defaults\tdelete\tcom.tomwan.inklet.local'
+assert_log_line \
+  "$local_commands" \
+  $'defaults\tdelete\t'"${canonical_test_home}/Library/Preferences/${local_bundle}"
 assert_log_line "$local_commands" $'tccutil\treset\tAccessibility\tcom.tomwan.inklet.local'
 assert_log_line "$local_commands" $'tccutil\treset\tMicrophone\tcom.tomwan.inklet.local'
 assert_log_line \
@@ -346,6 +349,9 @@ assert_output_line "$production_output" "  Keychain service: ${production_servic
 assert_output_line "$production_output" "  Diagnostics: ${production_diagnostic}"
 assert_output_line "$production_output" "  Installed app: ${production_app}"
 assert_log_line "$production_commands" $'defaults\tdelete\tcom.tomwan.inklet'
+assert_log_line \
+  "$production_commands" \
+  $'defaults\tdelete\t'"${canonical_test_home}/Library/Preferences/${production_bundle}"
 assert_log_line "$production_commands" $'tccutil\treset\tAccessibility\tcom.tomwan.inklet'
 assert_log_line "$production_commands" $'tccutil\treset\tMicrophone\tcom.tomwan.inklet'
 assert_log_line \
@@ -404,8 +410,26 @@ done
 if grep -Eq $'^security\tdelete-generic-password\t-s\t(.*ProviderAPIKey)$' "$all_commands"; then
   fail "The all reset scope must not delete a Keychain service without its account."
 fi
-if [[ "$(grep -c $'^security\tdelete-generic-password\t' "$all_commands")" != "2" ]]; then
-  fail "The all reset scope must issue exactly one account-qualified Keychain deletion per bundle."
+provider_ids=()
+while IFS= read -r provider_id; do
+  provider_ids+=("$provider_id")
+done < <(
+  grep -oE '^ +id: "[a-z0-9-]+"' "${repo_root}/Sources/InkletCore/LLMProviderPreset.swift" |
+    sed -E 's/^ +id: "([a-z0-9-]+)"$/\1/'
+)
+if [[ "${#provider_ids[@]}" -lt 2 ]]; then
+  fail "test-reset-local-state.sh must find the provider preset IDs."
+fi
+for provider_id in "${provider_ids[@]}"; do
+  for keychain_service in "$local_service" "$production_service"; do
+    assert_log_line \
+      "$all_commands" \
+      $'security\tdelete-generic-password\t-s\t'"${keychain_service}"$'\t-a\t'"${provider_id}"
+  done
+done
+if [[ "$(grep -c $'^security\tdelete-generic-password\t' "$all_commands")" != \
+  "$(( ${#provider_ids[@]} * 2 ))" ]]; then
+  fail "The all reset scope must issue exactly one account-qualified Keychain deletion per provider and bundle."
 fi
 for installed_app in "$local_app" "$production_app"; do
   if ! grep -Eq $'^(rm\t-rf|sudo\trm\t-rf)\t'"${installed_app//./\\.}"'$' "$all_commands"; then
@@ -471,7 +495,31 @@ for exact_target in "$local_support" "$local_container" "$local_diagnostic"; do
   fi
 done
 
-expected_reset_line='"${repo_root}/scripts/reset-local-state.sh" --scope local --remove-installed-app'
+keep_models_support="${local_support}"
+mkdir -p \
+  "${keep_models_support}/Models" \
+  "${keep_models_support}/History"
+: >"${keep_models_support}/Models/model.gguf"
+: >"${keep_models_support}/api-keys.json"
+: >"${keep_models_support}/.hidden-state"
+keep_models_log="${test_root}/keep-models.log"
+: >"$command_log"
+if ! env "${reset_environment[@]}" "$reset_script" --scope local --keep-models >"$keep_models_log" 2>&1; then
+  sed -n '1,200p' "$keep_models_log" >&2
+  fail "reset-local-state.sh must accept --keep-models."
+fi
+assert_output_line "$keep_models_log" "Built-in models: kept"
+for removed_entry in History api-keys.json .hidden-state; do
+  assert_log_line "$command_log" $'rm\t-rf\t'"${keep_models_support}/${removed_entry}"
+done
+if grep -Fq "${keep_models_support}/Models" "$command_log" ||
+  grep -Fxq $'rm\t-rf\t'"${keep_models_support}" "$command_log"; then
+  fail "--keep-models must keep the Models directory and its parent."
+fi
+assert_log_line "$command_log" $'rm\t-rf\t'"${local_container}"
+/bin/rm -rf "$keep_models_support"
+
+expected_reset_line='"${repo_root}/scripts/reset-local-state.sh" --scope local --remove-installed-app "$@"'
 expected_runner_line='"${repo_root}/scripts/run-local-app.sh"'
 if ! grep -Fxq "$expected_reset_line" "$rebuild_script"; then
   fail "reset-rebuild-install.sh must reset only the local scope and remove the local app."

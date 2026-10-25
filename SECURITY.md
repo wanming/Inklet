@@ -22,7 +22,7 @@ Please include:
 
 Inklet handles text that users type, select, transform, and paste. It also stores provider API keys locally. Security-sensitive areas include:
 
-- Provider API-key storage in the production and local Keychain services.
+- Provider API-key storage in the bundle-qualified `api-keys.json` file (owner-only permissions, excluded from backups), and the one-time copy of keys from the earlier production and local Keychain services.
 - Production/local bundle-qualified storage for preferences, History, translation cache, and diagnostics.
 - Automatic and user-assisted legacy migration, including source validation, conflict handling, atomic writes, and preserving the legacy source.
 - Selection reads bound to the captured source process and cancelled when the source exits or loses focus.

@@ -119,6 +119,10 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - Inspect the bundle-qualified selection diagnostic log and confirm repeated event entries are rate-limited and no selected text, clipboard text, or typed characters are recorded.
 - Translate selected text and confirm the result remains visible with copy, original-audio, and translated-audio controls.
 - Translate the same text with the same settings again and confirm the cached result appears. Confirm a successful action is recorded in Settings > History, but mere selection without an action is not.
+- In Settings > Selection Assistant > Menu Buttons, turn on two prompt modes and reorder the list. Select text and confirm the menu shows the buttons in that order, long mode names truncate with a tooltip, and the last enabled button cannot be turned off.
+- Turn on five or more buttons and confirm three show inline and the rest open from **More**. Choose each overflow item and confirm it runs; the panel stays open while the More menu is shown.
+- Run a prompt mode button: its icon becomes a spinner, the result appears with Copy result and Play result controls, Retry after a failure reruns the same mode, and the run is recorded in History with the mode name.
+- Choose Restore Default and confirm the menu returns to Translate and Pronounce.
 
 ## Update Checks
 
@@ -173,6 +177,13 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - Inspect Translate/Pronounce in every language: compact padding, complete labels, stable button sizes during loading/playing, dismissal and retry. In a translation result, check copy/original audio/translated audio states and retained text while resizing.
 - Reopen menus, About, update and migration dialogs after switching. Check localized title/action/help/VoiceOver labels, errors, confirmations and cancellation. Check system-language preference order, including English ahead of another supported language.
 - Mark any unavailable permission, migration, update, playback or error state as unverified. Synthetic snapshots do not verify these live flows or translation quality.
+
+## Design Language
+
+- Compare the writing popover, mode picker, selection bar and translation card with `docs/DESIGN.md` and its linked canvas in Light and Dark appearance.
+- In System Settings > Appearance, switch the accent color through blue, purple, pink, red, orange, yellow, green and graphite with the popover open. The primary button, mode chip icon, selected mode row and listening waveform follow the accent; button text stays readable (dark text on orange, yellow and green).
+- Hover every icon button, shortcut hint, mode row and selection bar button: each shows a neutral fill, and every icon-only control has a tooltip.
+- Turn on Reduce Motion and check that results appear with a fade only.
 
 ## Exact Signed Release Matrix
 

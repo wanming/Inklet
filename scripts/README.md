@@ -26,8 +26,8 @@ The script does not fetch tags or modify `VERSION`. The serialized DMG workflow 
 ## Local QA
 
 - `run-local-app.sh` is the routine hand-testing path for agents and worktrees. It builds, verifies, installs, and opens `/Applications/Inklet Local.app` with the `com.tomwan.inklet.local` bundle identifier. It uses a stable signing identity so macOS can preserve Accessibility permission across rebuilds.
-- `reset-local-state.sh --scope local|production|all` performs an explicitly scoped destructive reset of preferences, Accessibility and Microphone permissions, the matching Keychain API key, app data, and selection diagnostics. Add `--remove-installed-app` to remove only the app selected by the scope, or `--dry-run` to inspect every exact target without changing state.
-- `reset-rebuild-install.sh` runs the destructive local first-launch flow: reset only local state, remove `/Applications/Inklet Local.app`, then rebuild, reinstall, and open it through `run-local-app.sh`.
+- `reset-local-state.sh --scope local|production|all` performs an explicitly scoped destructive reset of preferences, Accessibility and Microphone permissions, API keys (the local key file and every provider's Keychain item), app data, and selection diagnostics. Add `--remove-installed-app` to remove only the app selected by the scope, `--keep-models` to keep downloaded built-in models, or `--dry-run` to inspect every exact target without changing state.
+- `reset-rebuild-install.sh` runs the destructive local first-launch flow: reset only local state, remove `/Applications/Inklet Local.app`, then rebuild, reinstall, and open it through `run-local-app.sh`. Pass `--keep-models` to keep downloaded built-in models so first-launch testing doesn't download them again.
 
 ## Checks
 
