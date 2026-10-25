@@ -52,7 +52,7 @@ SF Pro through `InkletTheme.Typography`. Nothing is smaller than 11 pt.
 | --- | --- | --- | --- |
 | `pageTitle` | 20 / 26 | semibold | Settings pane title |
 | `title` | 15 / 20 | semibold | Section and panel titles |
-| `editor` | 15 / 23 (`editorLineSpacing` 5) | regular | The user's text in editors and results |
+| `editor` | 15 / 21 (`editorLineSpacing` 3 when measuring) | regular | The user's text in editors and results |
 | `control` | 13 / 18 | medium | Buttons, menu items, mode names |
 | `body` | 13 / 18 | regular | Row labels, interface text |
 | `help` | 12 / 16 | regular | Help under a setting, descriptions, banners |
@@ -74,8 +74,8 @@ Use sentence case everywhere. Chinese and English must both fit at these sizes; 
 ## Elevation and material
 
 - **Flat:** cards and groups. `surfaceRaised` with a `hairline` border, no shadow (`.inkletCard()`).
-- **Floating:** the popover, selection bar and translation card float above other apps. `.inkletFloatingPanel()` gives the popover material with a `surface` tint at 82%, a `strokeStrong` border, the 1 pt `topHighlight`, and one soft shadow (ambient 16% black, radius 16, y 12, plus key 8%, radius 3, y 2; darker in dark mode). The hosting window leaves room around the view for that shadow.
-- Windows (Settings, About) use the standard titled window shadow; do not draw a SwiftUI shadow on them.
+- **Floating:** the popover, selection bar and translation card float above other apps. `.inkletFloatingPanel()` gives the popover material with a `surface` tint at 82%, a `strokeStrong` border and the 1 pt `topHighlight`. The shadow is the panel's own window shadow (`hasShadow`), which follows the hosting view's rounded mask, the same as native popovers.
+- Do not draw SwiftUI shadows on panels or windows; a masked hosting view clips them anyway.
 
 The previous 75% black, radius 48 shadow is retired.
 
@@ -100,7 +100,7 @@ Read `@Environment(\.accessibilityReduceMotion)` and pass it to `appear(reduceMo
 | Secondary button | `InkletButtonStyle(kind: .secondary)` | Raised surface with a hairline. |
 | Ghost button | `InkletButtonStyle(kind: .ghost)` | No chrome until hovered. Toolbars and inline actions. |
 | Icon button | `.buttonStyle(InkletIconButtonStyle())` | 28 × 28, radius 6, `secondaryLabel` glyph, hover fill. `isActive` tints the glyph with the accent (for example while playing). Always add `.help` and `.accessibilityLabel`. |
-| Keycap | `Keycap` | Target: 18 pt tall, radius 4, `keycap` font, `strokeStrong` border. Paired with a `caption` label as a shortcut hint. Restyled from 8–9 pt during the popover migration. |
+| Keycap | `Keycap` | 18 pt tall (20 when not compact), radius 4, `keycap` font, `surfaceRaised` with a `strokeStrong` border. Paired with a `caption` label as a shortcut hint; without a label it needs `.help`. |
 | Mode chip | (popover header) | 28 pt, radius 8, `fill` background; mode icon in `accentText`, name in `control` semibold, chevron. Opens the mode picker. |
 | Card | `.inkletCard()` | Settings groups and the result card. Rows inside are separated by `InkletRowDivider`. |
 | List row | `InkletRowBackground` | 40 pt rows in the mode picker. Selected: `accentSoft` with an `accentText` icon. Hover: `fill`. |
@@ -112,15 +112,15 @@ Interaction states follow `AGENTS.md` § Interaction Details: loading replaces t
 
 ## Surfaces
 
-**Writing popover** (620 wide, radius 16, floating). Header 44: the mode chip on the left, a settings icon button on the right; the provider and model move into the chip's tooltip. Editor: `editor` text, 20 pt horizontal and 18 pt vertical inset, placeholder in `tertiaryLabel`. Result: once there is a result, the source dims to `secondaryLabel` and the result sits in a card inset 8 pt from the panel edge, headed by an accent dot and the mode name in `caption`, with a copy icon button. Action bar 44 on `surfaceSunken`: at most three shortcut hints on the left, the one primary button on the right (Transform, Insert, Regenerate). While streaming, the primary button becomes a secondary Stop with `esc`. Errors use a status banner above the action bar.
+**Writing popover** (600 wide, radius 16, floating). Header 44: the mode chip (mode icon in `accentText`, name, chevron; opens the mode picker) on the left, the provider and model as a quiet monospaced caption in `tertiaryLabel`, and a settings icon button on the right. Editor: `editor` text, 20 pt horizontal and 14 pt vertical inset. Result: a card inset 8 pt from the panel edges (radius 16 − 8 = 8) with a copy icon button in its corner; a stale result shows a "Generated with" caption row at the top of the card. Action bar 44 on `surfaceSunken`: "Insert original" with its keycaps, then keycap-only hints for new line and mode cycling (named by tooltips) on the left; the dictation status, `esc` Back and the one primary button (Transform, Insert, Regenerate; secondary style while the draft is empty) on the right. Long localized text wraps the leading hints onto a second row. While generating, the bar shows a spinner, the busy title and `esc` Stop at the same height. Errors use an error status banner above the action bar.
 
 **Mode picker** (same panel). Search row 52 with a 16 pt magnifier and `editor`-size input; 40 pt rows with a 24 pt icon tile, name in `control`, source (Built in, Your mode) in `caption`, shortcut on the right; footer bar with move, choose and close hints.
 
-**Selection bar** (floating, radius 12, 36 tall with a 4 pt inset, so buttons are radius 8). Ghost buttons with a 14 pt icon and a `control` label; a hairline before the overflow button. Loading swaps the icon for a spinner in place, so the bar never changes width.
+**Selection bar** (floating, radius 12, 36 tall with a 4 pt inset, so buttons are radius 8). Chromeless 28 pt buttons with a 14 pt icon and a `control` label, 2 pt apart, with a neutral fill on hover; overflow actions sit behind an ellipsis button. Loading swaps the icon for a spinner in place, so the bar never changes width.
 
-**Translation card** (floating, 340 wide, radius 12). Translated text in 14 / 21; a 40 pt footer with the target language as a menu on the left and the audio and copy icon buttons on the right.
+**Translation card** (floating, 300 wide by default, resizable, radius 12). Translated text in 14 pt with 3 pt line spacing directly on the surface; a toolbar under a hairline with the copy icon button on the left and the original and translated audio buttons on the right. Errors show a warning icon, the message in `body`, and a Retry button. Planned: the target language as a menu in the toolbar.
 
-**Settings** (native titled window). A 210 pt sidebar on the sidebar material with 30 pt items; the selected item uses the `accent` fill with `onAccent` text. The pane has a `pageTitle`, then grouped cards: each row is at least 44 pt, label in `body` with optional `help` below on the left, control on the right, rows separated by inset hairlines. Section order: General, Write Assistant, Prompt Modes, Selection Assistant, History, About. Expert options go in an Advanced disclosure at the end of a pane.
+**Settings** (target; not migrated yet, native titled window). A 210 pt sidebar on the sidebar material with 30 pt items; the selected item uses the `accent` fill with `onAccent` text. The pane has a `pageTitle`, then grouped cards: each row is at least 44 pt, label in `body` with optional `help` below on the left, control on the right, rows separated by inset hairlines. Section order: General, Write Assistant, Prompt Modes, Selection Assistant, History, About. Expert options go in an Advanced disclosure at the end of a pane.
 
 ## Do and don't
 
@@ -157,4 +157,4 @@ The tokens above were introduced alongside the earlier ones. Surfaces move over 
 | `.shadow(color: .black.opacity(0.75), radius: 48, …)` | `.inkletFloatingPanel()` |
 | 8–10 pt labels | `Typography.caption` (11 pt) |
 
-Order: writing popover and mode picker, then the selection bar and translation card, then Settings (after the open Settings changes land, to avoid conflicts).
+Migrated: the writing popover, the mode picker, the selection bar and the translation card. Next: Settings and About, after the open Settings changes land, to avoid conflicts.
