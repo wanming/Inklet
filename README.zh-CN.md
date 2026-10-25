@@ -30,6 +30,8 @@ Inklet 仅通过 GitHub Releases 检查更新。正式版大约每 24 小时从 
 
 正式版和 Inklet Local 都可以从 App 菜单选择**检查更新…**手动检查；Inklet Local 不会安排自动检查。自动检查失败时保持静默，手动检查失败时可选择**重试**。写作、听写、选区动作、迁移、模态窗口或已打开的菜单使 Inklet 忙碌时，自动更新提示会等到 App 空闲后再显示。
 
+更新后第一次打开新版本时，会在 Inklet 空闲时弹出一次简短的**新功能**窗口，不会抢走你正在用的 App 的焦点。新安装或欢迎引导打开时不会出现。之后可以从菜单栏菜单里的**新功能**再次打开。
+
 ## 首次设置
 
 1. 从 Applications 文件夹打开 Inklet。需要运行源码构建时，请在仓库根目录执行 `scripts/run-local-app.sh`，然后使用 `/Applications/Inklet Local.app`。

@@ -30,6 +30,8 @@ Inklet uses GitHub Releases as its only update source. Production builds check G
 
 Use **Check for Updates…** from the app menu to check manually in either the production app or Inklet Local. Inklet Local never schedules automatic checks. Automatic check failures are silent, while a manual check offers **Retry**. If writing, dictation, Selection Actions, migration, a modal, or an open menu makes Inklet busy, an automatic update notice waits until the app is idle.
 
+After you update, the first launch of the new version shows a short **What's New** window once, when Inklet is idle and without taking focus from the app you're using. It doesn't appear on a new install or while the welcome guide is open. Open it again from **What's New** in the menu bar menu.
+
 ## First-Time Setup
 
 1. Open Inklet from your Applications folder. For a source build, run `scripts/run-local-app.sh` from the repository root, then use `/Applications/Inklet Local.app`.
