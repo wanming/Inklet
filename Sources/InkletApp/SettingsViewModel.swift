@@ -334,6 +334,43 @@ final class SettingsViewModel: ObservableObject {
         save()
     }
 
+    var selectionMenuButtons: [SelectionMenuButton] {
+        config.selectionActions.menuButtons(promptModes: config.promptModes)
+    }
+
+    func selectionMenuItem(for button: SelectionMenuButton) -> SelectionMenuItem {
+        SelectionMenuItem.items(for: [button], promptModes: config.promptModes)[0]
+    }
+
+    func canDisableSelectionMenuButton(_ button: SelectionMenuButton) -> Bool {
+        !button.isEnabled || selectionMenuButtons.filter(\.isEnabled).count > 1
+    }
+
+    func setSelectionMenuButton(_ action: SelectionMenuAction, isEnabled: Bool) {
+        config.selectionActions.setMenuButton(action, isEnabled: isEnabled, promptModes: config.promptModes)
+        save()
+    }
+
+    func moveSelectionMenuButton(at index: Int, by offset: Int) {
+        let destination = index + offset
+        guard selectionMenuButtons.indices.contains(index),
+              selectionMenuButtons.indices.contains(destination)
+        else {
+            return
+        }
+        config.selectionActions.moveMenuButtons(
+            from: IndexSet(integer: index),
+            to: offset > 0 ? destination + 1 : destination,
+            promptModes: config.promptModes
+        )
+        save()
+    }
+
+    func resetSelectionMenuButtons() {
+        config.selectionActions.resetMenuButtons()
+        save()
+    }
+
     func refreshModelCatalogIfNeeded() async {
         guard !isMigrationMaintenanceActive else { return }
         if let modelCatalogRefreshTask {

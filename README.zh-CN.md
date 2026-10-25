@@ -70,6 +70,7 @@ Inklet 仅通过 GitHub Releases 检查更新。正式版大约每 24 小时从 
 - 选中文本并短暂停顿后显示选区动作，可快速翻译、自定义 Translate prompt、使用 AI 发音；翻译结果窗口可调整大小并记住上次尺寸，也会为重复翻译提供 7 天本地缓存。
 - 超过 1,500 个字符的选中文本会被忽略，避免误选整页时触发。
 - 可直接播放选中文本，也可在翻译结果里分别播放原文和译文。
+- 可在 设置 › Selection Assistant › 菜单按钮 中选择选区菜单显示哪些按钮及其顺序。Translate、Pronounce 和任意 Prompt 模式都可以作为按钮；最多同时显示四个，其余放在 **更多** 里。点击 Prompt 模式按钮会用该模式处理选中文本，并在面板中显示结果，可复制和播放。
 - 内置文本处理模式：
   - To Simple and Correct English
   - To Chinese Summary
@@ -79,7 +80,7 @@ Inklet 仅通过 GitHub Releases 检查更新。正式版大约每 24 小时从 
 - 默认关闭模拟 `Command+C`。菜单复制仍是安全的强制取词备用方式；对于没有可用复制菜单的 App，可以显式开启模拟复制这一高级备用选项，但它可能干扰游戏、远程桌面或虚拟机。
 - 临时剪贴板读取会串行执行。只有同一次读取仍持有已观察到的复制结果时，Inklet 才恢复之前的快照；较新的剪贴板内容优先。双击复制触发是被动流程：它只读取用户已经完成的复制，不会再发一次合成复制，也不会恢复更旧的剪贴板数据。右键点击保留原生行为，不会开始选区读取。
 - 不包含浏览器专用的选区代码，也不会请求浏览器 Automation。Chrome、Safari、Edge 和原生 App 使用同一条通用流程。
-- 可以编辑 Prompt 模式、服务商、模型、自定义 OpenAI 兼容接口地址、timeout、写作快捷键、听写长按快捷键、麦克风、恢复模型、选区翻译语言、选区 Translate prompt、强制取词模式、模拟复制权限、AI 发音声音和 AI 发音速度。
+- 可以编辑 Prompt 模式、服务商、模型、自定义 OpenAI 兼容接口地址、timeout、写作快捷键、听写长按快捷键、麦克风、恢复模型、选区翻译语言、选区 Translate prompt、选区菜单按钮、强制取词模式、模拟复制权限、AI 发音声音和 AI 发音速度。
 - 在本地 History 中查看成功的写作和选区结果，连续重复项会自动合并，原文/结果文本可选择，可一键复制结果或清空全部历史；旧版 Voice History 仍可读取。
 - 写作和翻译可使用 OpenAI、Anthropic、Google Gemini、DeepSeek、阿里通义千问（Alibaba Qwen）、月之暗面 Kimi、智谱 GLM、MiniMax、硅基流动（SiliconFlow）、火山方舟（Volcengine Ark）、腾讯混元、百川、零一万物 Yi、xAI、Groq、Mistral、OpenRouter、Perplexity、Together AI、Cerebras，或任意自定义 OpenAI 兼容接口（例如本地模型服务）。实时听写和发音始终使用 OpenAI。
 - 提供英文、简体中文、繁体中文、日文、韩文、西班牙文、法文、德文、葡萄牙文和意大利文应用界面。
@@ -193,7 +194,7 @@ docs/                    手动测试说明和隐私政策
 - Inklet 会把成功的写作和选区原文/结果作为本地 History 保存，直到你在 Settings 中清空；连续重复项会自动跳过。未经处理的听写草稿不会创建 History；已有的旧版 Voice 条目仍可在本机读取。
 - 选区动作会捕获来源 App 和选区位置，在读取前和读取期间验证来源，然后通过 Accessibility 读取该 App 的当前选区。如果 Accessibility 没有返回选中文本，设置中的强制取词模式可以短暂调用菜单复制，并通过上面所述的受保护剪贴板事务读取复制出的文本。模拟 `Command+C` 默认关闭，只有显式开启高级选项后才会运行。你可以在设置中关闭强制取词。此流程不会发送针对浏览器的 Apple Events，也不会请求浏览器 Automation。选中文本后快速按两次 `Command+C`，会显式读取你已经完成的复制。Inklet 不会保存仅被选中的文本；只有成功完成的动作会进入本地 History。
 - Selection Assistant 会把成功的翻译结果用哈希缓存键在本地缓存 7 天，以加速重复翻译。
-- 当本地没有可用缓存时，Selection Assistant 翻译会把选中文本和自定义 Translate 指令发送到你选择的服务商；AI 发音会把选中文本发送到 OpenAI。
+- 当本地没有可用缓存时，Selection Assistant 翻译会把选中文本和自定义 Translate 指令发送到你选择的服务商；Prompt 模式按钮会把选中文本和该模式的 prompt 发送到你选择的服务商；AI 发音会把选中文本发送到 OpenAI。
 - Inklet 最多每天从 `models.dev` 获取一次公开模型目录。该请求不包含你的文本、音频、API keys 或应用设置。
 - 除非你信任 OpenAI 或所选服务商的数据处理政策，否则不要发送私密文本或音频。
 

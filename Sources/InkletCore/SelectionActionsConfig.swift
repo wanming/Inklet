@@ -27,6 +27,8 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
     public var pronunciationSpeed: Double
     public var forceSelectionMode: SelectionForceSelectionMode
     public var allowsSimulatedCopyFallback: Bool
+    /// Stored order and on/off state of the selection menu buttons. Empty means defaults.
+    public var menuButtonSettings: [SelectionMenuButtonSetting]
 
     static let legacyDefaultTranslationPrompt = """
     Translate the user's selected text into {targetLanguage}.
@@ -52,7 +54,8 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
         translationPrompt: String = Self.defaultTranslationPrompt,
         pronunciationSpeed: Double = Self.defaultPronunciationSpeed,
         forceSelectionMode: SelectionForceSelectionMode = .menuCopyOnly,
-        allowsSimulatedCopyFallback: Bool = false
+        allowsSimulatedCopyFallback: Bool = false,
+        menuButtonSettings: [SelectionMenuButtonSetting] = []
     ) {
         self.isEnabled = isEnabled
         self.translationLanguage = translationLanguage
@@ -61,6 +64,7 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
         self.pronunciationSpeed = Self.clampedPronunciationSpeed(pronunciationSpeed)
         self.forceSelectionMode = forceSelectionMode.normalizedForSafeSettings
         self.allowsSimulatedCopyFallback = allowsSimulatedCopyFallback
+        self.menuButtonSettings = menuButtonSettings
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -71,6 +75,7 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
         case pronunciationSpeed
         case forceSelectionMode
         case allowsSimulatedCopyFallback
+        case menuButtonSettings = "menuButtons"
     }
 
     public init(from decoder: Decoder) throws {
@@ -102,6 +107,10 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
             Bool.self,
             forKey: .allowsSimulatedCopyFallback
         ) ?? false
+        menuButtonSettings = try container.decodeIfPresent(
+            [SelectionMenuButtonSetting].self,
+            forKey: .menuButtonSettings
+        ) ?? defaults.menuButtonSettings
     }
 
     public static func defaultConfig() -> SelectionActionsConfig {

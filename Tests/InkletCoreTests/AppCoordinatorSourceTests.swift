@@ -643,11 +643,11 @@ final class AppCoordinatorSourceTests: XCTestCase {
         XCTAssertTrue(source.contains("private let selectionTaskRegistry = SelectionTaskRegistry()"))
         XCTAssertEqual(
             source.components(separatedBy: "selectionTaskRegistry.register(").count - 1,
-            5
+            6
         )
         XCTAssertEqual(
             source.components(separatedBy: "selectionTaskRegistry.remove(id:").count - 1,
-            5
+            6
         )
     }
 
