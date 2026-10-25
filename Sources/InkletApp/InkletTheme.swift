@@ -153,15 +153,14 @@ struct Keycap: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: compact ? 8 : 9, weight: .medium, design: .monospaced))
-            .foregroundStyle(InkletTheme.textSecondary)
-            .frame(minWidth: compact ? 13 : 15, minHeight: compact ? 13 : 15)
+            .font(InkletTheme.Typography.keycap)
+            .foregroundStyle(InkletTheme.secondaryLabel)
+            .frame(minWidth: compact ? 18 : 20, minHeight: compact ? 18 : 20)
             .padding(.horizontal, compact ? 3 : 4)
-            .padding(.vertical, compact ? 0 : 1)
-            .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 4))
+            .background(InkletTheme.surfaceRaised, in: RoundedRectangle(cornerRadius: InkletTheme.Radius.keycap))
             .overlay {
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(InkletTheme.strongBorder)
+                RoundedRectangle(cornerRadius: InkletTheme.Radius.keycap)
+                    .stroke(InkletTheme.strokeStrong)
             }
     }
 }

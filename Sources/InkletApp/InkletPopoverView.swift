@@ -14,8 +14,10 @@ struct InkletPopoverView: View {
     @FocusState private var isResultFocused: Bool
     @State private var sourceMeasuredHeight: CGFloat = 0
     @State private var resultMeasuredHeight: CGFloat = 0
-    @State private var statusMeasuredHeight: CGFloat = 34
-    @State private var actionBarMeasuredHeight: CGFloat = 36
+    @State private var statusMeasuredHeight: CGFloat = 44
+    @State private var actionBarMeasuredHeight: CGFloat = InkletTheme.ControlHeight.bar
+    @State private var isModeChipHovered = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         model: InkletPopoverViewModel,
@@ -28,14 +30,18 @@ struct InkletPopoverView: View {
     private let minEditorRows: CGFloat = 2
     private let maxSourceEditorRows: CGFloat = 7
     private let maxResultEditorRows: CGFloat = 13
-    private let editorLineHeight: CGFloat = 20
-    private let editorVerticalPadding: CGFloat = 24
-    private let editorEstimatedCharactersPerLine: CGFloat = 72
-    private let headerHeight: CGFloat = 46
-    private let actionBarHeight: CGFloat = 36
+    private let editorLineHeight: CGFloat = 21
+    private let editorHorizontalPadding = InkletTheme.Spacing.lg
+    private let editorVerticalPaddingEdge: CGFloat = 14
+    private var editorVerticalPadding: CGFloat { editorVerticalPaddingEdge * 2 }
+    private let editorEstimatedCharactersPerLine: CGFloat = 66
+    private let headerHeight = InkletTheme.ControlHeight.bar
+    private let actionBarHeight = InkletTheme.ControlHeight.bar
     private let dividerHeight: CGFloat = 1
-    private let staleResultBannerHeight: CGFloat = 24
-    private let resultCopyButtonInset: CGFloat = 30
+    private let staleResultBannerHeight: CGFloat = 28
+    private let resultCardInset = InkletTheme.Spacing.xs
+    private let resultTextPadding = InkletTheme.Spacing.sm
+    private let resultCopyButtonInset: CGFloat = 32
     private let streamingResultEndID = "streamingResultEnd"
     private var isBusy: Bool {
         model.isBusy
@@ -93,7 +99,7 @@ struct InkletPopoverView: View {
         headerHeight
             + dividerHeight
             + inputHeight
-            + (displayedResultText.isEmpty ? 0 : dividerHeight + resultPanelHeight)
+            + (displayedResultText.isEmpty ? 0 : resultPanelHeight)
             + (model.errorMessage == nil ? 0 : dividerHeight + min(statusMeasuredHeight, 120))
             + dividerHeight
             + max(actionBarHeight, actionBarMeasuredHeight)
@@ -115,8 +121,13 @@ struct InkletPopoverView: View {
         )
     }
 
+    /// The result card plus its inset from the panel's bottom edge.
     private var resultPanelHeight: CGFloat {
-        resultHeight + (showsStaleResultBanner ? staleResultBannerHeight : 0)
+        resultHeight + (showsStaleResultBanner ? staleResultBannerHeight : 0) + resultCardInset
+    }
+
+    private var hasPrimaryActionContent: Bool {
+        !model.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !model.resultText.isEmpty
     }
 
     private var showsStaleResultBanner: Bool {
@@ -145,14 +156,7 @@ struct InkletPopoverView: View {
             )
         )
         .frame(width: 600, height: popoverHeight, alignment: .top)
-        .background(InkletTheme.panelBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(InkletTheme.strongBorder)
-        }
-        .shadow(color: .black.opacity(0.75), radius: 48, x: 0, y: 28)
-        .shadow(color: .white.opacity(0.03), radius: 0, x: 0, y: 1)
+        .inkletFloatingPanel(cornerRadius: InkletTheme.Radius.panel)
         .onAppear {
             publishPopoverHeight()
         }
@@ -167,11 +171,11 @@ struct InkletPopoverView: View {
     private var editorContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            Divider().opacity(0.45)
+            hairline
             commandInput
             resultPanel
             statusStrip
-            Divider().opacity(0.45)
+            hairline
             actionBar
         }
     }
@@ -192,8 +196,8 @@ struct InkletPopoverView: View {
             )
             .accessibilityLabel(L10n.text("dictation.accessibility.sourceEditor"))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, editorHorizontalPadding)
+            .padding(.vertical, editorVerticalPaddingEdge)
         }
         .frame(height: inputHeight)
         .background {
@@ -204,25 +208,28 @@ struct InkletPopoverView: View {
         }
     }
 
+    private var hairline: some View {
+        InkletTheme.hairline
+            .frame(height: dividerHeight)
+    }
+
     @ViewBuilder
     private var resultPanel: some View {
         if !displayedResultText.isEmpty {
-            Divider().opacity(0.45)
             VStack(spacing: 0) {
                 if showsStaleResultBanner, let resultModeDisplayName = model.resultModeDisplayName {
                     HStack(spacing: 6) {
                         Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.system(size: InkletTheme.IconSize.small, weight: .medium))
                         Text(L10n.format("popover.result.generatedWith", resultModeDisplayName))
-                            .font(.system(size: 10, weight: .medium))
+                            .font(InkletTheme.Typography.caption)
                             .lineLimit(1)
                             .truncationMode(.tail)
                     }
-                    .foregroundStyle(InkletTheme.textSecondary)
-                    .padding(.horizontal, 14)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .padding(.horizontal, resultTextPadding)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .frame(height: staleResultBannerHeight)
-                    .background(InkletTheme.toolbarBackground)
                     .accessibilityElement(children: .combine)
                 }
 
@@ -242,18 +249,18 @@ struct InkletPopoverView: View {
                             onTextViewAttachment: nil
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.leading, 16)
-                        .padding(.trailing, 16 + resultCopyButtonInset)
-                        .padding(.vertical, 12)
+                        .padding(.leading, resultTextPadding)
+                        .padding(.trailing, resultTextPadding + resultCopyButtonInset)
+                        .padding(.vertical, editorVerticalPaddingEdge)
 
                         copyResultButton
                     }
                 }
-                .background(InkletTheme.primary.opacity(0.08))
                 .frame(height: resultHeight)
                 .background {
                     editorHeightReader(
                         for: displayedResultText,
+                        horizontalPadding: resultTextPadding,
                         trailingInset: resultCopyButtonInset,
                         key: ResultEditorHeightPreferenceKey.self
                     )
@@ -262,8 +269,13 @@ struct InkletPopoverView: View {
                     resultMeasuredHeight = height
                 }
             }
+            .inkletCard(
+                cornerRadius: InkletTheme.Radius.concentric(outer: InkletTheme.Radius.panel, inset: resultCardInset)
+            )
+            .padding(.horizontal, resultCardInset)
+            .padding(.bottom, resultCardInset)
             .frame(height: resultPanelHeight)
-            .transition(.opacity.combined(with: .move(edge: .bottom)))
+            .transition(InkletTheme.Motion.appear(reduceMotion: reduceMotion))
             .onAppear {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                     isResultFocused = true
@@ -277,12 +289,12 @@ struct InkletPopoverView: View {
             ScrollView(.vertical) {
                 VStack(spacing: 0) {
                     Text(model.streamingResultText)
-                        .font(.system(size: 14))
-                        .foregroundStyle(InkletTheme.textPrimary)
+                        .font(InkletTheme.Typography.editor)
+                        .foregroundStyle(InkletTheme.label)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .padding(.leading, 16)
-                        .padding(.trailing, 16 + resultCopyButtonInset)
-                        .padding(.vertical, 12)
+                        .padding(.leading, resultTextPadding)
+                        .padding(.trailing, resultTextPadding + resultCopyButtonInset)
+                        .padding(.vertical, editorVerticalPaddingEdge)
                     Color.clear
                         .frame(height: 0)
                         .id(streamingResultEndID)
@@ -300,15 +312,12 @@ struct InkletPopoverView: View {
             model.copyResult()
         } label: {
             Image(systemName: model.isResultCopied ? "checkmark" : "doc.on.doc")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(InkletTheme.textSecondary)
-                .frame(width: 26, height: 26)
-                .contentShape(Rectangle())
+                .foregroundStyle(model.isResultCopied ? InkletTheme.statusSuccess : InkletTheme.secondaryLabel)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(InkletIconButtonStyle())
         .disabled(isBusy)
-        .padding(.top, 7)
-        .padding(.trailing, 10)
+        .padding(.top, 6)
+        .padding(.trailing, 6)
         .help(L10n.text("popover.action.copyResultHelp"))
         .accessibilityLabel(L10n.text("popover.action.copyResult"))
     }
@@ -316,14 +325,11 @@ struct InkletPopoverView: View {
     @ViewBuilder
     private var statusStrip: some View {
         if let errorMessage = model.errorMessage {
-            Divider().opacity(0.45)
+            hairline
             ScrollView(.vertical) {
-                Text(errorMessage)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.red.opacity(0.9))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
+                InkletStatusBanner(tone: .error, message: errorMessage)
+                    .padding(.horizontal, InkletTheme.Spacing.xs)
+                    .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background {
                         GeometryReader { proxy in
@@ -335,32 +341,37 @@ struct InkletPopoverView: View {
                     }
             }
             .frame(height: min(statusMeasuredHeight, 120))
-            .background(Color.red.opacity(0.13))
         }
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 6) {
+        HStack(alignment: .center, spacing: InkletTheme.Spacing.xs) {
             Button {
                 model.returnToModePicker()
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(InkletTheme.textSecondary.opacity(0.78))
                     Image(systemName: modeIconName)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(InkletTheme.primary.opacity(0.82))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(InkletTheme.accentText)
                     Text(selectedModeDisplayName)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(InkletTheme.label)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .layoutPriority(1)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(InkletTheme.secondaryLabel)
                 }
-                .foregroundStyle(InkletTheme.textPrimary.opacity(0.92))
-                .padding(.horizontal, 7)
-                .padding(.vertical, 5)
-                .background(Color.clear, in: RoundedRectangle(cornerRadius: 9))
+                .padding(.horizontal, 10)
+                .frame(height: InkletTheme.ControlHeight.regular)
+                .background(
+                    isModeChipHovered ? InkletTheme.fillHover : InkletTheme.fill,
+                    in: RoundedRectangle(cornerRadius: InkletTheme.Radius.control)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: InkletTheme.Radius.control))
+                .onHover { isModeChipHovered = $0 }
+                .animation(InkletTheme.Motion.fast, value: isModeChipHovered)
             }
             .buttonStyle(.plain)
             .disabled(isBusy)
@@ -370,30 +381,24 @@ struct InkletPopoverView: View {
             Spacer()
 
             Text("\(model.currentProviderName) · \(model.currentModelName)")
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(InkletTheme.textSecondary.opacity(0.62))
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(InkletTheme.tertiaryLabel)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .frame(maxWidth: 188, alignment: .trailing)
-                .padding(.trailing, 1)
 
             Button {
                 model.openSettings()
             } label: {
                 Image(systemName: "gearshape")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(InkletTheme.textSecondary.opacity(0.72))
-                    .frame(width: 22, height: 22)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(InkletIconButtonStyle())
             .disabled(isBusy)
             .help(L10n.text("app.menu.settings"))
             .accessibilityLabel(L10n.text("app.menu.settings"))
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, InkletTheme.Spacing.xs)
         .frame(height: headerHeight)
-        .background(Color.white.opacity(0.018))
     }
 
     private var actionBar: some View {
@@ -403,23 +408,33 @@ struct InkletPopoverView: View {
                     .frame(minHeight: max(actionBarHeight, actionBarMeasuredHeight))
             } else {
                 WritingActionBarLayout {
-                    shortcutHint(keys: ["↵"], label: primaryActionTitle, primary: !model.sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !model.resultText.isEmpty) {
+                    Button {
                         model.submit()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(primaryActionTitle)
+                            Image(systemName: "return")
+                                .font(.system(size: 11, weight: .semibold))
+                                .opacity(0.8)
+                        }
                     }
+                    .buttonStyle(InkletButtonStyle(kind: hasPrimaryActionContent ? .primary : .secondary))
+                    .help(primaryActionTitle)
+                    .accessibilityLabel(primaryActionTitle)
                     .disabled(model.dictationPhase.isActive)
                     shortcutHint(keys: ["⌘", "↵"], label: L10n.text("popover.action.insertOriginal")) {
                         model.insertOriginal()
                     }
                     .disabled(model.dictationPhase.isActive)
-                    shortcutHint(keys: ["⇧", "↵"], label: L10n.text("popover.hint.newLine")) {
+                    shortcutHint(keys: ["⇧", "↵"], label: L10n.text("popover.hint.newLine"), showsLabel: false) {
                         insertNewLine()
                     }
                     .disabled(model.dictationPhase.isActive)
-                    shortcutHint(keys: ["⌘", "↑/↓"], label: L10n.text("popover.hint.mode")) {
+                    shortcutHint(keys: ["⌘", "↑", "↓"], label: L10n.text("popover.hint.mode"), showsLabel: false) {
                         model.cyclePromptMode(direction: 1)
                     }
                     .disabled(model.dictationPhase.isActive)
-                    HStack(spacing: 3) {
+                    HStack(spacing: InkletTheme.Spacing.xs) {
                         if model.shouldShowDictationStatus {
                             dictationStatus
                         }
@@ -429,14 +444,14 @@ struct InkletPopoverView: View {
                     }
                     .fixedSize()
                 }
-                .frame(width: 586)
-                .padding(.vertical, 8)
+                .frame(width: 600 - InkletTheme.Spacing.sm * 2)
+                .padding(.vertical, InkletTheme.Spacing.xs)
             }
         }
-        .padding(.horizontal, 7)
+        .padding(.horizontal, InkletTheme.Spacing.sm)
         .frame(maxWidth: .infinity, minHeight: actionBarHeight)
         .fixedSize(horizontal: false, vertical: true)
-        .background(InkletTheme.toolbarBackground)
+        .background(InkletTheme.surfaceSunken)
         .background {
             GeometryReader { proxy in
                 Color.clear.preference(key: ActionBarHeightPreferenceKey.self, value: proxy.size.height)
@@ -446,7 +461,7 @@ struct InkletPopoverView: View {
     }
 
     private var dictationStatus: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 4) {
             Group {
                 switch model.dictationPhase {
                 case .connecting, .finalizing, .recovering:
@@ -454,39 +469,33 @@ struct InkletPopoverView: View {
                         .controlSize(.mini)
                 case .listening:
                     Image(systemName: "waveform")
+                        .foregroundStyle(InkletTheme.accentText)
                 case .recordingForFallback:
                     Image(systemName: "mic.badge.plus")
                 case .idle, .complete, .failed:
                     Image(systemName: "mic")
                 }
             }
-            .font(.system(size: 8))
+            .font(.system(size: 11, weight: .medium))
             .frame(width: 16, height: 16)
 
             Text(model.dictationStatusText)
-                .font(.system(size: 8))
+                .font(InkletTheme.Typography.caption)
                 .lineLimit(1)
         }
-        .foregroundStyle(InkletTheme.textSecondary.opacity(0.78))
+        .foregroundStyle(InkletTheme.secondaryLabel)
         .fixedSize()
-        .padding(.horizontal, 2)
         .help(model.dictationStatusAccessibilityLabel)
         .accessibilityLabel(model.dictationStatusAccessibilityLabel)
     }
 
     private var loadingIndicator: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 4) {
-                ForEach(0..<3) { index in
-                    Circle()
-                        .fill(InkletTheme.primary.opacity(0.85))
-                        .frame(width: 5, height: 5)
-                        .opacity(index == 1 ? 0.65 : 1)
-                }
-            }
+        HStack(spacing: InkletTheme.Spacing.xs) {
+            ProgressView()
+                .controlSize(.small)
             Text(busyTitle)
-                .font(.system(size: 11))
-                .foregroundStyle(InkletTheme.textSecondary)
+                .font(InkletTheme.Typography.help)
+                .foregroundStyle(InkletTheme.secondaryLabel)
             Spacer()
             if model.isTransforming {
                 shortcutHint(keys: ["esc"], label: L10n.text("popover.hint.stop")) {
@@ -494,29 +503,33 @@ struct InkletPopoverView: View {
                 }
             }
         }
-        .padding(.horizontal, 4)
+        .padding(.leading, 4)
     }
 
-    private func shortcutHint(keys: [String], label: String, primary: Bool = false, action: @escaping () -> Void) -> some View {
+    /// Keycaps with a caption label. Without `showsLabel` it is keycaps only, named by its tooltip.
+    private func shortcutHint(
+        keys: [String],
+        label: String,
+        showsLabel: Bool = true,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
-            HStack(spacing: 2) {
+            HStack(spacing: 3) {
                 ForEach(keys, id: \.self) { key in
                     Keycap(title: key, compact: true)
                 }
-                Text(label)
-                    .font(.system(size: 8, weight: .medium))
-                    .foregroundStyle(primary ? Color.white : InkletTheme.textSecondary)
-                    .lineLimit(1)
+                if showsLabel {
+                    Text(label)
+                        .font(InkletTheme.Typography.caption)
+                        .foregroundStyle(InkletTheme.secondaryLabel)
+                        .lineLimit(1)
+                        .padding(.leading, 1)
+                }
             }
             .fixedSize()
-            .padding(.horizontal, primary ? 5 : 2)
-            .padding(.vertical, 2)
-            .background(primary ? InkletTheme.primary : Color.white.opacity(0.001), in: RoundedRectangle(cornerRadius: 7))
-            .shadow(color: primary ? InkletTheme.primary.opacity(0.35) : .clear, radius: 8, x: 0, y: 1)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ShortcutHintButtonStyle())
         .fixedSize()
-        .contentShape(Rectangle())
         .help(label)
         .accessibilityLabel(label)
     }
@@ -575,16 +588,18 @@ struct InkletPopoverView: View {
 
     private func editorHeightReader<Key: PreferenceKey>(
         for text: String,
+        horizontalPadding: CGFloat? = nil,
         trailingInset: CGFloat = 0,
         key: Key.Type
     ) -> some View where Key.Value == CGFloat {
-        Text(text.isEmpty ? " \n " : text)
-            .font(.system(size: 14))
-            .lineSpacing(3)
+        let horizontalPadding = horizontalPadding ?? editorHorizontalPadding
+        return Text(text.isEmpty ? " \n " : text)
+            .font(InkletTheme.Typography.editor)
+            .lineSpacing(InkletTheme.Typography.editorLineSpacing)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.leading, 16)
-            .padding(.trailing, 16 + trailingInset)
-            .padding(.vertical, 12)
+            .padding(.leading, horizontalPadding)
+            .padding(.trailing, horizontalPadding + trailingInset)
+            .padding(.vertical, editorVerticalPaddingEdge)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .hidden()
             .background {
@@ -598,56 +613,112 @@ struct InkletPopoverView: View {
     }
 }
 
+/// Lays out the action bar: the first subview (the primary action) sits at the trailing
+/// edge with the last subview (dictation status and escape) just before it; the other
+/// hints flow from the leading edge and wrap onto extra rows when space runs out.
 private struct WritingActionBarLayout: Layout {
-    private let spacing: CGFloat = 3
+    private let spacing: CGFloat = 4
+    private let groupSpacing = InkletTheme.Spacing.sm
     private let rowSpacing: CGFloat = 6
+
+    private struct Arrangement {
+        var rows: [[Int]]
+        var trailing: [Int]
+        var trailingWidth: CGFloat
+    }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
-        let width = proposal.width ?? sizes.reduce(0) { $0 + $1.width } + spacing * CGFloat(max(0, sizes.count - 1))
-        let rows = rows(for: sizes, width: width)
-        let height = rows.reduce(CGFloat(0)) { total, row in
-            total + row.map { sizes[$0].height }.max()!
-        } + rowSpacing * CGFloat(max(0, rows.count - 1))
+        let width = proposal.width
+            ?? sizes.reduce(0) { $0 + $1.width } + spacing * CGFloat(max(0, sizes.count - 1)) + groupSpacing
+        let arrangement = arrangement(for: sizes, width: width)
+        let height = rowHeights(for: arrangement, sizes: sizes).reduce(0, +)
+            + rowSpacing * CGFloat(max(0, arrangement.rows.count - 1))
         return CGSize(width: width, height: height)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let arrangement = arrangement(for: sizes, width: bounds.width)
+        let heights = rowHeights(for: arrangement, sizes: sizes)
         var y = bounds.minY
-        for row in rows(for: sizes, width: bounds.width) {
-            let height = row.map { sizes[$0].height }.max()!
+        for (rowIndex, row) in arrangement.rows.enumerated() {
+            let height = heights[rowIndex]
             var x = bounds.minX
             for index in row {
-                if index == subviews.count - 1 {
-                    x = max(x, bounds.maxX - sizes[index].width)
-                }
-                subviews[index].place(
-                    at: CGPoint(x: x, y: y + (height - sizes[index].height) / 2),
-                    proposal: ProposedViewSize(sizes[index])
-                )
+                place(subviews[index], size: sizes[index], x: x, y: y, rowHeight: height)
                 x += sizes[index].width + spacing
+            }
+            if rowIndex == 0 {
+                var trailingX = bounds.maxX - arrangement.trailingWidth
+                for index in arrangement.trailing {
+                    place(subviews[index], size: sizes[index], x: trailingX, y: y, rowHeight: height)
+                    trailingX += sizes[index].width + spacing
+                }
             }
             y += height + rowSpacing
         }
     }
 
-    private func rows(for sizes: [CGSize], width: CGFloat) -> [[Int]] {
-        var rows: [[Int]] = []
-        var row: [Int] = []
-        var rowWidth: CGFloat = 0
-        for index in sizes.indices {
-            let nextWidth = rowWidth + (row.isEmpty ? 0 : spacing) + sizes[index].width
-            if !row.isEmpty, nextWidth > width {
-                rows.append(row)
-                row = []
-                rowWidth = 0
-            }
-            rowWidth += (row.isEmpty ? 0 : spacing) + sizes[index].width
-            row.append(index)
+    private func place(_ subview: LayoutSubview, size: CGSize, x: CGFloat, y: CGFloat, rowHeight: CGFloat) {
+        subview.place(
+            at: CGPoint(x: x, y: y + (rowHeight - size.height) / 2),
+            proposal: ProposedViewSize(size)
+        )
+    }
+
+    private func rowHeights(for arrangement: Arrangement, sizes: [CGSize]) -> [CGFloat] {
+        arrangement.rows.enumerated().map { (rowIndex, row) -> CGFloat in
+            let indices = rowIndex == 0 ? row + arrangement.trailing : row
+            return indices.map { sizes[$0].height }.max() ?? 0
         }
-        if !row.isEmpty { rows.append(row) }
-        return rows
+    }
+
+    private func arrangement(for sizes: [CGSize], width: CGFloat) -> Arrangement {
+        let trailing = sizes.count > 1 ? [sizes.count - 1, 0] : Array(sizes.indices)
+        let trailingWidth = trailing.reduce(CGFloat(0)) { $0 + sizes[$1].width }
+            + spacing * CGFloat(max(0, trailing.count - 1))
+        var rows: [[Int]] = [[]]
+        var rowWidth: CGFloat = 0
+        var available = max(0, width - trailingWidth - groupSpacing)
+        for index in sizes.indices where !trailing.contains(index) {
+            let gap = rows[rows.count - 1].isEmpty ? 0 : spacing
+            if !rows[rows.count - 1].isEmpty, rowWidth + gap + sizes[index].width > available {
+                rows.append([])
+                rowWidth = 0
+                available = width
+            }
+            rowWidth += (rows[rows.count - 1].isEmpty ? 0 : spacing) + sizes[index].width
+            rows[rows.count - 1].append(index)
+        }
+        return Arrangement(rows: rows, trailing: trailing, trailingWidth: trailingWidth)
+    }
+}
+
+/// Quiet hover feedback for the keycap hints in the action bar.
+private struct ShortcutHintButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        ShortcutHintButtonBody(configuration: configuration)
+    }
+}
+
+private struct ShortcutHintButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovered = false
+
+    var body: some View {
+        configuration.label
+            .padding(.horizontal, 4)
+            .frame(height: InkletTheme.ControlHeight.small)
+            .background(
+                configuration.isPressed ? InkletTheme.fillPressed : isHovered ? InkletTheme.fill : .clear,
+                in: RoundedRectangle(cornerRadius: InkletTheme.Radius.small)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: InkletTheme.Radius.small))
+            .opacity(isEnabled ? 1 : 0.45)
+            .onHover { isHovered = $0 }
+            .animation(InkletTheme.Motion.fast, value: isHovered)
     }
 }
 

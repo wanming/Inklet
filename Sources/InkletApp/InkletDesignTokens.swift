@@ -139,15 +139,10 @@ enum InkletPalette {
     static let statusSuccess = InkletColorToken(light: InkletRGBA(hex: 0x16703F), dark: InkletRGBA(hex: 0x3DCB82))
     static let statusWarning = InkletColorToken(light: InkletRGBA(hex: 0xA64B05), dark: InkletRGBA(hex: 0xF2B144))
     static let statusError = InkletColorToken(light: InkletRGBA(hex: 0xC42F2F), dark: InkletRGBA(hex: 0xFF7070))
-
-    // Shadows for floating panels.
-    static let shadowAmbient = InkletColorToken(light: .black(0.16), dark: .black(0.45))
-    static let shadowKey = InkletColorToken(light: .black(0.08), dark: .black(0.25))
 }
 
-/// Colors derived from the user's macOS accent color. The accent itself is used as is
-/// for fills; text and tints on top of it are adjusted so they stay readable for every
-/// accent, including yellow and graphite.
+/// Colors derived from the user's macOS accent color, adjusted so text on and around
+/// the accent stays readable for every accent, including yellow and graphite.
 enum InkletAccent {
     struct Derived: Equatable, Sendable {
         /// The accent fill: primary buttons, toggles, selected sidebar item. Slightly deeper
@@ -253,8 +248,8 @@ extension InkletTheme {
         /// The user's text in editors and results.
         static var editor: Font { .system(size: editorSize) }
         static let editorSize: CGFloat = 15
-        /// Added to the font's natural line height so editor lines are 23 pt.
-        static let editorLineSpacing: CGFloat = 5
+        /// Line spacing for measuring editor text, matching the native text view.
+        static let editorLineSpacing: CGFloat = 3
         /// Button titles, menu items, mode names.
         static var control: Font { .system(size: 13, weight: .medium) }
         /// Row labels and ordinary interface text.
@@ -343,10 +338,6 @@ extension InkletTheme {
     // MARK: Elevation
 
     enum Elevation {
-        static let floatingAmbientRadius: CGFloat = 16
-        static let floatingAmbientY: CGFloat = 12
-        static let floatingKeyRadius: CGFloat = 3
-        static let floatingKeyY: CGFloat = 2
         /// Opacity of the surface tint laid over the vibrancy material.
         static let materialTintOpacity: Double = 0.82
     }

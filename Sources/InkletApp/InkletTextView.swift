@@ -11,7 +11,7 @@ final class InkletTextContainerView: NSView {
 
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
-        placeholderLabel.font = .systemFont(ofSize: 14)
+        placeholderLabel.font = .systemFont(ofSize: InkletTheme.Typography.editorSize)
         placeholderLabel.textColor = .placeholderTextColor
         placeholderLabel.lineBreakMode = .byTruncatingTail
         placeholderLabel.maximumNumberOfLines = 1
@@ -130,7 +130,7 @@ struct InkletTextView: NSViewRepresentable {
         textView.usesFindBar = false
         textView.drawsBackground = false
         textView.backgroundColor = .clear
-        textView.font = .systemFont(ofSize: 14)
+        textView.font = .systemFont(ofSize: InkletTheme.Typography.editorSize)
         textView.textColor = .labelColor
         textView.insertionPointColor = .controlAccentColor
         textView.textContainerInset = .zero
@@ -167,7 +167,7 @@ struct InkletTextView: NSViewRepresentable {
         onTextViewAttachment?(.attach(textView))
 
         textView.isEditable = isEditable
-        textView.font = .systemFont(ofSize: 14)
+        textView.font = .systemFont(ofSize: InkletTheme.Typography.editorSize)
         textView.textColor = .labelColor
         textView.insertionPointColor = .controlAccentColor
         container.placeholderLabel.stringValue = placeholder ?? ""

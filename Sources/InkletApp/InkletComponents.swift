@@ -170,18 +170,6 @@ private struct InkletFloatingPanelModifier: ViewModifier {
                     .frame(height: 1)
                     .padding(.horizontal, cornerRadius)
             }
-            .shadow(
-                color: InkletPalette.shadowAmbient.color,
-                radius: InkletTheme.Elevation.floatingAmbientRadius,
-                x: 0,
-                y: InkletTheme.Elevation.floatingAmbientY
-            )
-            .shadow(
-                color: InkletPalette.shadowKey.color,
-                radius: InkletTheme.Elevation.floatingKeyRadius,
-                x: 0,
-                y: InkletTheme.Elevation.floatingKeyY
-            )
     }
 }
 
@@ -200,7 +188,7 @@ private struct InkletCardModifier: ViewModifier {
 
 extension View {
     /// The popover, the selection bar and other panels that float above other apps.
-    /// The hosting window needs room around the view for the shadow.
+    /// The shadow comes from the hosting panel (`hasShadow`), which follows its rounded mask.
     func inkletFloatingPanel(
         cornerRadius: CGFloat = InkletTheme.Radius.panel,
         usesMaterial: Bool = true
