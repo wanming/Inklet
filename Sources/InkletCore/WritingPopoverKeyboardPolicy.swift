@@ -20,6 +20,7 @@ public enum WritingPopoverKeyboardAction: Equatable, Sendable {
     case cycleMode(Int)
     case submit
     case insertOriginal
+    case copyResult
 }
 
 public enum WritingPopoverKeyboardPolicy {
@@ -27,7 +28,8 @@ public enum WritingPopoverKeyboardPolicy {
         route: WritingPopoverSessionState.Route,
         keyCode: UInt16,
         modifiers: WritingPopoverKeyboardModifiers,
-        isComposingText: Bool
+        isComposingText: Bool,
+        charactersIgnoringModifiers: String? = nil
     ) -> WritingPopoverKeyboardAction {
         let isReturnKey = keyCode == 36 || keyCode == 76
 
@@ -74,6 +76,10 @@ public enum WritingPopoverKeyboardPolicy {
 
             if isComposingText, isReturnKey {
                 return .passThrough
+            }
+
+            if modifiers == [.command, .shift], charactersIgnoringModifiers?.lowercased() == "c" {
+                return .copyResult
             }
 
             if modifiers.contains(.command),

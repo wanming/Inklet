@@ -43,6 +43,22 @@ public struct TransformationResult: Equatable, Sendable {
 
 public protocol LLMProvider: Sendable {
     func transform(_ request: TransformationRequest) async throws -> TransformationResult
+
+    /// Reports the output received so far through `onPartialOutput` while the response is generated.
+    func streamTransform(
+        _ request: TransformationRequest,
+        onPartialOutput: @escaping @Sendable (String) -> Void
+    ) async throws -> TransformationResult
+}
+
+extension LLMProvider {
+    /// Providers without streaming support return the complete result without partial updates.
+    public func streamTransform(
+        _ request: TransformationRequest,
+        onPartialOutput: @escaping @Sendable (String) -> Void
+    ) async throws -> TransformationResult {
+        try await transform(request)
+    }
 }
 
 public enum TransformationError: Error, Equatable, LocalizedError {

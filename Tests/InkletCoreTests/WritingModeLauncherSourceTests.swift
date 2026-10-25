@@ -376,6 +376,7 @@ final class WritingModeLauncherSourceTests: XCTestCase {
         XCTAssertTrue(handleBlock.contains("case .cycleMode(let direction):"))
         XCTAssertTrue(handleBlock.contains("case .submit:"))
         XCTAssertTrue(handleBlock.contains("case .insertOriginal:"))
+        XCTAssertTrue(handleBlock.contains("case .copyResult:"))
         for modifier in ["command", "shift", "option", "control"] {
             XCTAssertTrue(modifierHelper.contains("modifiers.contains(.\(modifier))"))
         }
