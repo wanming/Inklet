@@ -208,6 +208,25 @@ final class AppCoordinatorSourceTests: XCTestCase {
         XCTAssertFalse(languageObserverBlock.contains("makeUpdateCheckCoordinator"))
     }
 
+    func testStatusMenuSendsFeedbackToGitHubIssueChooser() throws {
+        let source = try appCoordinatorSource()
+        let statusMenuStart = try XCTUnwrap(source.range(of: "private func configureStatusItemMenu()"))
+        let checkActionStart = try XCTUnwrap(source.range(
+            of: "\n    @objc func checkForUpdates()",
+            range: statusMenuStart.upperBound..<source.endIndex
+        ))
+        let statusMenuBlock = source[statusMenuStart.lowerBound..<checkActionStart.lowerBound]
+        let feedbackItem = try XCTUnwrap(statusMenuBlock.range(of: "title: L10n.text(\"app.menu.sendFeedback\")"))
+        let aboutItem = try XCTUnwrap(statusMenuBlock.range(of: "title: L10n.text(\"app.menu.about\")"))
+        XCTAssertTrue(statusMenuBlock.contains("action: #selector(sendFeedback)"))
+        XCTAssertLessThan(feedbackItem.lowerBound, aboutItem.lowerBound)
+
+        XCTAssertTrue(source.contains(
+            "URL(string: \"https://github.com/wanming/Inklet/issues/new/choose\")!"
+        ))
+        XCTAssertTrue(source.contains("NSWorkspace.shared.open(Self.feedbackURL)"))
+    }
+
     func testUpdateMenusTrackPresentationAndFlushOnClose() throws {
         let source = try appCoordinatorSource()
 

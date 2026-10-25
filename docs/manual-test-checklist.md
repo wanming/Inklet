@@ -144,6 +144,7 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - Permissions: verify Accessibility status and the System Settings button. Inklet should not steal focus while System Settings is open; close it and confirm the existing Settings window returns with refreshed status.
 - History: confirm successful Write and Selection results appear newest first. Repeat identical consecutive actions and confirm duplicates collapse; add a different item and then repeat the original to confirm it is retained. Dictation alone must add nothing.
 - History: filter by Write and Selection, then confirm imported legacy Voice entries and the Voice filter remain readable. Select source/result text, copy result text, clear History, and confirm the empty state.
+- Feedback: choose **Send Feedback…** from the menu bar menu and confirm the browser opens the GitHub new-issue chooser with the bug report and feature request forms. Check the item label in English and Chinese.
 - Save behavior: quit and reopen Inklet and confirm changes persist in the matching bundle's defaults.
 
 ## Language Switching And Layout

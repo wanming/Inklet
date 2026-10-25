@@ -197,6 +197,10 @@ docs/                    手动测试说明和隐私政策
 - Inklet 最多每天从 `models.dev` 获取一次公开模型目录。该请求不包含你的文本、音频、API keys 或应用设置。
 - 除非你信任 OpenAI 的数据处理政策，否则不要发送私密文本或音频。
 
+## 反馈
+
+在 Inklet 菜单栏菜单中选择 **发送反馈…**，或直接[提交 issue](https://github.com/wanming/Inklet/issues/new/choose)。欢迎报告问题和提出功能建议；请勿在 issue 中粘贴 API key 或私密文本。
+
 ## 贡献
 
 请查看 [CONTRIBUTING.md](CONTRIBUTING.md)。
