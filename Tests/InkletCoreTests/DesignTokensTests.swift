@@ -26,7 +26,6 @@ final class DesignTokensTests: XCTestCase {
             "label": InkletPalette.label,
             "secondaryLabel": InkletPalette.secondaryLabel,
             "tertiaryLabel": InkletPalette.tertiaryLabel,
-            "accentText": InkletPalette.accentText,
             "statusSuccess": InkletPalette.statusSuccess,
             "statusWarning": InkletPalette.statusWarning,
             "statusError": InkletPalette.statusError,
@@ -46,21 +45,78 @@ final class DesignTokensTests: XCTestCase {
         }
     }
 
-    func testOnAccentTextIsReadableOnTheAccentFill() {
-        for appearance in Appearance.allCases {
-            let accent = value(InkletPalette.accent, appearance)
-            let ratio = value(InkletPalette.onAccent, appearance).contrastRatio(against: accent)
-            XCTAssertGreaterThanOrEqual(ratio, 4.5, "onAccent on accent (\(appearance)) is \(ratio):1")
+    /// The macOS accent colors (System Settings > Appearance), light then dark, in sRGB.
+    private let systemAccents: [(name: String, light: UInt32, dark: UInt32)] = [
+        ("blue", 0x007AFF, 0x0A84FF),
+        ("purple", 0x953D96, 0xA550A7),
+        ("pink", 0xE0457B, 0xF74F9E),
+        ("red", 0xE0383E, 0xFF5257),
+        ("orange", 0xF7821B, 0xF7821B),
+        ("yellow", 0xFFC600, 0xFFC600),
+        ("green", 0x62BA46, 0x62BA46),
+        ("graphite", 0x989898, 0x8C8C8C),
+    ]
+
+    func testAccentTextIsReadableOnEverySurfaceForEverySystemAccent() {
+        for accent in systemAccents {
+            for appearance in Appearance.allCases {
+                let isDark = appearance == .dark
+                let derived = InkletAccent.derive(
+                    from: InkletRGBA(hex: isDark ? accent.dark : accent.light),
+                    isDark: isDark
+                )
+                var surfaces = backgrounds(appearance)
+                surfaces["accentSoft"] = derived.soft.composited(over: value(InkletPalette.surface, appearance))
+                for (backgroundName, background) in surfaces {
+                    let ratio = derived.text.contrastRatio(against: background)
+                    XCTAssertGreaterThanOrEqual(
+                        ratio,
+                        4.5,
+                        "\(accent.name) accentText on \(backgroundName) (\(appearance)) is \(ratio):1"
+                    )
+                }
+            }
         }
     }
 
+    func testTextOnTheAccentFillIsReadableForEverySystemAccent() {
+        for accent in systemAccents {
+            for appearance in Appearance.allCases {
+                let isDark = appearance == .dark
+                let derived = InkletAccent.derive(
+                    from: InkletRGBA(hex: isDark ? accent.dark : accent.light),
+                    isDark: isDark
+                )
+                let ratio = derived.onFill.contrastRatio(against: derived.fill)
+                XCTAssertGreaterThanOrEqual(ratio, 4.5, "onAccent on \(accent.name) (\(appearance)) is \(ratio):1")
+            }
+        }
+    }
+
+    func testBlueAccentTakesWhiteTextOnTheFill() {
+        let derived = InkletAccent.derive(from: InkletRGBA(hex: 0x007AFF), isDark: false)
+        XCTAssertEqual(derived.onFill, InkletRGBA(hex: 0xFFFFFF))
+        XCTAssertGreaterThanOrEqual(derived.text.contrastRatio(against: InkletPalette.surfaceRaised.light), 4.5)
+    }
+
+    func testYellowAccentKeepsItsColorAndTakesDarkText() {
+        let accent = InkletRGBA(hex: 0xFFC600)
+        let derived = InkletAccent.derive(from: accent, isDark: false)
+        XCTAssertEqual(derived.fill, accent)
+        XCTAssertEqual(derived.onFill, InkletRGBA(hex: 0x1D1D1F))
+    }
+
     func testLabelsStayReadableOnTheSelectedRowFill() {
-        for appearance in Appearance.allCases {
-            let surface = value(InkletPalette.surface, appearance)
-            let selected = value(InkletPalette.accentSoft, appearance).composited(over: surface)
-            for token in [InkletPalette.label, InkletPalette.accentText] {
-                let ratio = value(token, appearance).contrastRatio(against: selected)
-                XCTAssertGreaterThanOrEqual(ratio, 4.5, "text on accentSoft (\(appearance)) is \(ratio):1")
+        for accent in systemAccents {
+            for appearance in Appearance.allCases {
+                let isDark = appearance == .dark
+                let derived = InkletAccent.derive(
+                    from: InkletRGBA(hex: isDark ? accent.dark : accent.light),
+                    isDark: isDark
+                )
+                let selected = derived.soft.composited(over: value(InkletPalette.surface, appearance))
+                let ratio = value(InkletPalette.label, appearance).contrastRatio(against: selected)
+                XCTAssertGreaterThanOrEqual(ratio, 4.5, "label on \(accent.name) accentSoft (\(appearance)) is \(ratio):1")
             }
         }
     }

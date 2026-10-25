@@ -7,7 +7,7 @@ Visual reference (light and dark, every surface): [Inklet design language canvas
 ## Principles
 
 1. **Content first.** The user's text is the largest, highest-contrast thing on screen. Chrome recedes into hairlines, tints and secondary text.
-2. **One accent, used once.** Ink appears on the single primary action, the focus ring and the current selection. It is never decoration.
+2. **One accent, used once.** The accent appears on the single primary action, the focus ring and the current selection. It is never decoration.
 3. **Native first.** macOS materials, SF Pro, SF Symbols, system focus, menus and window behaviour. Inklet should feel like part of macOS, not a web page in a panel.
 4. **Roomy, not big.** A 4 pt grid with 16–20 pt edges gives air. No text below 11 pt, no control below 24 pt.
 5. **Calm motion.** Short, springy transitions that explain a change of state. Fade only when Reduce Motion is on.
@@ -18,10 +18,10 @@ Use the semantic accessors on `InkletTheme` in views. `InkletPalette` holds the 
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `accent` | `#4A4DE6` | `#5E61F0` | Primary button fill, toggles, selected sidebar item, focus ring |
-| `accentText` | `#4A4DE6` | `#8E91FA` | Accent text and icons on a surface |
-| `accentSoft` | `#ECECFD` | accent 18% | Selected list row, text selection tint |
-| `onAccent` | white | white | Text and icons on an `accent` fill |
+| `accent` | macOS accent | macOS accent | Primary button fill, toggles, selected sidebar item, focus ring |
+| `accentText` | accent, toward `label` as needed | same | Accent text and icons on a surface |
+| `accentSoft` | accent 14% | accent 22% | Selected list row, text selection tint |
+| `onAccent` | white, or `#1D1D1F` on light accents | same | Text and icons on an `accent` fill |
 | `surface` | `#F6F6F7` | `#1E1E21` | Panel and window background (tint over the material) |
 | `surfaceRaised` | white | `#2A2A2E` | Cards, settings groups, fields, the result card |
 | `surfaceSunken` | black 3% | black 15% | Action bars, toolbars, banners |
@@ -41,7 +41,8 @@ Rules:
 - All text tokens reach WCAG AA (4.5:1) on `surface`, `surfaceRaised` and `surfaceSunken` in both appearances. `DesignTokensTests` enforces it.
 - Status colors tint an icon or a short word. Never fill a strip or a panel with red or yellow; use `InkletStatusBanner`.
 - Do not write `Color.white.opacity(…)`, `Color.black.opacity(…)` or `Color(red:…)` in a view. Those break in the other appearance. Add or reuse a token.
-- The accent is the brand "Ink" indigo rather than the macOS accent color, so contrast is predictable. If that changes, change `InkletPalette.accent*` only.
+- The accent follows the macOS accent color the user picked in System Settings > Appearance. `InkletAccent.derive(from:isDark:)` keeps it readable for every choice: `accentText` moves toward `label` until it reaches 4.5:1 on every surface; the `accent` fill deepens by up to 20% so white text reaches 4.5:1, and light accents (orange, yellow, green, light graphite) keep their color and take `#1D1D1F` text instead. `DesignTokensTests` checks all eight macOS accents in both appearances.
+- Never hard-code a brand color for emphasis; use the accent tokens.
 
 ## Typography
 
@@ -95,7 +96,7 @@ Read `@Environment(\.accessibilityReduceMotion)` and pass it to `appear(reduceMo
 
 | Component | Code | Notes |
 | --- | --- | --- |
-| Primary button | `.buttonStyle(InkletButtonStyle(kind: .primary))` | Ink fill, `onAccent` text, 28 pt, radius 8. At most one per view. Shows its shortcut glyph at 80% opacity after the title. |
+| Primary button | `.buttonStyle(InkletButtonStyle(kind: .primary))` | `accent` fill, `onAccent` text, 28 pt, radius 8. At most one per view. Shows its shortcut glyph at 80% opacity after the title. |
 | Secondary button | `InkletButtonStyle(kind: .secondary)` | Raised surface with a hairline. |
 | Ghost button | `InkletButtonStyle(kind: .ghost)` | No chrome until hovered. Toolbars and inline actions. |
 | Icon button | `.buttonStyle(InkletIconButtonStyle())` | 28 × 28, radius 6, `secondaryLabel` glyph, hover fill. `isActive` tints the glyph with the accent (for example while playing). Always add `.help` and `.accessibilityLabel`. |
@@ -150,7 +151,7 @@ The tokens above were introduced alongside the earlier ones. Surfaces move over 
 | `glassHighlight` | `topHighlight` |
 | `textPrimary` / `textSecondary` | `label` / `secondaryLabel` |
 | `textTertiary`, `textFaint` | `tertiaryLabel` |
-| `primary` (system accent) | `accent` for fills, `accentText` for text and icons |
+| `primary` (raw system accent) | `accent` for fills, `accentText` for text and icons |
 | `success`, `warning`, `.red` | `statusSuccess`, `statusWarning`, `statusError` |
 | `cornerRadius` 12, `controlRadius` 8 | `Radius.card`, `Radius.control` |
 | `.shadow(color: .black.opacity(0.75), radius: 48, …)` | `.inkletFloatingPanel()` |

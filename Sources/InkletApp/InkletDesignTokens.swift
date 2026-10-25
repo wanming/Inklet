@@ -39,6 +39,21 @@ struct InkletRGBA: Equatable, Sendable {
         )
     }
 
+    /// A blend of this color and `other`; `amount` 0 is this color, 1 is `other`.
+    func mixed(with other: InkletRGBA, amount: Double) -> InkletRGBA {
+        InkletRGBA(
+            red: red + (other.red - red) * amount,
+            green: green + (other.green - green) * amount,
+            blue: blue + (other.blue - blue) * amount,
+            alpha: alpha + (other.alpha - alpha) * amount
+        )
+    }
+
+    /// The same color with a different alpha.
+    func withAlpha(_ alpha: Double) -> InkletRGBA {
+        InkletRGBA(red: red, green: green, blue: blue, alpha: alpha)
+    }
+
     /// WCAG 2 relative luminance of the opaque color.
     var relativeLuminance: Double {
         func channel(_ value: Double) -> Double {
@@ -52,6 +67,20 @@ struct InkletRGBA: Equatable, Sendable {
         let lighter = max(relativeLuminance, other.relativeLuminance)
         let darker = min(relativeLuminance, other.relativeLuminance)
         return (lighter + 0.05) / (darker + 0.05)
+    }
+
+    /// Reads an AppKit color as sRGB, resolving dynamic system colors for `appearance`.
+    init(_ color: NSColor, appearance: NSAppearance) {
+        var resolved = NSColor.black
+        appearance.performAsCurrentDrawingAppearance {
+            resolved = color.usingColorSpace(.sRGB) ?? .black
+        }
+        self.init(
+            red: Double(resolved.redComponent),
+            green: Double(resolved.greenComponent),
+            blue: Double(resolved.blueComponent),
+            alpha: Double(resolved.alphaComponent)
+        )
     }
 
     private init(red: Double, green: Double, blue: Double, alpha: Double) {
@@ -83,11 +112,8 @@ struct InkletColorToken: Equatable, Sendable {
 /// Raw color values. Views use the semantic accessors on `InkletTheme`;
 /// tests use these to check contrast.
 enum InkletPalette {
-    // Accent ("Ink"). Used once per view: the primary action, focus, current selection.
-    static let accent = InkletColorToken(light: InkletRGBA(hex: 0x4A4DE6), dark: InkletRGBA(hex: 0x5E61F0))
-    static let accentText = InkletColorToken(light: InkletRGBA(hex: 0x4A4DE6), dark: InkletRGBA(hex: 0x8E91FA))
-    static let accentSoft = InkletColorToken(light: InkletRGBA(hex: 0xECECFD), dark: InkletRGBA(hex: 0x5E61F0, alpha: 0.18))
-    static let onAccent = InkletColorToken(light: InkletRGBA(hex: 0xFFFFFF), dark: InkletRGBA(hex: 0xFFFFFF))
+    // The accent follows the macOS accent color (System Settings > Appearance),
+    // so its colors are derived per appearance in `InkletAccent`.
 
     // Surfaces.
     static let surface = InkletColorToken(light: InkletRGBA(hex: 0xF6F6F7), dark: InkletRGBA(hex: 0x1E1E21))
@@ -119,13 +145,80 @@ enum InkletPalette {
     static let shadowKey = InkletColorToken(light: .black(0.08), dark: .black(0.25))
 }
 
+/// Colors derived from the user's macOS accent color. The accent itself is used as is
+/// for fills; text and tints on top of it are adjusted so they stay readable for every
+/// accent, including yellow and graphite.
+enum InkletAccent {
+    struct Derived: Equatable, Sendable {
+        /// The accent fill: primary buttons, toggles, selected sidebar item. Slightly deeper
+        /// than the system accent when that is needed for white text.
+        let fill: InkletRGBA
+        /// Accent text and icons on a surface, at least 4.5:1 on every surface.
+        let text: InkletRGBA
+        /// Text and icons on the accent fill: white, or near-black on light accents.
+        let onFill: InkletRGBA
+        /// Selected rows and text selection tint.
+        let soft: InkletRGBA
+    }
+
+    static let minimumTextContrast = 4.5
+    static let softAlphaLight = 0.14
+    static let softAlphaDark = 0.22
+    /// How far the fill may move toward black so white text reads on it.
+    static let maximumFillDeepening = 0.2
+
+    static func derive(from accent: InkletRGBA, isDark: Bool) -> Derived {
+        let opaqueAccent = accent.withAlpha(1)
+        let surface = isDark ? InkletPalette.surface.dark : InkletPalette.surface.light
+        let label = isDark ? InkletPalette.label.dark : InkletPalette.label.light
+        let soft = opaqueAccent.withAlpha(isDark ? softAlphaDark : softAlphaLight)
+        let backgrounds = [
+            surface,
+            isDark ? InkletPalette.surfaceRaised.dark : InkletPalette.surfaceRaised.light,
+            (isDark ? InkletPalette.surfaceSunken.dark : InkletPalette.surfaceSunken.light).composited(over: surface),
+            soft.composited(over: surface),
+        ]
+
+        // Move the accent toward the label color until it reads on every background.
+        var text = opaqueAccent
+        var amount = 0.0
+        while amount < 1, backgrounds.contains(where: { text.contrastRatio(against: $0) < minimumTextContrast }) {
+            amount = min(amount + 0.05, 1)
+            text = opaqueAccent.mixed(with: label, amount: amount)
+        }
+
+        // Prefer white on the fill, as macOS does, deepening the accent slightly if needed.
+        // Light accents (orange, yellow, green) keep their color and take dark text instead.
+        let white = InkletRGBA(hex: 0xFFFFFF)
+        let black = InkletRGBA(hex: 0x000000)
+        var fill = opaqueAccent
+        var deepening = 0.0
+        while deepening < maximumFillDeepening, white.contrastRatio(against: fill) < minimumTextContrast {
+            deepening = min(deepening + 0.05, maximumFillDeepening)
+            fill = opaqueAccent.mixed(with: black, amount: deepening)
+        }
+        if white.contrastRatio(against: fill) >= minimumTextContrast {
+            return Derived(fill: fill, text: text, onFill: white, soft: soft)
+        }
+        return Derived(fill: opaqueAccent, text: text, onFill: InkletRGBA(hex: 0x1D1D1F), soft: soft)
+    }
+
+    static func color(_ part: @escaping @Sendable (Derived) -> InkletRGBA) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            let accent = InkletRGBA(.controlAccentColor, appearance: appearance)
+            return part(derive(from: accent, isDark: isDark)).nsColor
+        })
+    }
+}
+
 extension InkletTheme {
     // MARK: Color
 
-    static var accent: Color { InkletPalette.accent.color }
-    static var accentText: Color { InkletPalette.accentText.color }
-    static var accentSoft: Color { InkletPalette.accentSoft.color }
-    static var onAccent: Color { InkletPalette.onAccent.color }
+    static var accent: Color { InkletAccent.color { $0.fill } }
+    static var accentText: Color { InkletAccent.color { $0.text } }
+    static var accentSoft: Color { InkletAccent.color { $0.soft } }
+    static var onAccent: Color { InkletAccent.color { $0.onFill } }
 
     static var surface: Color { InkletPalette.surface.color }
     static var surfaceRaised: Color { InkletPalette.surfaceRaised.color }
