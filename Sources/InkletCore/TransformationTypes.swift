@@ -49,6 +49,9 @@ public protocol LLMProvider: Sendable {
         _ request: TransformationRequest,
         onPartialOutput: @escaping @Sendable (String) -> Void
     ) async throws -> TransformationResult
+
+    /// Loads `model` ahead of the first request where that is slow, as it is for local models.
+    func warmUp(model: String) async
 }
 
 extension LLMProvider {
@@ -59,6 +62,9 @@ extension LLMProvider {
     ) async throws -> TransformationResult {
         try await transform(request)
     }
+
+    /// Cloud providers have nothing to load.
+    public func warmUp(model: String) async {}
 }
 
 public enum TransformationError: Error, Equatable, LocalizedError {

@@ -109,7 +109,7 @@ Inklet is an early MVP. The repository currently includes:
 
 Inklet can write and translate with a model that runs on your Mac, so your text never leaves it and no API key is needed.
 
-- **Built-in** (Apple silicon only): choose **Built-in** as the provider, pick a model, and click **Download**. Qwen3.5 4B (about 2.7 GB) is recommended for Macs with 8 GB of memory; Gemma 4 E4B (about 4.6 GB) is recommended for 16 GB or more. Downloads resume after an interruption and are checked against a pinned SHA-256 before use. Inklet starts its bundled llama.cpp server only on the loopback address when you first use it, and the server releases the model from memory after five idle minutes.
+- **Built-in** (Apple silicon only): choose **Built-in** as the provider, pick a model, and click **Download**. Qwen3.5 4B (about 2.7 GB) is recommended for Macs with 8 GB of memory; Gemma 4 E4B (about 4.6 GB) is recommended for 16 GB or more. Downloads resume after an interruption and are checked against a pinned SHA-256 before use. When you open the writing popover with Built-in selected, Inklet starts its bundled llama.cpp server on the loopback address only and loads the model, so it is usually ready by the time you submit. On Macs with 24 GB of memory or more the model stays loaded and is released only when macOS runs short of memory; on smaller Macs the server releases it after five idle minutes.
 - **Ollama**: install [Ollama](https://ollama.com), run `ollama pull qwen3.5:4b`, then choose **Ollama**. Inklet lists the models Ollama has downloaded.
 - **LM Studio**: start LM Studio's local server on port 1234, load a model, then choose **LM Studio**.
 

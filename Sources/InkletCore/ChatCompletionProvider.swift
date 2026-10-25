@@ -12,12 +12,14 @@ public struct ChatCompletionProvider: LLMProvider {
         /// Sent as "none" to local servers so small reasoning models answer directly.
         public var reasoningEffort: String?
         public var stream: Bool?
+        public var maxTokens: Int?
 
         private enum CodingKeys: String, CodingKey {
             case model
             case messages
             case reasoningEffort = "reasoning_effort"
             case stream
+            case maxTokens = "max_tokens"
         }
     }
 
@@ -132,6 +134,26 @@ public struct ChatCompletionProvider: LLMProvider {
 
         let outputText = try Self.parseOutputText(from: data)
         return makeResult(outputText: outputText, model: request.model, elapsedMilliseconds: elapsedMilliseconds)
+    }
+
+    /// Sends a one-token request so the local server loads the model, or wakes it from idle sleep,
+    /// while the person is still typing. Failures are ignored; the real request reports them.
+    public func warmUp(model: String) async {
+        guard runsLocally,
+              var urlRequest = try? makeURLRequest(
+                  body: RequestBody(
+                      model: model,
+                      messages: [RequestBody.Message(role: "user", content: "Hi")],
+                      reasoningEffort: "none",
+                      maxTokens: 1
+                  ),
+                  timeoutSeconds: AppConfig.localModelMinimumTimeoutSeconds
+              )
+        else {
+            return
+        }
+        urlRequest.cachePolicy = .reloadIgnoringLocalCacheData
+        _ = try? await session.data(for: urlRequest)
     }
 
     public func streamTransform(

@@ -65,6 +65,36 @@ final class LocalModelTests: XCTestCase {
         XCTAssertEqual(parser.consume(line: #"data: {"choices":[{"delta":{"content":"_text>Hi"}}]}"#), "Hi")
     }
 
+    func testWarmUpAsksALocalServerForOneTokenAndSkipsCloudProviders() async throws {
+        let recorded = RecordedRequest()
+        MockLocalServerURLProtocol.handler = { request in
+            recorded.request = request
+            recorded.body = request.httpBody ?? request.httpBodyStream.map(Self.readStream)
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data(#"{"choices":[{"message":{"content":"Hi"}}]}"#.utf8))
+        }
+
+        await ChatCompletionProvider(
+            name: "DeepSeek",
+            apiKeyProvider: { "key" },
+            endpoint: LLMProviderPreset.preset(id: "deepseek").endpoint,
+            session: mockSession()
+        ).warmUp(model: "deepseek-chat")
+        XCTAssertNil(recorded.request)
+
+        await ChatCompletionProvider(
+            name: "Ollama",
+            apiKeyProvider: { "" },
+            endpoint: LLMProviderPreset.ollama.endpoint,
+            runsLocally: true,
+            session: mockSession()
+        ).warmUp(model: "qwen3.5:4b")
+        let body = try XCTUnwrap(recorded.body)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        XCTAssertEqual(json["model"] as? String, "qwen3.5:4b")
+        XCTAssertEqual(json["max_tokens"] as? Int, 1)
+    }
+
     func testStoppedLocalServerReportsItIsUnreachable() async {
         MockLocalServerURLProtocol.handler = { _ in throw URLError(.cannotConnectToHost) }
         let provider = ChatCompletionProvider(
@@ -197,6 +227,18 @@ final class LocalModelTests: XCTestCase {
         XCTAssertEqual(value(after: "--reasoning", in: arguments), "off")
         XCTAssertEqual(value(after: "--sleep-idle-seconds", in: arguments), "300")
         XCTAssertTrue(arguments.contains("--no-webui"))
+
+        let gigabyte: UInt64 = 1_073_741_824
+        XCTAssertEqual(BuiltInModelServer.idleUnloadSeconds(forPhysicalMemoryBytes: 16 * gigabyte), 300)
+        XCTAssertNil(BuiltInModelServer.idleUnloadSeconds(forPhysicalMemoryBytes: 24 * gigabyte))
+        let residentArguments = BuiltInModelServer.arguments(
+            modelPath: "/models/qwen.gguf",
+            modelID: "qwen3.5-4b",
+            port: 52_000,
+            apiKey: "secret",
+            idleUnloadSeconds: nil
+        )
+        XCTAssertFalse(residentArguments.contains("--sleep-idle-seconds"))
         XCTAssertGreaterThan(try BuiltInModelServer.availableLoopbackPort(), 0)
     }
 

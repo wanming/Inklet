@@ -108,6 +108,8 @@ final class InkletPopoverViewModel: ObservableObject {
     private let apiKeyStore: LocalAPIKeyStore
     private let insertionService: InsertionService
     private let transformationServiceFactory: (any LLMProvider) -> TransformationService
+    private static let localModelWarmUpInterval: TimeInterval = 60
+    private var lastLocalModelWarmUp: (model: String, date: Date)?
     private let historyStore: any HistoryStore
     private let writingModePreferenceStore: WritingModePreferenceStore
     private let resultPasteboard: NSPasteboard
@@ -195,6 +197,7 @@ final class InkletPopoverViewModel: ObservableObject {
             config: config
         )
         modes = Self.resolvedVisibleModes(from: config)
+        warmUpLocalModelIfNeeded()
         popoverSession = WritingPopoverSessionState(selectedModeID: selectedModeID)
         modePickerState = WritingModePickerState(
             items: Self.modePickerItems(for: modes),
@@ -236,6 +239,24 @@ final class InkletPopoverViewModel: ObservableObject {
         isTransforming = false
         isInserting = false
         streamingResultText = ""
+    }
+
+    /// Local models unload after a few idle minutes, so start loading as the popover opens and the
+    /// model is usually ready by the time the person has typed their text.
+    private func warmUpLocalModelIfNeeded(now: Date = Date()) {
+        let providerPreset = config.resolvedProviderPreset
+        guard providerPreset.runsLocally else { return }
+        let model = config.model
+        if let lastLocalModelWarmUp,
+           lastLocalModelWarmUp.model == model,
+           now.timeIntervalSince(lastLocalModelWarmUp.date) < Self.localModelWarmUpInterval {
+            return
+        }
+        lastLocalModelWarmUp = (model, now)
+        let provider = LLMProviderFactory.provider(for: providerPreset) { "" }
+        Task.detached(priority: .utility) {
+            await provider.warmUp(model: model)
+        }
     }
 
     private func refreshVoiceShortcutHint() {

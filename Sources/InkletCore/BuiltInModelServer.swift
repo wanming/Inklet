@@ -2,8 +2,9 @@ import Darwin
 import Foundation
 
 /// Runs the bundled llama.cpp `llama-server` on a private loopback port. The server is started on
-/// the first request, restarted when the model changes, and unloads the model from memory after
-/// five idle minutes. A random key per launch keeps other local processes from using it.
+/// the first request and restarted when the model changes. On Macs with plenty of memory the model
+/// stays loaded until macOS reports memory pressure; elsewhere it unloads after five idle minutes.
+/// A random key per launch keeps other local processes from using it.
 public actor BuiltInModelServer {
     public struct Connection: Equatable, Sendable {
         public var chatCompletionsURL: URL
@@ -12,7 +13,9 @@ public actor BuiltInModelServer {
 
     public static let shared = BuiltInModelServer()
     public static let executableName = "llama-server"
-    static let idleUnloadSeconds = 300
+    static let defaultIdleUnloadSeconds = 300
+    /// Macs with at least this much memory keep the model loaded, so it answers without a reload.
+    static let keepsModelLoadedMemoryGB: UInt64 = 24
     static let contextTokens = 8192
 
     private struct Running {
@@ -27,6 +30,7 @@ public actor BuiltInModelServer {
     private var running: Running?
     private var starting: Task<Connection, Error>?
     private let processIdentifier = ProcessIdentifierBox()
+    private let memoryPressureSource: DispatchSourceMemoryPressure
 
     public init(
         store: BuiltInModelStore = .current(),
@@ -36,6 +40,28 @@ public actor BuiltInModelServer {
         self.store = store
         self.executableURL = executableURL
         self.session = session
+        let memoryPressureSource = DispatchSource.makeMemoryPressureSource(
+            eventMask: [.warning, .critical],
+            queue: .global(qos: .utility)
+        )
+        self.memoryPressureSource = memoryPressureSource
+        memoryPressureSource.setEventHandler { [weak self] in
+            guard let self else { return }
+            Task { await self.releaseMemoryUnderPressure() }
+        }
+        memoryPressureSource.activate()
+    }
+
+    /// `nil` keeps the model loaded; otherwise the server unloads it after that many idle seconds.
+    static func idleUnloadSeconds(forPhysicalMemoryBytes memoryBytes: UInt64) -> Int? {
+        memoryBytes >= keepsModelLoadedMemoryGB * 1_073_741_824 ? nil : defaultIdleUnloadSeconds
+    }
+
+    /// A model that stays loaded gives its memory back when macOS runs short; the next request
+    /// starts the server again.
+    private func releaseMemoryUnderPressure() {
+        guard starting == nil else { return }
+        stop()
     }
 
     /// `INKLET_LLAMA_SERVER_PATH` lets `swift run` builds point at a locally built server.
@@ -113,7 +139,8 @@ public actor BuiltInModelServer {
             modelPath: store.fileURL(for: model).path,
             modelID: model.id,
             port: port,
-            apiKey: apiKey
+            apiKey: apiKey,
+            idleUnloadSeconds: Self.idleUnloadSeconds(forPhysicalMemoryBytes: ProcessInfo.processInfo.physicalMemory)
         )
         process.standardInput = FileHandle.nullDevice
         process.standardOutput = FileHandle.nullDevice
@@ -141,8 +168,14 @@ public actor BuiltInModelServer {
         return connection
     }
 
-    static func arguments(modelPath: String, modelID: String, port: Int, apiKey: String) -> [String] {
-        [
+    static func arguments(
+        modelPath: String,
+        modelID: String,
+        port: Int,
+        apiKey: String,
+        idleUnloadSeconds: Int? = defaultIdleUnloadSeconds
+    ) -> [String] {
+        var flags = [
             "--model", modelPath,
             "--alias", modelID,
             "--host", "127.0.0.1",
@@ -151,9 +184,12 @@ public actor BuiltInModelServer {
             "--ctx-size", String(contextTokens),
             "--parallel", "1",
             "--reasoning", "off",
-            "--sleep-idle-seconds", String(idleUnloadSeconds),
             "--no-webui"
         ]
+        if let idleUnloadSeconds {
+            flags += ["--sleep-idle-seconds", String(idleUnloadSeconds)]
+        }
+        return flags
     }
 
     private func waitUntilHealthy(baseURL: URL, process: Process, timeoutSeconds: TimeInterval) async throws {
@@ -231,11 +267,30 @@ public struct BuiltInModelProvider: LLMProvider {
         try await chatProvider(for: request).streamTransform(request, onPartialOutput: onPartialOutput)
     }
 
-    private func chatProvider(for request: TransformationRequest) async throws -> ChatCompletionProvider {
-        guard let model = BuiltInModel.model(id: request.model) else {
-            throw LocalModelError.unknownModel(request.model)
+    /// Starts the server for a downloaded model, or wakes it from idle sleep, before the first request.
+    public func warmUp(model: String) async {
+        // A model that is not downloaded yet throws here, and the real request explains that.
+        guard let provider = try? await chatProvider(
+            forModelID: model,
+            startupTimeoutSeconds: AppConfig.localModelMinimumTimeoutSeconds
+        ) else {
+            return
         }
-        let connection = try await server.connection(for: model, startupTimeoutSeconds: request.timeoutSeconds)
+        await provider.warmUp(model: model)
+    }
+
+    private func chatProvider(for request: TransformationRequest) async throws -> ChatCompletionProvider {
+        try await chatProvider(forModelID: request.model, startupTimeoutSeconds: request.timeoutSeconds)
+    }
+
+    private func chatProvider(
+        forModelID modelID: String,
+        startupTimeoutSeconds: TimeInterval
+    ) async throws -> ChatCompletionProvider {
+        guard let model = BuiltInModel.model(id: modelID) else {
+            throw LocalModelError.unknownModel(modelID)
+        }
+        let connection = try await server.connection(for: model, startupTimeoutSeconds: startupTimeoutSeconds)
         let apiKey = connection.apiKey
         return ChatCompletionProvider(
             name: LLMProviderPreset.builtIn.name,
