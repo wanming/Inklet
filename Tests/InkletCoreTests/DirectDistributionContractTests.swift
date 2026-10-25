@@ -146,7 +146,7 @@ final class DirectDistributionContractTests: XCTestCase {
         XCTAssertEqual(updateLines, ["Last updated: October 25, 2026"])
         for required in [
             "Active microphone audio is streamed to OpenAI's Realtime transcription service as it is captured.",
-            "Dictation audio is sent only to OpenAI.",
+            "Dictation audio is sent only to OpenAI, and only when you choose OpenAI for speech recognition; with On this Mac, dictation audio never leaves your Mac.",
             "one temporary local `.m4a` recovery recording",
             "https://api.openai.com/v1/audio/transcriptions",
             "The recovery model is configurable, but the endpoint is not editable.",
