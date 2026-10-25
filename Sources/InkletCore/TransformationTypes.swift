@@ -99,14 +99,15 @@ public enum TransformationError: Error, Equatable, LocalizedError {
 }
 
 /// Recognizes the errors providers return when the request doesn't fit in the model's context, so
-/// the person sees why instead of a raw provider message.
+/// the person sees why instead of a raw provider message. Ollama is the exception: it quietly
+/// drops the start of a prompt longer than its context instead of returning an error.
 enum ContextLimitError {
     private static let markers = [
         "context_length_exceeded",
         "exceed_context_size",
         "maximum context length",
-        "context length",
-        "context size",
+        "exceeds the available context size",
+        "loaded with context length",
         "prompt is too long",
         "exceeds the maximum number of tokens"
     ]

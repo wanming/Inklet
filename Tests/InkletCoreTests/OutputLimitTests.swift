@@ -66,12 +66,57 @@ final class OutputLimitTests: XCTestCase {
         let llamaServer = #"{"error":{"code":400,"message":"the request exceeds the available context size, try increasing it","type":"exceed_context_size_error"}}"#
         let openAI = #"{"error":{"message":"This model's maximum context length is 128000 tokens.","code":"context_length_exceeded"}}"#
         let anthropic = #"{"type":"error","error":{"type":"invalid_request_error","message":"prompt is too long: 250000 tokens > 200000 maximum"}}"#
+        let lmStudio = #"{"error":"Trying to keep the first 9000 tokens when context the overflows. However, the model is loaded with context length of only 4096 tokens, which is not enough."}"#
         let unrelated = #"{"error":{"message":"Incorrect API key provided."}}"#
+        let mentionsContext = #"{"error":{"message":"Invalid context size parameter for this endpoint."}}"#
 
         XCTAssertTrue(ContextLimitError.matches(responseBody: Data(llamaServer.utf8)))
         XCTAssertTrue(ContextLimitError.matches(responseBody: Data(openAI.utf8)))
         XCTAssertTrue(ContextLimitError.matches(responseBody: Data(anthropic.utf8)))
+        XCTAssertTrue(ContextLimitError.matches(responseBody: Data(lmStudio.utf8)))
         XCTAssertFalse(ContextLimitError.matches(responseBody: Data(unrelated.utf8)))
+        XCTAssertFalse(ContextLimitError.matches(responseBody: Data(mentionsContext.utf8)))
+    }
+
+    func testAnthropicOutputCapFitsEachModel() {
+        XCTAssertEqual(AnthropicProvider.maxOutputTokens(forModel: "claude-haiku-4-5"), 32000)
+        XCTAssertEqual(AnthropicProvider.maxOutputTokens(forModel: "claude-opus-4-20250514"), 32000)
+        XCTAssertEqual(AnthropicProvider.maxOutputTokens(forModel: "claude-3-7-sonnet-20250219"), 32000)
+        XCTAssertEqual(AnthropicProvider.maxOutputTokens(forModel: "claude-3-5-haiku-latest"), 8192)
+        XCTAssertEqual(AnthropicProvider.maxOutputTokens(forModel: "claude-3-5-sonnet-20240620"), 8192)
+        XCTAssertEqual(AnthropicProvider.maxOutputTokens(forModel: "claude-3-haiku-20240307"), 4096)
+        XCTAssertEqual(AnthropicProvider.maxOutputTokens(forModel: "claude-3-opus-20240229"), 4096)
+    }
+
+    func testCutOffTranslationIsShownButNotCached() async throws {
+        let cacheURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("json")
+        defer { try? FileManager.default.removeItem(at: cacheURL) }
+        let service = CachedSelectionTranslationService(
+            service: SelectionTranslationService(provider: TruncatingProvider()),
+            cache: JSONSelectionTranslationCache(fileURL: cacheURL)
+        )
+
+        let first = try await service.translation(
+            sourceText: "A long text",
+            targetLanguageName: "Chinese",
+            systemPrompt: "Translate.",
+            model: "test-model",
+            providerID: "test",
+            timeoutSeconds: 1
+        )
+        XCTAssertEqual(first, SelectionTranslation(text: "Partial", wasTruncated: true))
+
+        let cache = JSONSelectionTranslationCache(fileURL: cacheURL)
+        let key = SelectionTranslationCacheKey(
+            sourceText: "A long text",
+            targetLanguageName: "Chinese",
+            systemPrompt: "Translate.",
+            model: "test-model",
+            providerID: "test"
+        )
+        XCTAssertNil(try? cache.translation(for: key, now: Date()))
     }
 
     func testServiceKeepsTheTruncationFlag() async throws {
