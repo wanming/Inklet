@@ -33,6 +33,13 @@ public struct OpenAIProvider: LLMProvider {
             struct Response: Decodable {
                 var output: [ResponseBody.OutputItem]?
                 var error: ErrorBody?
+                var incompleteDetails: IncompleteDetails?
+
+                private enum CodingKeys: String, CodingKey {
+                    case output
+                    case error
+                    case incompleteDetails = "incomplete_details"
+                }
             }
 
             var type: String
@@ -42,6 +49,8 @@ public struct OpenAIProvider: LLMProvider {
         }
 
         public private(set) var outputText = ""
+        /// Set when the response ends as incomplete because it reached the output limit.
+        public private(set) var wasTruncated = false
 
         public init() {}
 
@@ -65,6 +74,14 @@ public struct OpenAIProvider: LLMProvider {
                     return nil
                 }
                 outputText += delta
+                return outputText
+            case "response.incomplete":
+                wasTruncated = event.response?.incompleteDetails?.reason == IncompleteDetails.outputLimitReason
+                let incompleteText = ResponseBody(output: event.response?.output ?? []).outputText
+                guard outputText.isEmpty, !incompleteText.isEmpty else {
+                    return nil
+                }
+                outputText = incompleteText
                 return outputText
             case "response.completed":
                 let completedText = ResponseBody(output: event.response?.output ?? []).outputText
@@ -92,6 +109,12 @@ public struct OpenAIProvider: LLMProvider {
         }
     }
 
+    private struct IncompleteDetails: Decodable {
+        static let outputLimitReason = "max_output_tokens"
+
+        var reason: String?
+    }
+
     private struct ResponseBody: Decodable {
         struct OutputItem: Decodable {
             var content: [ContentItem]?
@@ -103,6 +126,20 @@ public struct OpenAIProvider: LLMProvider {
         }
 
         var output: [OutputItem]
+        var status: String?
+        var incompleteDetails: IncompleteDetails?
+
+        private enum CodingKeys: String, CodingKey {
+            case output
+            case status
+            case incompleteDetails = "incomplete_details"
+        }
+
+        init(output: [OutputItem], status: String? = nil, incompleteDetails: IncompleteDetails? = nil) {
+            self.output = output
+            self.status = status
+            self.incompleteDetails = incompleteDetails
+        }
 
         var outputText: String {
             output
@@ -147,7 +184,7 @@ public struct OpenAIProvider: LLMProvider {
         }
 
         guard (200..<300).contains(httpResponse.statusCode) else {
-            throw TransformationError.provider(Self.providerErrorMessage(from: data, statusCode: httpResponse.statusCode))
+            throw Self.providerError(from: data, statusCode: httpResponse.statusCode)
         }
 
         let outputText = try Self.parseOutputText(from: data)
@@ -157,7 +194,8 @@ public struct OpenAIProvider: LLMProvider {
                 "provider": "openai",
                 "model": request.model
             ],
-            elapsedMilliseconds: elapsedMilliseconds
+            elapsedMilliseconds: elapsedMilliseconds,
+            wasTruncated: Self.outputWasTruncated(in: data)
         )
     }
 
@@ -182,7 +220,7 @@ public struct OpenAIProvider: LLMProvider {
             for try await byte in bytes {
                 data.append(byte)
             }
-            throw TransformationError.provider(Self.providerErrorMessage(from: data, statusCode: httpResponse.statusCode))
+            throw Self.providerError(from: data, statusCode: httpResponse.statusCode)
         }
 
         var parser = ResponseStreamParser()
@@ -200,7 +238,8 @@ public struct OpenAIProvider: LLMProvider {
                 "provider": "openai",
                 "model": request.model
             ],
-            elapsedMilliseconds: elapsedMilliseconds
+            elapsedMilliseconds: elapsedMilliseconds,
+            wasTruncated: parser.wasTruncated
         )
     }
 
@@ -231,6 +270,23 @@ public struct OpenAIProvider: LLMProvider {
             throw TransformationError.emptyResponse
         }
         return outputText
+    }
+
+    /// Whether the response stopped at the output limit (`status: "incomplete"`, reason
+    /// `max_output_tokens`).
+    public static func outputWasTruncated(in data: Data) -> Bool {
+        guard let response = try? JSONDecoder().decode(ResponseBody.self, from: data) else {
+            return false
+        }
+        return response.status == "incomplete"
+            && response.incompleteDetails?.reason == IncompleteDetails.outputLimitReason
+    }
+
+    static func providerError(from data: Data, statusCode: Int) -> TransformationError {
+        if ContextLimitError.matches(responseBody: data) {
+            return .contextTooLong
+        }
+        return .provider(providerErrorMessage(from: data, statusCode: statusCode))
     }
 
     static func providerErrorMessage(from data: Data, statusCode: Int) -> String {

@@ -40,7 +40,8 @@ public struct TransformationService: Sendable {
         return TransformationResult(
             outputText: trimmedOutput,
             providerMetadata: result.providerMetadata,
-            elapsedMilliseconds: result.elapsedMilliseconds
+            elapsedMilliseconds: result.elapsedMilliseconds,
+            wasTruncated: result.wasTruncated
         )
     }
 

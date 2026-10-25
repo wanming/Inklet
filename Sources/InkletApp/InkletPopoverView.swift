@@ -101,7 +101,7 @@ struct InkletPopoverView: View {
             + dividerHeight
             + inputHeight
             + (displayedResultText.isEmpty ? 0 : resultPanelHeight)
-            + (model.errorMessage == nil ? 0 : dividerHeight + min(statusMeasuredHeight, 120))
+            + (statusMessage == nil ? 0 : dividerHeight + min(statusMeasuredHeight, 120))
             + (model.builtInModelDownloadStatusText == nil ? 0 : dividerHeight + builtInModelStripHeight)
             + (model.dictationModelDownloadStatusText == nil ? 0 : dividerHeight + builtInModelStripHeight)
             + dividerHeight
@@ -327,12 +327,23 @@ struct InkletPopoverView: View {
         .accessibilityLabel(L10n.text("popover.action.copyResult"))
     }
 
+    /// An error, or else a warning that the result was cut off at the model's output limit.
+    private var statusMessage: (tone: InkletStatusBanner<EmptyView>.Tone, text: String)? {
+        if let errorMessage = model.errorMessage {
+            return (.error, errorMessage)
+        }
+        if let warning = model.resultWarningMessage {
+            return (.warning, warning)
+        }
+        return nil
+    }
+
     @ViewBuilder
     private var statusStrip: some View {
-        if let errorMessage = model.errorMessage {
+        if let statusMessage {
             hairline
             ScrollView(.vertical) {
-                InkletStatusBanner(tone: .error, message: errorMessage)
+                InkletStatusBanner(tone: statusMessage.tone, message: statusMessage.text)
                     .padding(.horizontal, InkletTheme.Spacing.xs)
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)

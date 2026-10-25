@@ -226,6 +226,8 @@ extension L10n {
         "error.emptySource": "請輸入要轉換的文字",
         "error.emptyResponse": "模型回傳了空內容",
         "error.timeout": "請求逾時，請稍後重試",
+        "error.contextTooLong": "原文太長，超出了這個模型能處理的長度。可以縮短後再試，或改用支援更長上下文的模型。",
+        "popover.warning.outputTruncated": "回覆達到了模型的長度上限，後面被截斷了。可以縮短原文，或分段處理。",
         "error.networkConnectionLost": "網路連線已中斷，請再試一次。",
         "error.provider.urlInvalid": "%@ 請求失敗：URL 無效",
         "error.provider.httpUnknown": "%@ 請求失敗：HTTP unknown",

@@ -32,12 +32,20 @@ public struct ChatCompletionProvider: LLMProvider {
                 }
 
                 var delta: Delta?
+                var finishReason: String?
+
+                private enum CodingKeys: String, CodingKey {
+                    case delta
+                    case finishReason = "finish_reason"
+                }
             }
 
             var choices: [Choice]
         }
 
         private var receivedText = ""
+        /// Set when the last chunk says generation stopped at the output limit.
+        public private(set) var wasTruncated = false
 
         public init() {}
 
@@ -59,6 +67,9 @@ public struct ChatCompletionProvider: LLMProvider {
                 return nil
             }
 
+            if chunk.choices.contains(where: { $0.finishReason == "length" }) {
+                wasTruncated = true
+            }
             let delta = chunk.choices.compactMap(\.delta?.content).joined()
             guard !delta.isEmpty else {
                 return nil
@@ -75,6 +86,12 @@ public struct ChatCompletionProvider: LLMProvider {
             }
 
             var message: Message?
+            var finishReason: String?
+
+            private enum CodingKeys: String, CodingKey {
+                case message
+                case finishReason = "finish_reason"
+            }
         }
 
         var choices: [Choice]
@@ -129,11 +146,16 @@ public struct ChatCompletionProvider: LLMProvider {
         }
 
         guard (200..<300).contains(httpResponse.statusCode) else {
-            throw TransformationError.provider(providerErrorMessage(from: data, statusCode: httpResponse.statusCode))
+            throw providerError(from: data, statusCode: httpResponse.statusCode)
         }
 
         let outputText = try Self.parseOutputText(from: data)
-        return makeResult(outputText: outputText, model: request.model, elapsedMilliseconds: elapsedMilliseconds)
+        return makeResult(
+            outputText: outputText,
+            model: request.model,
+            elapsedMilliseconds: elapsedMilliseconds,
+            wasTruncated: Self.outputWasTruncated(in: data)
+        )
     }
 
     /// Sends a one-token request so the local server loads the model, or wakes it from idle sleep,
@@ -189,7 +211,7 @@ public struct ChatCompletionProvider: LLMProvider {
             for try await byte in bytes {
                 data.append(byte)
             }
-            throw TransformationError.provider(providerErrorMessage(from: data, statusCode: httpResponse.statusCode))
+            throw providerError(from: data, statusCode: httpResponse.statusCode)
         }
 
         var parser = StreamParser()
@@ -204,7 +226,12 @@ public struct ChatCompletionProvider: LLMProvider {
             throw TransformationError.emptyResponse
         }
         let elapsedMilliseconds = Int(Date().timeIntervalSince(started) * 1_000)
-        return makeResult(outputText: outputText, model: request.model, elapsedMilliseconds: elapsedMilliseconds)
+        return makeResult(
+            outputText: outputText,
+            model: request.model,
+            elapsedMilliseconds: elapsedMilliseconds,
+            wasTruncated: parser.wasTruncated
+        )
     }
 
     static let sourceTextOpeningTag = "<source_text>"
@@ -263,14 +290,20 @@ public struct ChatCompletionProvider: LLMProvider {
         return urlRequest
     }
 
-    private func makeResult(outputText: String, model: String, elapsedMilliseconds: Int) -> TransformationResult {
+    private func makeResult(
+        outputText: String,
+        model: String,
+        elapsedMilliseconds: Int,
+        wasTruncated: Bool
+    ) -> TransformationResult {
         TransformationResult(
             outputText: outputText,
             providerMetadata: [
                 "provider": name,
                 "model": model
             ],
-            elapsedMilliseconds: elapsedMilliseconds
+            elapsedMilliseconds: elapsedMilliseconds,
+            wasTruncated: wasTruncated
         )
     }
 
@@ -281,6 +314,14 @@ public struct ChatCompletionProvider: LLMProvider {
             throw TransformationError.emptyResponse
         }
         return outputText
+    }
+
+    /// Whether the reply stopped at the output limit (`finish_reason: "length"`).
+    public static func outputWasTruncated(in data: Data) -> Bool {
+        guard let response = try? JSONDecoder().decode(ResponseBody.self, from: data) else {
+            return false
+        }
+        return response.choices.contains { $0.finishReason == "length" }
     }
 
     static func cleanedOutput(_ text: String) -> String {
@@ -316,6 +357,13 @@ public struct ChatCompletionProvider: LLMProvider {
             return ""
         }
         return String(trimmed[closingRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func providerError(from data: Data, statusCode: Int) -> TransformationError {
+        if ContextLimitError.matches(responseBody: data) {
+            return .contextTooLong
+        }
+        return .provider(providerErrorMessage(from: data, statusCode: statusCode))
     }
 
     private func providerErrorMessage(from data: Data, statusCode: Int) -> String {

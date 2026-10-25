@@ -11,6 +11,9 @@ final class InkletPopoverViewModel: ObservableObject {
     @Published var isTransforming = false
     @Published var isInserting = false
     @Published private(set) var streamingResultText = ""
+    /// The last result that stopped at the model's output limit. The warning shows while that
+    /// result is still the one on screen.
+    @Published private(set) var truncatedResultText: String?
     @Published private(set) var isResultCopied = false
     @Published private(set) var modePickerState: WritingModePickerState
     @Published private(set) var popoverSession: WritingPopoverSessionState
@@ -797,6 +800,7 @@ final class InkletPopoverViewModel: ObservableObject {
                 isTransforming = false
                 streamingResultText = ""
                 mutatePopoverSession { $0.recordResult(modeID: transformationModeID) }
+                truncatedResultText = result.wasTruncated ? result.outputText : nil
                 handle(actions: stateMachine.send(.transformationSucceeded(result: result.outputText)))
             } catch {
                 guard !Task.isCancelled else { return }
@@ -813,6 +817,18 @@ final class InkletPopoverViewModel: ObservableObject {
                 }
             }
         }
+    }
+
+    /// Says the result was cut off, unless an error is showing or the result has changed since.
+    var resultWarningMessage: String? {
+        guard errorMessage == nil,
+              let truncatedResultText,
+              !resultText.isEmpty,
+              resultText == truncatedResultText
+        else {
+            return nil
+        }
+        return L10n.text("popover.warning.outputTruncated")
     }
 
     private func cancelTransformationAndStayInEditor() {
@@ -995,6 +1011,8 @@ private extension Error {
                 return L10n.text("error.timeout")
             case .networkConnectionLost:
                 return L10n.text("error.networkConnectionLost")
+            case .contextTooLong:
+                return L10n.text("error.contextTooLong")
             case .provider(let message):
                 return localizedProviderMessage(message)
             }

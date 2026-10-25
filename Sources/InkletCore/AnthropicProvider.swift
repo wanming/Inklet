@@ -32,6 +32,12 @@ public struct AnthropicProvider: LLMProvider {
         }
 
         var content: [Content]
+        var stopReason: String?
+
+        private enum CodingKeys: String, CodingKey {
+            case content
+            case stopReason = "stop_reason"
+        }
     }
 
     private struct ErrorResponseBody: Decodable {
@@ -76,6 +82,9 @@ public struct AnthropicProvider: LLMProvider {
         }
 
         guard (200..<300).contains(httpResponse.statusCode) else {
+            if ContextLimitError.matches(responseBody: data) {
+                throw TransformationError.contextTooLong
+            }
             throw TransformationError.provider(Self.providerErrorMessage(from: data, statusCode: httpResponse.statusCode))
         }
 
@@ -86,7 +95,8 @@ public struct AnthropicProvider: LLMProvider {
                 "provider": "anthropic",
                 "model": request.model
             ],
-            elapsedMilliseconds: elapsedMilliseconds
+            elapsedMilliseconds: elapsedMilliseconds,
+            wasTruncated: Self.outputWasTruncated(in: data)
         )
     }
 
@@ -119,6 +129,14 @@ public struct AnthropicProvider: LLMProvider {
             throw TransformationError.emptyResponse
         }
         return outputText
+    }
+
+    /// Whether the reply stopped at `max_tokens` or at the end of the model's context window.
+    public static func outputWasTruncated(in data: Data) -> Bool {
+        guard let response = try? JSONDecoder().decode(ResponseBody.self, from: data) else {
+            return false
+        }
+        return ["max_tokens", "model_context_window_exceeded"].contains(response.stopReason)
     }
 
     static func providerErrorMessage(from data: Data, statusCode: Int) -> String {

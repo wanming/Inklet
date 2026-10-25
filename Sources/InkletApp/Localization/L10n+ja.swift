@@ -226,6 +226,8 @@ extension L10n {
         "error.emptySource": "変換するテキストを入力してください",
         "error.emptyResponse": "モデルが空の応答を返しました",
         "error.timeout": "リクエストがタイムアウトしました。もう一度お試しください",
+        "error.contextTooLong": "テキストが長すぎて、このモデルでは処理できません。短くして再試行するか、より長いコンテキストに対応したモデルを使ってください",
+        "popover.warning.outputTruncated": "応答がモデルの長さの上限に達し、途中で切れました。テキストを短くするか、分けて処理してください",
         "error.networkConnectionLost": "ネットワーク接続が中断されました。もう一度お試しください。",
         "error.provider.urlInvalid": "%@ のリクエストに失敗しました: URL が無効です",
         "error.provider.httpUnknown": "%@ のリクエストに失敗しました: HTTP unknown",

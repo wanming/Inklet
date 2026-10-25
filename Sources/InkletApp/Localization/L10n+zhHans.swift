@@ -405,6 +405,8 @@ extension L10n {
         "error.emptySource": "请输入要转换的文本",
         "error.emptyResponse": "模型返回了空内容",
         "error.timeout": "请求超时，请稍后重试",
+        "error.contextTooLong": "原文太长，超出了这个模型能处理的长度。可以缩短后再试，或换用支持更长上下文的模型。",
+        "popover.warning.outputTruncated": "回复达到了模型的长度上限，后面被截断了。可以缩短原文，或分段处理。",
         "error.networkConnectionLost": "网络连接已中断，请重试。",
         "error.provider.urlInvalid": "%@ 请求失败：URL 无效",
         "error.provider.httpUnknown": "%@ 请求失败：HTTP unknown",

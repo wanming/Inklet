@@ -405,6 +405,8 @@ extension L10n {
         "error.emptySource": "Enter text to transform.",
         "error.emptyResponse": "The model returned an empty response.",
         "error.timeout": "Request timed out. Please try again.",
+        "error.contextTooLong": "The text is too long for this model. Try a shorter text, or a model with a longer context.",
+        "popover.warning.outputTruncated": "The reply reached the model's length limit and was cut off. Try a shorter text, or split it into parts.",
         "error.networkConnectionLost": "The network connection was interrupted. Please try again.",
         "error.provider.urlInvalid": "%@ request failed: invalid URL",
         "error.provider.httpUnknown": "%@ request failed: HTTP unknown",

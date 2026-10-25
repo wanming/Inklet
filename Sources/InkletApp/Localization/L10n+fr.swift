@@ -226,6 +226,8 @@ extension L10n {
         "error.emptySource": "Saisissez le texte à transformer.",
         "error.emptyResponse": "Le modèle a renvoyé une réponse vide.",
         "error.timeout": "La requête a expiré. Réessayez.",
+        "error.contextTooLong": "Le texte est trop long pour ce modèle. Essayez un texte plus court ou un modèle avec un contexte plus long.",
+        "popover.warning.outputTruncated": "La réponse a atteint la limite de longueur du modèle et a été coupée. Essayez un texte plus court ou découpez-le.",
         "error.networkConnectionLost": "La connexion réseau a été interrompue. Réessayez.",
         "error.provider.urlInvalid": "La requête %@ a échoué : URL invalide",
         "error.provider.httpUnknown": "La requête %@ a échoué : HTTP unknown",
