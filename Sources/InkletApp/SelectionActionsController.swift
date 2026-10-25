@@ -52,6 +52,7 @@ final class SelectionActionsController {
     private var currentSelectionText = ""
     private var currentTranslationText = ""
     private var selectionPronunciationReturnState = SelectionPronunciationReturnState.menu
+    private var lastResultAction = SelectionMenuAction.translate
     private var panelDismissalPolicy = SelectionPanelDismissalPolicy()
 
     init(
@@ -161,7 +162,12 @@ final class SelectionActionsController {
         }
         self.selectionActionWindowController.onRetryTranslation = { [weak self] in
             Task { @MainActor in
-                self?.translateCurrentSelection()
+                self?.retryLastResultAction()
+            }
+        }
+        self.selectionActionWindowController.onRunPromptMode = { [weak self] modeID in
+            Task { @MainActor in
+                self?.runPromptModeOnCurrentSelection(modeID: modeID)
             }
         }
         self.selectionActionWindowController.onDismiss = { [weak self] in
@@ -359,6 +365,7 @@ final class SelectionActionsController {
             currentTranslationText = ""
             selectionPronunciationReturnState = .menu
             selectionCopyFeedbackTask?.cancel()
+            selectionActionWindowController.setMenuItems(currentSelectionMenuItems())
             selectionActionWindowController.showMenu(at: pendingUserCopyRead.location)
         }
         selectionReadTask = task
@@ -430,6 +437,7 @@ final class SelectionActionsController {
                 currentTranslationText = ""
                 selectionPronunciationReturnState = .menu
                 selectionCopyFeedbackTask?.cancel()
+                selectionActionWindowController.setMenuItems(currentSelectionMenuItems())
                 selectionActionWindowController.showMenu(at: location)
             case .showUnsupportedNotice:
                 SelectionActionDiagnostics.log("effect showUnsupportedNotice")
@@ -523,6 +531,7 @@ final class SelectionActionsController {
             return
         }
 
+        lastResultAction = .translate
         selectionTranslationTask?.cancel()
         let taskID = UUID()
         selectionTranslationTaskID = taskID
@@ -584,7 +593,7 @@ final class SelectionActionsController {
                 await MainActor.run {
                     guard !self.isStopping else { return }
                     self.currentTranslationText = translated
-                    self.selectionActionWindowController.showTranslation(translated)
+                    self.selectionActionWindowController.showTranslation(translated, kind: .translation)
                 }
             } catch is CancellationError {
             } catch {
@@ -763,5 +772,96 @@ final class SelectionActionsController {
         }
         selectionCopyFeedbackTask = task
         selectionTaskRegistry.register(task, id: taskID)
+    }
+
+    private func currentSelectionMenuItems() -> [SelectionMenuItem] {
+        let config = (try? configStore.load()) ?? AppConfig.defaultConfig()
+        return SelectionMenuItem.enabledItems(for: config)
+    }
+
+    private func retryLastResultAction() {
+        switch lastResultAction {
+        case .promptMode(let modeID):
+            runPromptModeOnCurrentSelection(modeID: modeID)
+        case .translate, .pronounce:
+            translateCurrentSelection()
+        }
+    }
+
+    private func runPromptModeOnCurrentSelection(modeID: String) {
+        guard !isStopping, !isMigrationMaintenanceActive else { return }
+        let sourceText = currentSelectionText
+        guard !sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return
+        }
+        let initialConfig = (try? configStore.load()) ?? AppConfig.defaultConfig()
+        guard let mode = initialConfig.promptModeStore.mode(id: modeID) else {
+            return
+        }
+
+        lastResultAction = .promptMode(modeID)
+        selectionTranslationTask?.cancel()
+        let taskID = UUID()
+        selectionTranslationTaskID = taskID
+        selectionActionWindowController.showRunningPromptMode(modeID)
+        let task = Task { [weak self] in
+            guard let self else { return }
+            defer {
+                self.selectionTaskRegistry.remove(id: taskID)
+                if self.selectionTranslationTaskID == taskID {
+                    self.selectionTranslationTask = nil
+                    self.selectionTranslationTaskID = nil
+                    self.notifyWorkStateChange()
+                }
+            }
+            do {
+                let config = try self.configStore.load()
+                let providerPreset = config.resolvedProviderPreset
+                let providerID = config.providerID
+                let apiKeyStore = self.apiKeyStore
+                let provider = LLMProviderFactory.provider(for: providerPreset) {
+                    guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: providerID),
+                          !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    else {
+                        throw TransformationError.provider(L10n.format("popover.error.missingAPIKey", providerPreset.name))
+                    }
+                    return apiKey
+                }
+                let result = try await TransformationService(provider: provider).transform(
+                    sourceText: sourceText,
+                    mode: mode,
+                    model: config.model,
+                    timeoutSeconds: config.timeoutSeconds
+                )
+                guard !Task.isCancelled, !isStopping, !isMigrationMaintenanceActive else { return }
+                try? self.historyStore.append(HistoryItem(
+                    source: .selection,
+                    inputText: sourceText,
+                    outputText: result.outputText,
+                    modeName: mode.localizedName,
+                    targetLanguageName: nil,
+                    model: config.model,
+                    metadata: [
+                        "modeID": mode.id,
+                        "providerID": providerID
+                    ]
+                ))
+                await MainActor.run {
+                    guard !self.isStopping else { return }
+                    self.currentTranslationText = result.outputText
+                    self.selectionActionWindowController.showTranslation(result.outputText, kind: .promptMode)
+                }
+            } catch is CancellationError {
+            } catch {
+                if !self.isStopping, !self.isMigrationMaintenanceActive {
+                    self.selectionActionWindowController.showTranslationError(
+                        L10n.text("selection.action.promptModeFailed")
+                    )
+                }
+            }
+        }
+        selectionTranslationTask = task
+        selectionTaskRegistry.register(task, id: taskID)
+        notifyWorkStateChange()
     }
 }

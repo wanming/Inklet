@@ -820,6 +820,46 @@ struct SettingsView: View {
             }
 
             settingsRow(
+                L10n.text("settings.row.selectionMenuButtons"),
+                help: L10n.format(
+                    "settings.help.selectionMenuButtons",
+                    SelectionMenuLayout.maximumInlineButtonCount
+                )
+            ) {
+                VStack(alignment: .leading, spacing: 8) {
+                    let buttons = model.selectionMenuButtons
+                    VStack(spacing: 0) {
+                        ForEach(Array(buttons.enumerated()), id: \.element.id) { index, button in
+                            selectionMenuButtonRow(button, index: index, count: buttons.count)
+                            if index < buttons.count - 1 {
+                                Divider().opacity(0.4)
+                            }
+                        }
+                    }
+                    .modifier(InkletFieldModifier())
+
+                    Button {
+                        model.resetSelectionMenuButtons()
+                    } label: {
+                        Label(
+                            L10n.text("settings.selectionMenu.restoreDefault"),
+                            systemImage: "arrow.counterclockwise"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(InkletTheme.controlFill, in: RoundedRectangle(cornerRadius: 7))
+                    .fixedSize()
+                    .help(L10n.text("settings.selectionMenu.restoreDefault"))
+                    .accessibilityLabel(L10n.text("settings.selectionMenu.restoreDefault"))
+                }
+                .frame(maxWidth: 420, alignment: .leading)
+            }
+
+            settingsRow(
                 L10n.text("settings.row.forceSelectionMode"),
                 help: L10n.text("settings.help.forceSelectionMode")
             ) {
@@ -1507,6 +1547,69 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    private func selectionMenuButtonRow(_ button: SelectionMenuButton, index: Int, count: Int) -> some View {
+        let item = model.selectionMenuItem(for: button)
+        return HStack(spacing: 8) {
+            Toggle(isOn: Binding(
+                get: { button.isEnabled },
+                set: { model.setSelectionMenuButton(button.action, isEnabled: $0) }
+            )) {
+                HStack(spacing: 6) {
+                    Image(systemName: item.systemImage)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(InkletTheme.textSecondary)
+                        .frame(width: 16)
+                    Text(item.title)
+                        .font(.system(size: 13))
+                        .foregroundStyle(InkletTheme.textPrimary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+            .toggleStyle(.checkbox)
+            .disabled(!model.canDisableSelectionMenuButton(button))
+
+            Spacer(minLength: 8)
+
+            selectionMenuMoveButton(
+                title: L10n.text("settings.selectionMenu.moveUp"),
+                systemImage: "chevron.up",
+                isEnabled: index > 0
+            ) {
+                model.moveSelectionMenuButton(at: index, by: -1)
+            }
+            selectionMenuMoveButton(
+                title: L10n.text("settings.selectionMenu.moveDown"),
+                systemImage: "chevron.down",
+                isEnabled: index < count - 1
+            ) {
+                model.moveSelectionMenuButton(at: index, by: 1)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+    }
+
+    private func selectionMenuMoveButton(
+        title: String,
+        systemImage: String,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(InkletTheme.textSecondary)
+                .frame(width: 22, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.35)
+        .help(title)
+        .accessibilityLabel(title)
     }
 
     private func settingsToggle(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
