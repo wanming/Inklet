@@ -160,7 +160,7 @@ Interaction states follow `AGENTS.md` § Interaction Details: loading replaces t
 
 The tokens above were introduced alongside the earlier ones. The earlier names in `InkletTheme.swift` now return the new palette (for example `textSecondary` returns `secondaryLabel`), so surfaces that still use them already get the new colors. Surfaces move to the new names and components one at a time, and the earlier names are removed once nothing uses them.
 
-Status: the writing popover, mode picker, selection bar, translation card, Settings window chrome (sidebar, header, footer, field helpers), Prompt modes and About are migrated. The other Settings panes, the welcome guide and What's New use the new colors through the earlier names, and move to the card layout next.
+Status: the writing popover, mode picker, selection bar, translation card, Settings window chrome (sidebar, header, footer, field helpers), Prompt modes, About and the welcome guide's language picker, step titles and action bar are migrated. The other Settings panes and What's New use the new colors through the earlier names, and move to the card layout next.
 
 | Earlier | Now |
 | --- | --- |
