@@ -245,7 +245,7 @@ extension L10n {
         "welcome.action.finish": "Start Writing",
         "welcome.action.back": "Back",
         "welcome.intro.title": "Welcome to Inklet",
-        "welcome.intro.message": "Press %@ in any app to rewrite, translate, or polish what you write. A few quick steps get Inklet ready.",
+        "welcome.language.message": "Choose the language Inklet uses. You can change it later in Settings.",
         "welcome.accessibility.title": "Allow Accessibility",
         "welcome.accessibility.message": "Inklet uses this permission to read the text you select and paste results back into the app you were using.",
         "welcome.permission.granted": "Allowed",

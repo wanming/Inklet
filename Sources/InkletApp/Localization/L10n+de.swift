@@ -307,7 +307,7 @@ extension L10n {
         "welcome.action.finish": "Schreiben beginnen",
         "welcome.action.back": "Zurück",
         "welcome.intro.title": "Willkommen bei Inklet",
-        "welcome.intro.message": "Drücke in jeder App %@, um deinen Text umzuschreiben, zu übersetzen oder zu verfeinern. Ein paar Schritte, dann ist Inklet bereit.",
+        "welcome.language.message": "Wähle die Sprache für Inklet. Du kannst sie später in den Einstellungen ändern.",
         "welcome.accessibility.title": "Bedienungshilfen erlauben",
         "welcome.accessibility.message": "Inklet nutzt diese Berechtigung, um markierten Text zu lesen und Ergebnisse in die App einzufügen, die du gerade verwendest.",
         "welcome.permission.granted": "Erlaubt",

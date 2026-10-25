@@ -245,7 +245,7 @@ extension L10n {
         "welcome.action.finish": "开始写作",
         "welcome.action.back": "返回",
         "welcome.intro.title": "欢迎使用 Inklet",
-        "welcome.intro.message": "在任何 App 里按 %@，就能改写、翻译、润色你写的文字。接下来几步帮你把 Inklet 设置好。",
+        "welcome.language.message": "选择 Inklet 的界面语言，之后也可以在设置里修改。",
         "welcome.accessibility.title": "允许辅助功能",
         "welcome.accessibility.message": "Inklet 用这个权限读取你选中的文字，并把结果粘贴回你正在用的 App。",
         "welcome.permission.granted": "已开启",

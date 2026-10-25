@@ -645,6 +645,10 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         ) else {
             return
         }
+        // Inklet otherwise starts in English; following the system opens the guide in the Mac's language.
+        if userDefaults.string(forKey: InkletPreferenceKeys.interfaceLanguage) == nil {
+            InkletLanguageStore.selectedLanguage = .system
+        }
         if let config = OnboardingPolicy.initialConfig(
             isEngineAvailable: BuiltInModelServer.isEngineAvailable,
             physicalMemoryBytes: ProcessInfo.processInfo.physicalMemory

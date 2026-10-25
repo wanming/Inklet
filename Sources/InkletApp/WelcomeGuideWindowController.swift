@@ -163,6 +163,13 @@ final class WelcomeGuideViewModel: ObservableObject {
         }
     }
 
+    /// Applies right away, so the rest of the guide is in the chosen language.
+    func selectLanguage(_ language: InterfaceLanguage) {
+        guard language != settings.interfaceLanguage else { return }
+        settings.interfaceLanguage = language
+        _ = settings.flushPendingEdits()
+    }
+
     func goBack() {
         guard let previous = Step(rawValue: step.rawValue - 1) else { return }
         show(previous)
@@ -288,20 +295,52 @@ struct WelcomeGuideView: View {
         }
     }
 
+    /// The first step picks the interface language, so everything after it reads in that language.
     private var welcomeStep: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 16) {
             PenNibShape()
-                .stroke(style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
+                .stroke(style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
                 .foregroundStyle(InkletTheme.primary)
-                .padding(18)
-                .frame(width: 76, height: 76)
-                .background(InkletTheme.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
+                .padding(11)
+                .frame(width: 46, height: 46)
+                .background(InkletTheme.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
             stepHeader(
                 title: L10n.text("welcome.intro.title"),
-                message: L10n.format("welcome.intro.message", settings.config.hotkey)
+                message: L10n.text("welcome.language.message")
             )
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3),
+                spacing: 8
+            ) {
+                ForEach(InterfaceLanguage.allCases) { language in
+                    languageButton(language)
+                }
+            }
         }
-        .padding(.top, 10)
+    }
+
+    private func languageButton(_ language: InterfaceLanguage) -> some View {
+        let isSelected = settings.interfaceLanguage == language
+        return Button {
+            model.selectLanguage(language)
+        } label: {
+            Text(language.localizedDisplayName)
+                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                .foregroundStyle(isSelected ? InkletTheme.primary : InkletTheme.textPrimary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, minHeight: 32)
+                .background(
+                    isSelected ? InkletTheme.primary.opacity(0.10) : InkletTheme.elevatedBackground,
+                    in: RoundedRectangle(cornerRadius: InkletTheme.controlRadius)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: InkletTheme.controlRadius)
+                        .stroke(isSelected ? InkletTheme.primary.opacity(0.6) : InkletTheme.subtleBorder)
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var accessibilityStep: some View {

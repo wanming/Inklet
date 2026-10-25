@@ -307,7 +307,7 @@ extension L10n {
         "welcome.action.finish": "Commencer à écrire",
         "welcome.action.back": "Retour",
         "welcome.intro.title": "Bienvenue dans Inklet",
-        "welcome.intro.message": "Appuyez sur %@ dans n'importe quelle app pour réécrire, traduire ou peaufiner ce que vous écrivez. Quelques étapes suffisent pour préparer Inklet.",
+        "welcome.language.message": "Choisissez la langue d'Inklet. Vous pourrez la modifier plus tard dans les Réglages.",
         "welcome.accessibility.title": "Autoriser l'accessibilité",
         "welcome.accessibility.message": "Inklet utilise cette autorisation pour lire le texte sélectionné et coller les résultats dans l'app que vous utilisiez.",
         "welcome.permission.granted": "Autorisé",

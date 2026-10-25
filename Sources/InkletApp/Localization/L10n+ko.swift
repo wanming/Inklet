@@ -307,7 +307,7 @@ extension L10n {
         "welcome.action.finish": "글쓰기 시작",
         "welcome.action.back": "뒤로",
         "welcome.intro.title": "Inklet에 오신 것을 환영합니다",
-        "welcome.intro.message": "어떤 앱에서든 %@ 키를 누르면 쓴 글을 다시 쓰고, 번역하고, 다듬을 수 있습니다. 몇 단계만 거치면 준비가 끝납니다.",
+        "welcome.language.message": "Inklet에서 사용할 언어를 선택하세요. 나중에 설정에서 바꿀 수 있습니다.",
         "welcome.accessibility.title": "손쉬운 사용 허용",
         "welcome.accessibility.message": "Inklet은 이 권한으로 선택한 텍스트를 읽고, 결과를 사용 중이던 앱에 붙여 넣습니다.",
         "welcome.permission.granted": "허용됨",
