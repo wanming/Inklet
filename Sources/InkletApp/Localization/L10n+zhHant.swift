@@ -356,7 +356,7 @@ extension L10n {
         "whatsNew.1.2.0.dictation.title": "在本機聽寫",
         "whatsNew.1.2.0.dictation.detail": "即時聽寫現在可以在本機辨識語音，也支援中英混說。在即時聽寫設定中選擇「本機」，聲音就不會離開這台 Mac。",
         "welcome.shortcuts.writing": "開啟 Inklet",
-        "welcome.shortcuts.writing.detail": "在任何 App 中按下就會開啟寫作浮窗。點一下輸入框，再按新的按鍵。",
+        "welcome.shortcuts.writing.detail": "在任何 App 中按下就會開啟寫作浮窗。點一下輸入框，再按新的按鍵。在浮窗中按住 ⌘ 可以查看所有快捷鍵。",
         "welcome.shortcuts.dictation": "長按的按鍵",
         "welcome.shortcuts.dictation.detail": "在寫作浮窗中按住即可聽寫。",
         "welcome.ready.title": "都設定好了",

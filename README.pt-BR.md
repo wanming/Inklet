@@ -160,6 +160,7 @@ Verifique todos os idiomas da interface com `scripts/check-localization.sh`. Adi
 - `Command+Enter`: insere o texto original sem chamar o modelo.
 - `Shift+Command+C`: copia o resultado visível sem fechar o popover.
 - `Command+Up` / `Command+Down`: alterna entre os modos de prompt visíveis.
+- Segurar apenas `Command`: mostra todos os atalhos na barra de ações. Normalmente a barra mostra só a dica de ditado e o botão principal; todos os atalhos funcionam de qualquer forma.
 - `Escape`: volta um nível a cada toque, do resultado para o editor de origem, depois para o lançador de modos e então fecha o popover. Durante a transformação, para a geração, descarta o resultado parcial e permanece no editor.
 - `Command+,`: abre os Ajustes enquanto o Inklet está ativo.
 

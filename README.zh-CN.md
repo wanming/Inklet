@@ -158,6 +158,7 @@ swift test
 - `Command+Enter`：不调用模型，直接插入原文。
 - `Shift+Command+C`：复制当前结果，浮窗保持打开。
 - `Command+Up` / `Command+Down`：切换可见 prompt modes。
+- 单独按住 `Command`：在底栏显示所有快捷键。平时底栏只显示听写提示和主按钮，所有快捷键都照常可用。
 - `Escape`：每按一次只返回一层，依次从结果回到源文本编辑器、模式启动器，再关闭 popover。处理文本期间按下会停止生成、丢弃未完成的结果，并停留在编辑器。
 - `Command+,`：Inklet 激活时打开 Settings。
 

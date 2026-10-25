@@ -17,13 +17,16 @@ struct InkletPopoverView: View {
     @State private var statusMeasuredHeight: CGFloat = 44
     @State private var actionBarMeasuredHeight: CGFloat = InkletTheme.ControlHeight.bar
     @State private var isModeChipHovered = false
+    @StateObject private var commandHold: CommandHoldMonitor
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(
         model: InkletPopoverViewModel,
+        commandHold: CommandHoldMonitor = CommandHoldMonitor(),
         onSourceTextViewAttachment: @escaping (InkletTextViewAttachmentEvent) -> Void = { _ in }
     ) {
         self.model = model
+        _commandHold = StateObject(wrappedValue: commandHold)
         self.onSourceTextViewAttachment = onSourceTextViewAttachment
     }
 
@@ -162,6 +165,11 @@ struct InkletPopoverView: View {
         .inkletFloatingPanel(cornerRadius: InkletTheme.Radius.panel)
         .onAppear {
             publishPopoverHeight()
+            commandHold.dictationShortcut = { [model] in model.currentVoiceInputConfig.shortcut }
+            commandHold.start()
+        }
+        .onDisappear {
+            commandHold.stop()
         }
         .onChange(of: popoverHeight) {
             publishPopoverHeight()
@@ -450,7 +458,7 @@ struct InkletPopoverView: View {
             }
             .buttonStyle(.plain)
             .disabled(isBusy)
-            .help(L10n.text("popover.mode.backToModes"))
+            .help(titleWithKeys(L10n.text("popover.mode.backToModes"), "⌘↑ ⌘↓"))
             .accessibilityLabel(L10n.text("popover.mode.backToModes"))
 
             Spacer()
@@ -494,27 +502,38 @@ struct InkletPopoverView: View {
                         }
                     }
                     .buttonStyle(InkletButtonStyle(kind: hasPrimaryActionContent ? .primary : .secondary))
-                    .help(primaryActionTitle)
+                    .help(titleWithKeys(primaryActionTitle, "↵"))
                     .accessibilityLabel(primaryActionTitle)
                     .disabled(model.dictationPhase.isActive)
-                    shortcutHint(keys: ["⌘", "↵"], label: L10n.text("popover.action.insertOriginal")) {
-                        model.insertOriginal()
+                    // The bar stays quiet: holding ⌘ alone reveals every shortcut, and they keep working while hidden.
+                    if showsAllShortcuts {
+                        shortcutHint(keys: ["⌘", "↵"], label: L10n.text("popover.action.insertOriginal")) {
+                            model.insertOriginal()
+                        }
+                        .disabled(model.dictationPhase.isActive)
+                        shortcutHint(keys: ["⌘", "↑", "↓"], label: L10n.text("popover.hint.mode")) {
+                            model.cyclePromptMode(direction: 1)
+                        }
+                        .disabled(model.dictationPhase.isActive)
+                        if !model.resultText.isEmpty {
+                            shortcutHint(keys: ["⇧", "⌘", "C"], label: L10n.text("popover.action.copyResult")) {
+                                model.copyResult()
+                            }
+                            .disabled(model.dictationPhase.isActive)
+                        }
+                        shortcutHint(keys: ["⇧", "↵"], label: L10n.text("popover.hint.newLine")) {
+                            insertNewLine()
+                        }
+                        .disabled(model.dictationPhase.isActive)
                     }
-                    .disabled(model.dictationPhase.isActive)
-                    shortcutHint(keys: ["⇧", "↵"], label: L10n.text("popover.hint.newLine"), showsLabel: false) {
-                        insertNewLine()
-                    }
-                    .disabled(model.dictationPhase.isActive)
-                    shortcutHint(keys: ["⌘", "↑", "↓"], label: L10n.text("popover.hint.mode"), showsLabel: false) {
-                        model.cyclePromptMode(direction: 1)
-                    }
-                    .disabled(model.dictationPhase.isActive)
                     HStack(spacing: InkletTheme.Spacing.xs) {
                         if model.shouldShowDictationStatus {
                             dictationStatus
                         }
-                        shortcutHint(keys: ["esc"], label: L10n.text("popover.hint.back")) {
-                            model.escape()
+                        if showsAllShortcuts {
+                            shortcutHint(keys: ["esc"], label: L10n.text("popover.hint.back")) {
+                                model.escape()
+                            }
                         }
                     }
                     .fixedSize()
@@ -533,6 +552,16 @@ struct InkletPopoverView: View {
             }
         }
         .accessibilityLabel(L10n.text("popover.hint.accessibility"))
+    }
+
+    /// A tooltip that names the keys, since the quiet action bar no longer shows them.
+    private func titleWithKeys(_ title: String, _ keys: String) -> String {
+        "\(title) (\(keys))"
+    }
+
+    /// Every shortcut shows only while ⌘ is held on its own, and never during dictation.
+    private var showsAllShortcuts: Bool {
+        commandHold.isRevealed && !model.dictationPhase.isActive
     }
 
     private var dictationStatus: some View {

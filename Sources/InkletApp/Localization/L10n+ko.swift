@@ -356,7 +356,7 @@ extension L10n {
         "whatsNew.1.2.0.dictation.title": "이 Mac에서 받아쓰기",
         "whatsNew.1.2.0.dictation.detail": "이제 실시간 받아쓰기가 중국어와 영어를 섞어 말하는 것까지 이 Mac에서 인식합니다. 실시간 받아쓰기 설정에서 이 Mac을 선택하면 음성이 Mac 밖으로 나가지 않습니다.",
         "welcome.shortcuts.writing": "Inklet 열기",
-        "welcome.shortcuts.writing.detail": "어떤 앱에서든 누르면 글쓰기 팝오버가 열립니다. 칸을 클릭한 뒤 새 키를 누르세요.",
+        "welcome.shortcuts.writing.detail": "어떤 앱에서든 누르면 글쓰기 팝오버가 열립니다. 칸을 클릭한 뒤 새 키를 누르세요. 팝오버에서 ⌘를 길게 누르면 모든 단축키가 표시됩니다.",
         "welcome.shortcuts.dictation": "길게 누를 키",
         "welcome.shortcuts.dictation.detail": "글쓰기 팝오버에서 길게 누르면 받아쓰기가 됩니다.",
         "welcome.ready.title": "준비가 끝났습니다",

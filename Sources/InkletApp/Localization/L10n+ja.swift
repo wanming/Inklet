@@ -356,7 +356,7 @@ extension L10n {
         "whatsNew.1.2.0.dictation.title": "この Mac で音声入力",
         "whatsNew.1.2.0.dictation.detail": "リアルタイム音声入力が、中国語と英語の混在も含めてこの Mac 上で音声を認識できるようになりました。リアルタイム音声入力の設定で「この Mac」を選ぶと、声が Mac の外に出ることはありません。",
         "welcome.shortcuts.writing": "Inklet を開く",
-        "welcome.shortcuts.writing.detail": "どのアプリでも押すと文章作成ポップオーバーが開きます。欄をクリックしてから新しいキーを押してください。",
+        "welcome.shortcuts.writing.detail": "どのアプリでも押すと文章作成ポップオーバーが開きます。欄をクリックしてから新しいキーを押してください。ポップオーバーで ⌘ を押し続けると、すべてのショートカットが表示されます。",
         "welcome.shortcuts.dictation": "長押しするキー",
         "welcome.shortcuts.dictation.detail": "文章作成ポップオーバーで長押しすると音声入力できます。",
         "welcome.ready.title": "準備ができました",
