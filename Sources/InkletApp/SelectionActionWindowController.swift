@@ -248,6 +248,10 @@ final class SelectionActionWindowController: NSWindowController {
         window?.title = L10n.text("settings.section.selectionActions")
         configureWindowInteraction(for: state)
 
+        // The hosting view sets the window's minimum and maximum size from its content, so the
+        // result panel's limits go on the content too.
+        let minimumSize = isTranslationResultState ? Self.translationPanelMinimumSize : nil
+        let maximumSize = isTranslationResultState ? Self.translationPanelMaximumSize : nil
         let hostingView = SelectionActionHostingView(rootView: SelectionActionView(
             state: state,
             menuItems: menuItems,
@@ -260,13 +264,24 @@ final class SelectionActionWindowController: NSWindowController {
             onRetryTranslation: { [weak self] in self?.onRetryTranslation?() },
             onRunPromptMode: { [weak self] modeID in self?.onRunPromptMode?(modeID) },
             onShowMoreActions: { [weak self] items in self?.showMoreActionsMenu(items) }
+        )
+        .frame(
+            minWidth: minimumSize.map { CGFloat($0.width) },
+            maxWidth: maximumSize.map { CGFloat($0.width) },
+            minHeight: minimumSize.map { CGFloat($0.height) },
+            maxHeight: maximumSize.map { CGFloat($0.height) }
         ))
         hostingView.wantsLayer = true
         hostingView.layer?.cornerRadius = 12
         hostingView.layer?.cornerCurve = .continuous
         hostingView.layer?.masksToBounds = true
+        // Installing and measuring the hosting view can resize the window to fit its content;
+        // that is not a user resize.
+        let wasProgrammaticResize = isProgrammaticResize
+        isProgrammaticResize = true
         window?.contentView = hostingView
         resizeToPreferredSize()
+        isProgrammaticResize = wasProgrammaticResize
         updateBackgroundDragExclusionRects()
     }
 
@@ -337,9 +352,10 @@ final class SelectionActionWindowController: NSWindowController {
             return
         }
 
+        let wasProgrammaticResize = isProgrammaticResize
         isProgrammaticResize = true
         window.setFrame(frame, display: true)
-        isProgrammaticResize = false
+        isProgrammaticResize = wasProgrammaticResize
     }
 
     private func positionWindow(at point: SelectionPoint) {
