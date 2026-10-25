@@ -223,7 +223,7 @@ final class ConfigStoreTests: XCTestCase {
 
             let config = try JSONDecoder().decode(AppConfig.self, from: data)
 
-            XCTAssertEqual(AppConfig.currentVersion, 4)
+            XCTAssertEqual(AppConfig.currentVersion, 5)
             XCTAssertEqual(config.version, AppConfig.currentVersion)
             XCTAssertEqual(config.model, "gpt-5.6-luna")
         }
@@ -294,7 +294,7 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertNil(encodedJSON["temperature"])
     }
 
-    func testAppConfigMigratesVersionsOneThroughThreeToVersionFour() throws {
+    func testAppConfigMigratesVersionsOneThroughThreeToCurrentVersion() throws {
         for savedVersion in 1...3 {
             let data = try JSONSerialization.data(withJSONObject: [
                 "version": savedVersion,
@@ -309,8 +309,8 @@ final class ConfigStoreTests: XCTestCase {
 
             let config = try JSONDecoder().decode(AppConfig.self, from: data)
 
-            XCTAssertEqual(AppConfig.currentVersion, 4)
-            XCTAssertEqual(config.version, 4)
+            XCTAssertEqual(AppConfig.currentVersion, 5)
+            XCTAssertEqual(config.version, AppConfig.currentVersion)
             XCTAssertEqual(config.voiceInput.shortcut, .rightCommand)
             XCTAssertEqual(
                 config.voiceInput.speechEndpoint,
@@ -335,6 +335,76 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.providerID, LLMProviderPreset.openAI.id)
         XCTAssertEqual(config.model, LLMProviderPreset.openAI.defaultModel)
         XCTAssertEqual(config.resolvedProviderPreset.id, LLMProviderPreset.openAI.id)
+    }
+
+    func testVersionFourConfigKeepsWritingOnOpenAI() throws {
+        let data = try JSONSerialization.data(withJSONObject: [
+            "version": 4,
+            "providerID": "deepseek",
+            "model": "deepseek-chat"
+        ])
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+
+        XCTAssertEqual(config.providerID, LLMProviderPreset.openAI.id)
+        XCTAssertEqual(config.model, LLMProviderPreset.openAI.defaultModel)
+    }
+
+    func testCurrentConfigKeepsSelectedProviderAndModel() throws {
+        let data = try JSONSerialization.data(withJSONObject: [
+            "version": 5,
+            "providerID": "deepseek",
+            "model": "deepseek-chat"
+        ])
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+
+        XCTAssertEqual(config.providerID, "deepseek")
+        XCTAssertEqual(config.model, "deepseek-chat")
+        XCTAssertEqual(config.resolvedProviderPreset.id, "deepseek")
+    }
+
+    func testCurrentConfigUsesProviderDefaultModelWhenModelIsMissing() throws {
+        let data = try JSONSerialization.data(withJSONObject: [
+            "version": 5,
+            "providerID": "anthropic"
+        ])
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+
+        XCTAssertEqual(config.providerID, "anthropic")
+        XCTAssertEqual(config.model, LLMProviderPreset.preset(id: "anthropic").defaultModel)
+    }
+
+    func testCurrentConfigFallsBackToOpenAIForUnknownProvider() throws {
+        let data = try JSONSerialization.data(withJSONObject: [
+            "version": 5,
+            "providerID": "retired-provider",
+            "model": "retired-model"
+        ])
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: data)
+
+        XCTAssertEqual(config.providerID, LLMProviderPreset.openAI.id)
+        XCTAssertEqual(config.model, LLMProviderPreset.openAI.defaultModel)
+    }
+
+    func testSelectedProviderRoundTripsThroughUserDefaults() throws {
+        let suiteName = "ConfigStoreTests.\(UUID().uuidString)"
+        let userDefaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer {
+            userDefaults.removePersistentDomain(forName: suiteName)
+        }
+        let store = UserDefaultsConfigStore(userDefaults: userDefaults)
+        var config = AppConfig.defaultConfig()
+        config.providerID = "gemini"
+        config.model = "gemini-flash-latest"
+
+        try store.save(config)
+        let loadedConfig = try store.load()
+
+        XCTAssertEqual(loadedConfig, config)
+        XCTAssertEqual(loadedConfig.resolvedProviderPreset.id, "gemini")
     }
 
     func testConfigDecodeMigratesLegacyModesToFocusedDefaults() throws {
@@ -507,15 +577,38 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(mode.systemPrompt, "My custom cleanup prompt.")
     }
 
-    func testResolvedProviderPresetAlwaysUsesOpenAI() {
+    func testResolvedProviderPresetFollowsSelectedProvider() {
+        var config = AppConfig.defaultConfig()
+        XCTAssertEqual(config.resolvedProviderPreset, LLMProviderPreset.openAI)
+
+        config.providerID = "anthropic"
+        XCTAssertEqual(config.resolvedProviderPreset, LLMProviderPreset.preset(id: "anthropic"))
+    }
+
+    func testResolvedProviderPresetUsesCustomEndpoint() {
         var config = AppConfig.defaultConfig()
         config.providerID = LLMProviderPreset.customOpenAICompatible.id
-        config.customOpenAICompatibleEndpoint = "http://127.0.0.1:1234/v1/chat/completions"
+        config.customOpenAICompatibleEndpoint = " http://127.0.0.1:1234/v1/chat/completions "
 
+        XCTAssertEqual(config.resolvedProviderPreset.id, LLMProviderPreset.customOpenAICompatible.id)
         XCTAssertEqual(
-            config.resolvedProviderPreset,
-            LLMProviderPreset.openAI
+            config.resolvedProviderPreset.endpoint.absoluteString,
+            "http://127.0.0.1:1234/v1/chat/completions"
         )
+    }
+
+    func testResolvedProviderPresetIgnoresInvalidCustomEndpoint() {
+        var config = AppConfig.defaultConfig()
+        config.providerID = LLMProviderPreset.customOpenAICompatible.id
+
+        for endpoint in ["", "not a url", "ftp://example.com/v1/chat/completions"] {
+            config.customOpenAICompatibleEndpoint = endpoint
+            XCTAssertEqual(
+                config.resolvedProviderPreset.endpoint,
+                LLMProviderPreset.customOpenAICompatible.endpoint,
+                endpoint
+            )
+        }
     }
 
     func testVisibleModeIDKeepsVisiblePreferredMode() {
