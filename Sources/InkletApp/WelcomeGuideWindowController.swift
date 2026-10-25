@@ -20,7 +20,7 @@ final class WelcomeGuideWindowController: NSWindowController {
         let model = WelcomeGuideViewModel(settings: settings)
         self.model = model
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 460),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 520),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -71,7 +71,6 @@ final class WelcomeGuideViewModel: ObservableObject {
         case accessibility
         case writingModel
         case dictation
-        case shortcuts
         case ready
     }
 
@@ -84,6 +83,8 @@ final class WelcomeGuideViewModel: ObservableObject {
     @Published private(set) var writingChoice: WritingChoice
     @Published private(set) var isAccessibilityTrusted: Bool
     @Published private(set) var microphoneStatus: AVAuthorizationStatus
+    /// The cloud provider picked on the model step; it starts as the provider from before the guide.
+    @Published private(set) var cloudProviderID: String
 
     let settings: SettingsViewModel
     /// The provider the person had before the guide, or OpenAI on a new install. Picking it again
@@ -99,6 +100,7 @@ final class WelcomeGuideViewModel: ObservableObject {
         self.settings = settings
         let currentProvider = settings.selectedProvider
         self.otherProviderID = currentProvider.isBuiltIn ? LLMProviderPreset.openAI.id : currentProvider.id
+        self.cloudProviderID = currentProvider.isBuiltIn ? LLMProviderPreset.openAI.id : currentProvider.id
         self.isOtherProviderSetUp = !currentProvider.isBuiltIn
             && (!currentProvider.requiresAPIKey || !settings.providerAPIKey.isEmpty)
         self.writingChoice = settings.isBuiltInEngineAvailable && currentProvider.isBuiltIn
@@ -110,6 +112,22 @@ final class WelcomeGuideViewModel: ObservableObject {
 
     var otherProviderName: String {
         LLMProviderPreset.preset(id: otherProviderID).localizedPickerName
+    }
+
+    /// Cloud providers, plus the person's own local server if that is what they used before.
+    var cloudProviderOptions: [LLMProviderPreset] {
+        let cloudProviders = settings.cloudProviders
+        guard !cloudProviders.contains(where: { $0.id == otherProviderID }) else {
+            return cloudProviders
+        }
+        return [LLMProviderPreset.preset(id: otherProviderID)] + cloudProviders
+    }
+
+    /// A provider that already works needs no key; any other one asks for its key.
+    var needsCloudAPIKey: Bool {
+        let provider = LLMProviderPreset.preset(id: cloudProviderID)
+        guard provider.requiresAPIKey else { return false }
+        return !(isOtherProviderSetUp && cloudProviderID == otherProviderID)
     }
 
     var canUseBuiltIn: Bool {
@@ -134,8 +152,6 @@ final class WelcomeGuideViewModel: ObservableObject {
             needsBuiltInDownload ? L10n.text("welcome.action.downloadAndContinue") : L10n.text("welcome.action.continue")
         case .dictation:
             microphoneStatus == .authorized ? L10n.text("welcome.action.continue") : L10n.text("welcome.action.later")
-        case .shortcuts:
-            L10n.text("welcome.action.continue")
         case .ready:
             L10n.text("welcome.action.finish")
         }
@@ -159,8 +175,16 @@ final class WelcomeGuideViewModel: ObservableObject {
         case .builtIn:
             settings.selectProvider(LLMProviderPreset.builtIn.id)
         case .cloud:
-            settings.selectProvider(otherProviderID)
+            settings.selectProvider(cloudProviderID)
         }
+    }
+
+    func selectCloudProvider(_ providerID: String) {
+        cloudProviderID = providerID
+        if writingChoice != .cloud {
+            writingChoice = .cloud
+        }
+        settings.selectProvider(providerID)
     }
 
     /// Applies right away, so the rest of the guide is in the chosen language.
@@ -186,7 +210,6 @@ final class WelcomeGuideViewModel: ObservableObject {
             if microphoneStatus == .authorized {
                 downloadDictationModelIfNeeded()
             }
-        case .shortcuts:
             _ = settings.flushPendingEdits()
         case .welcome, .accessibility:
             break
@@ -290,7 +313,7 @@ struct WelcomeGuideView: View {
             Divider().opacity(0.45)
             actionBar
         }
-        .frame(width: 560, height: 460)
+        .frame(width: 560, height: 520)
         .background(InkletTheme.panelBackground)
     }
 
@@ -317,8 +340,6 @@ struct WelcomeGuideView: View {
             writingModelStep
         case .dictation:
             dictationStep
-        case .shortcuts:
-            shortcutsStep
         case .ready:
             readyStep
         }
@@ -416,12 +437,38 @@ struct WelcomeGuideView: View {
                     : L10n.text("welcome.model.cloud.detail"),
                 action: { model.selectWritingChoice(.cloud) }
             ) {
-                if model.writingChoice == .cloud, !model.isOtherProviderSetUp {
-                    SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $settings.providerAPIKey)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: 320)
+                if model.writingChoice == .cloud {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Picker("", selection: Binding(
+                            get: { model.cloudProviderID },
+                            set: { model.selectCloudProvider($0) }
+                        )) {
+                            ForEach(model.cloudProviderOptions) { preset in
+                                Text(preset.localizedPickerName).tag(preset.id)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: 320, alignment: .leading)
+                        if model.needsCloudAPIKey {
+                            SecureField(settings.selectedProvider.apiKeyPlaceholder, text: $settings.providerAPIKey)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: 320)
+                        }
+                    }
                 }
             }
+            writingShortcutRow
+        }
+    }
+
+    /// The shortcut that opens Inklet, set where the writing model is chosen.
+    private var writingShortcutRow: some View {
+        shortcutRow(
+            title: L10n.text("welcome.shortcuts.writing"),
+            detail: L10n.text("welcome.shortcuts.writing.detail")
+        ) {
+            HotkeyRecorderField(hotkey: $settings.config.hotkey)
+                .frame(width: 160, height: 30)
         }
     }
 
@@ -481,23 +528,6 @@ struct WelcomeGuideView: View {
                     downloadStatus(model.dictationModelState)
                 }
             }
-        }
-    }
-
-    private var shortcutsStep: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            stepHeader(
-                systemImage: "command",
-                title: L10n.text("welcome.shortcuts.title"),
-                message: L10n.text("welcome.shortcuts.message")
-            )
-            shortcutRow(
-                title: L10n.text("welcome.shortcuts.writing"),
-                detail: L10n.text("welcome.shortcuts.writing.detail")
-            ) {
-                HotkeyRecorderField(hotkey: $settings.config.hotkey)
-                    .frame(width: 180, height: 30)
-            }
             shortcutRow(
                 title: L10n.text("welcome.shortcuts.dictation"),
                 detail: L10n.text("welcome.shortcuts.dictation.detail")
@@ -508,7 +538,7 @@ struct WelcomeGuideView: View {
                     }
                 }
                 .labelsHidden()
-                .frame(width: 180)
+                .frame(width: 160)
             }
         }
     }

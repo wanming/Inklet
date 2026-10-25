@@ -73,7 +73,7 @@ final class SettingsProviderSelectionTests: XCTestCase {
         XCTAssertFalse(didFinish)
 
         guide.goBack()
-        XCTAssertEqual(guide.step, .shortcuts)
+        XCTAssertEqual(guide.step, .dictation)
         guide.performPrimaryAction()
         guide.performPrimaryAction()
         XCTAssertTrue(didFinish)
@@ -100,21 +100,48 @@ final class SettingsProviderSelectionTests: XCTestCase {
     }
 
     @MainActor
-    func testWelcomeGuideShortcutStepSavesTheChosenShortcuts() throws {
+    func testWelcomeGuideCloudCardCanPickAnyCloudProvider() throws {
+        let keychain = ProviderSelectionKeychainClient()
+        let (settings, configStore) = try makeModel(keychain: keychain)
+        settings.selectProvider(LLMProviderPreset.builtIn.id)
+        let guide = WelcomeGuideViewModel(settings: settings)
+        while guide.step != .writingModel {
+            guide.performPrimaryAction()
+        }
+
+        XCTAssertTrue(guide.cloudProviderOptions.contains { $0.id == "deepseek" })
+        XCTAssertFalse(guide.cloudProviderOptions.contains { $0.runsLocally })
+        guide.selectCloudProvider("deepseek")
+        XCTAssertEqual(guide.writingChoice, .cloud)
+        XCTAssertTrue(guide.needsCloudAPIKey)
+        settings.providerAPIKey = "sk-deepseek"
+        guide.performPrimaryAction()
+
+        XCTAssertEqual(try configStore.load().providerID, "deepseek")
+        XCTAssertEqual(keychain.value(forAccount: "deepseek"), "sk-deepseek")
+        guide.goBack()
+        guide.selectWritingChoice(.builtIn)
+        guide.selectWritingChoice(.cloud)
+        XCTAssertEqual(settings.config.providerID, "deepseek")
+    }
+
+    @MainActor
+    func testWelcomeGuideSavesShortcutsOnTheModelAndDictationSteps() throws {
         let (settings, configStore) = try makeModel(keychain: ProviderSelectionKeychainClient())
         let guide = WelcomeGuideViewModel(settings: settings)
-        while guide.step != .shortcuts {
+        while guide.step != .writingModel {
             guide.performPrimaryAction()
         }
 
         settings.config.hotkey = "⌘⇧K"
+        guide.performPrimaryAction()
+        XCTAssertEqual(guide.step, .dictation)
+        XCTAssertEqual(try configStore.load().hotkey, "⌘⇧K")
+
         settings.config.voiceInput.shortcut = .leftCommand
         guide.performPrimaryAction()
-
         XCTAssertEqual(guide.step, .ready)
-        let saved = try configStore.load()
-        XCTAssertEqual(saved.hotkey, "⌘⇧K")
-        XCTAssertEqual(saved.voiceInput.shortcut, .leftCommand)
+        XCTAssertEqual(try configStore.load().voiceInput.shortcut, .leftCommand)
     }
 
     @MainActor
