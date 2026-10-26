@@ -1,0 +1,19 @@
+name: Temp welcome snapshots
+on:
+  push:
+    branches: [claude/project-thread-yofz4o]
+jobs:
+  snap:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Light
+        run: INKLET_LOCALIZATION_SNAPSHOT_DIR=$PWD/snaps/light swift test --filter 'testWelcome'
+      - name: Dark
+        if: always()
+        run: INKLET_SNAPSHOT_APPEARANCE=dark INKLET_LOCALIZATION_SNAPSHOT_DIR=$PWD/snaps/dark swift test --filter 'testWelcome'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: welcome-snaps
+          path: snaps
