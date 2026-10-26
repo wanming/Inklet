@@ -57,6 +57,7 @@ final class PromptModeTests: XCTestCase {
         XCTAssertTrue(japanese.systemPrompt.contains("single word"))
         XCTAssertTrue(japanese.systemPrompt.contains("pronunciation"))
         XCTAssertTrue(japanese.systemPrompt.contains("example sentences"))
+        XCTAssertTrue(japanese.systemPrompt.contains("already in Japanese, translate it into English instead"))
         XCTAssertFalse(japanese.systemPrompt.contains("{"))
     }
 
