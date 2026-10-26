@@ -28,6 +28,9 @@ struct PromptModeTableView: NSViewRepresentable {
         column.resizingMask = .autoresizingMask
         tableView.addTableColumn(column)
         tableView.headerView = nil
+        // The default (inset) style pads every row on both sides, which pushes the
+        // row's trailing buttons past the edge of the 240pt card.
+        tableView.style = .plain
         tableView.rowHeight = 34
         tableView.intercellSpacing = NSSize(width: 0, height: 2)
         tableView.backgroundColor = .clear
