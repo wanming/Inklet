@@ -12,10 +12,6 @@
 
 > 이 문서는 영어판 [README.md](README.md)를 번역한 것입니다. 내용이 서로 다르면 영어판을 기준으로 합니다.
 
-## 데모
-
-데모 영상 보기: [Inklet on YouTube](https://www.youtube.com/watch?v=F5wmFruo0a4).
-
 ## 설치
 
 Inklet은 GitHub Releases를 통해서만 배포됩니다. [GitHub Releases](https://github.com/wanming/Inklet/releases)에서 서명 및 공증된 최신 DMG를 내려받아 열고, Inklet을 `/Applications`에 복사하세요.

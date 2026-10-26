@@ -12,10 +12,6 @@
 
 > このドキュメントは英語版 [README.md](README.md) の翻訳です。内容に違いがある場合は英語版が優先されます。
 
-## デモ
-
-デモ動画を見る：[Inklet on YouTube](https://www.youtube.com/watch?v=F5wmFruo0a4)。
-
 ## インストール
 
 Inklet の公式な配布チャネルは GitHub Releases だけです。[GitHub Releases](https://github.com/wanming/Inklet/releases) から署名・公証済みの最新 DMG をダウンロードして開き、Inklet を `/Applications` にコピーしてください。

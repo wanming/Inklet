@@ -10,10 +10,6 @@ Homepage: [getinklet.app](https://getinklet.app)
 
 Use the global shortcut to open the writing popover, then type, paste, or dictate into the same editable source draft. Realtime dictation stays inside Writing Assistant so you can review the transcript before deciding whether to transform or insert it. On Apple silicon, new installs recognize speech on your Mac, so your voice never leaves it.
 
-## Demo
-
-Watch the demo video: [Inklet on YouTube](https://www.youtube.com/watch?v=F5wmFruo0a4).
-
 ## Install
 
 GitHub Releases is Inklet's only supported distribution channel. Download the latest signed and notarized DMG from [GitHub Releases](https://github.com/wanming/Inklet/releases), open it, and copy Inklet to `/Applications`.

@@ -12,10 +12,6 @@
 
 > 本文件由英文版 [README.md](README.md) 翻譯而來。若兩者有出入，請以英文版為準。
 
-## 示範
-
-觀看示範影片：[Inklet on YouTube](https://www.youtube.com/watch?v=F5wmFruo0a4)。
-
 ## 安裝
 
 GitHub Releases 是 Inklet 唯一支援的發布管道。請從 [GitHub Releases](https://github.com/wanming/Inklet/releases) 下載最新且已簽署並通過 Apple 公證的 DMG，打開後把 Inklet 拷貝到 `/Applications`。

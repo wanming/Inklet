@@ -12,10 +12,6 @@ Website: [getinklet.app](https://getinklet.app)
 
 > Dieses Dokument ist eine Übersetzung der englischen [README.md](README.md). Bei Abweichungen gilt die englische Fassung.
 
-## Demo
-
-Demovideo ansehen: [Inklet auf YouTube](https://www.youtube.com/watch?v=F5wmFruo0a4).
-
 ## Installation
 
 GitHub Releases ist der einzige offizielle Vertriebsweg von Inklet. Laden Sie das neueste signierte und notarisierte DMG von [GitHub Releases](https://github.com/wanming/Inklet/releases) herunter, öffnen Sie es und kopieren Sie Inklet nach `/Applications`.
