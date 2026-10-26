@@ -162,6 +162,53 @@ final class LocalizationSettingsLayoutTests: XCTestCase {
         }
     }
 
+    /// The selection bar and closing steps must fit the same 374 pt as the language step. Tests run
+    /// without Accessibility, so the selection step also shows its permission note.
+    func testWelcomeSelectionAndReadyStepsFitTheGuideInEveryLanguage() throws {
+        let suiteName = "InkletLocalizationWelcomeSteps-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let apiKeyStore = LocalAPIKeyStore { providerID in
+            KeychainStore(service: "localization-fixture", account: providerID, client: LayoutFixtureKeychain())
+        }
+        for language in InterfaceLanguage.allCases where language != .system {
+            try withLanguage(language) {
+                let settings = SettingsViewModel(
+                    configStore: UserDefaultsConfigStore(userDefaults: defaults),
+                    apiKeyStore: apiKeyStore,
+                    modelCatalogService: ModelCatalogService(
+                        userDefaults: defaults,
+                        fetchData: { _ in Data("{}".utf8) }
+                    ),
+                    historyStore: LayoutFixtureHistory()
+                )
+                let guide = WelcomeGuideViewModel(settings: settings)
+                while guide.step != .selectionBar {
+                    guide.performPrimaryAction()
+                }
+                let selection = NSHostingView(rootView: WelcomeSelectionStep(model: guide, settings: settings)
+                    .frame(width: 472))
+                XCTAssertLessThanOrEqual(selection.fittingSize.height, 374, "selection \(language.rawValue)")
+                try LocalizationSnapshot.record(
+                    WelcomeGuideView(model: guide, settings: settings),
+                    name: "welcome-selection-\(language.localeIdentifier)",
+                    size: NSSize(width: 560, height: 520)
+                )
+
+                guide.performPrimaryAction()
+                XCTAssertEqual(guide.step, .ready)
+                let ready = NSHostingView(rootView: WelcomeReadyStep(model: guide, settings: settings)
+                    .frame(width: 472))
+                XCTAssertLessThanOrEqual(ready.fittingSize.height, 374, "ready \(language.rawValue)")
+                try LocalizationSnapshot.record(
+                    WelcomeGuideView(model: guide, settings: settings),
+                    name: "welcome-ready-\(language.localeIdentifier)",
+                    size: NSSize(width: 560, height: 520)
+                )
+            }
+        }
+    }
+
     private func withLanguage(_ language: InterfaceLanguage, body: () throws -> Void) rethrows {
         let key = InkletPreferenceKeys.interfaceLanguage
         let previous = UserDefaults.standard.object(forKey: key)
