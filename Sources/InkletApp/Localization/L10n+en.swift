@@ -160,6 +160,7 @@ extension L10n {
         "settings.help.openAIAPIKey.shared": "Text to speech needs it, and so does any engine above set to OpenAI. Stored locally on this Mac. Clear the field to remove it.",
         "settings.row.providerAPIKey": "%@ API Key",
         "settings.apiKey.openAIMissing": "Needs an OpenAI API key",
+        "settings.apiKey.providerMissing": "Needs a %@ API key",
         "settings.engineNote": "Engine: %@",
         "settings.engineNote.change": "Change in AI Models",
         "settings.row.dictationShortcut": "Hold shortcut",

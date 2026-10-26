@@ -376,7 +376,7 @@ struct SettingsView: View {
         settingsRow(
             L10n.text("settings.row.engine"),
             help: L10n.text("settings.help.textEngine"),
-            warning: openAIKeyWarning(isNeeded: model.usesOpenAIForWriting)
+            warning: textEngineKeyWarning
         ) {
             Picker("", selection: selectedProviderBinding) {
                 ForEach(model.cloudProviders) { preset in
@@ -471,18 +471,21 @@ struct SettingsView: View {
         isNeeded && model.isOpenAIAPIKeyMissing ? L10n.text("settings.apiKey.openAIMissing") : nil
     }
 
-    @ViewBuilder
-    private func openAIKeyMissingLabel(isShown: Bool) -> some View {
-        if isShown, model.isOpenAIAPIKeyMissing {
-            Label(L10n.text("settings.apiKey.openAIMissing"), systemImage: "exclamationmark.triangle")
-                .font(InkletTheme.Typography.caption)
-                .foregroundStyle(InkletTheme.statusWarning)
-                .fixedSize()
+    /// The selected text provider's own key, or the OpenAI key while OpenAI handles text.
+    private var textEngineKeyWarning: String? {
+        if model.usesOpenAIForWriting {
+            return openAIKeyWarning(isNeeded: true)
         }
+        guard model.selectedProvider.requiresAPIKey,
+              model.providerAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            return nil
+        }
+        return L10n.format("settings.apiKey.providerMissing", model.selectedProvider.localizedName)
     }
 
     /// The first row on a feature page: which engine it uses, with a way to the AI Models page.
-    private func engineNoteRow(_ engine: String, needsOpenAIKey: Bool = false) -> some View {
+    private func engineNoteRow(_ engine: String, warning: String? = nil) -> some View {
         VStack(spacing: 0) {
             InkletRowDivider()
             HStack(spacing: InkletTheme.Spacing.md) {
@@ -491,7 +494,12 @@ struct SettingsView: View {
                     .foregroundStyle(InkletTheme.secondaryLabel)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                openAIKeyMissingLabel(isShown: needsOpenAIKey)
+                if let warning {
+                    Label(warning, systemImage: "exclamationmark.triangle")
+                        .font(InkletTheme.Typography.caption)
+                        .foregroundStyle(InkletTheme.statusWarning)
+                        .fixedSize()
+                }
                 Button(L10n.text("settings.engineNote.change")) {
                     selectedSection = .aiModels
                 }
@@ -855,7 +863,7 @@ struct SettingsView: View {
 
     private var writeAssistantControls: some View {
         settingsGroup {
-            engineNoteRow(textEngineNote, needsOpenAIKey: model.usesOpenAIForWriting)
+            engineNoteRow(textEngineNote, warning: textEngineKeyWarning)
 
             settingsRow(L10n.text("settings.row.hotkey"), help: L10n.text("settings.help.hotkey")) {
                 HotkeyRecorderField(hotkey: $model.config.hotkey)
@@ -898,7 +906,7 @@ struct SettingsView: View {
                         .toggleStyle(.switch)
                 }
 
-                engineNoteRow(dictationEngineNote, needsOpenAIKey: !model.usesBuiltInDictation)
+                engineNoteRow(dictationEngineNote, warning: openAIKeyWarning(isNeeded: !model.usesBuiltInDictation))
             }
 
             settingsGroup {
@@ -1045,7 +1053,7 @@ struct SettingsView: View {
 
     private var selectionTranslationGroup: some View {
         settingsGroup(L10n.text("settings.group.translation")) {
-            engineNoteRow(textEngineNote, needsOpenAIKey: model.usesOpenAIForWriting)
+            engineNoteRow(textEngineNote, warning: textEngineKeyWarning)
 
             settingsRow(
                 L10n.text("settings.row.translationLanguage"),
@@ -1079,7 +1087,7 @@ struct SettingsView: View {
 
     private var selectionPronunciationGroup: some View {
         settingsGroup(L10n.text("settings.group.pronunciation")) {
-            engineNoteRow(LLMProviderPreset.openAI.name, needsOpenAIKey: true)
+            engineNoteRow(LLMProviderPreset.openAI.name, warning: openAIKeyWarning(isNeeded: true))
 
             settingsRow(
                 L10n.text("settings.row.aiPronunciation"),

@@ -82,6 +82,7 @@ extension L10n {
         "settings.help.openAIAPIKey.shared": "텍스트를 음성으로 변환할 때 필요하며, 위에서 OpenAI를 선택한 엔진도 이 키를 사용합니다. 이 Mac에 저장되며 칸을 비우면 삭제됩니다.",
         "settings.row.providerAPIKey": "%@ API 키",
         "settings.apiKey.openAIMissing": "OpenAI API 키 필요",
+        "settings.apiKey.providerMissing": "%@ API 키 필요",
         "settings.engineNote": "엔진: %@",
         "settings.engineNote.change": "AI 모델에서 변경",
         "settings.row.dictationShortcut": "길게 누르기 단축키",

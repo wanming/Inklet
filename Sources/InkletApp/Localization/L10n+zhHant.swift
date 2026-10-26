@@ -82,6 +82,7 @@ extension L10n {
         "settings.help.openAIAPIKey.shared": "文字轉語音需要它，上面選了 OpenAI 的引擎也用它。儲存在本機，清空輸入框即可刪除。",
         "settings.row.providerAPIKey": "%@ API 金鑰",
         "settings.apiKey.openAIMissing": "需要 OpenAI API 金鑰",
+        "settings.apiKey.providerMissing": "需要 %@ API 金鑰",
         "settings.engineNote": "引擎：%@",
         "settings.engineNote.change": "在 AI 模型中更改",
         "settings.row.dictationShortcut": "長按快捷鍵",

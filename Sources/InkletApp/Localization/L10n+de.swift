@@ -82,6 +82,7 @@ extension L10n {
         "settings.help.openAIAPIKey.shared": "Wird für Text zu Sprache gebraucht und von jeder Engine oben, die auf OpenAI steht. Wird auf diesem Mac gespeichert. Zum Entfernen das Feld leeren.",
         "settings.row.providerAPIKey": "%@-API-Schlüssel",
         "settings.apiKey.openAIMissing": "OpenAI-API-Schlüssel nötig",
+        "settings.apiKey.providerMissing": "%@-API-Schlüssel nötig",
         "settings.engineNote": "Engine: %@",
         "settings.engineNote.change": "In KI-Modelle ändern",
         "settings.row.dictationShortcut": "Haltekürzel",

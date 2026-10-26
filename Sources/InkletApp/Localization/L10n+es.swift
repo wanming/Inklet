@@ -82,6 +82,7 @@ extension L10n {
         "settings.help.openAIAPIKey.shared": "La necesita el texto a voz y cualquier motor de arriba que use OpenAI. Se guarda en este Mac. Vacía el campo para eliminarla.",
         "settings.row.providerAPIKey": "Clave API de %@",
         "settings.apiKey.openAIMissing": "Necesita una clave API de OpenAI",
+        "settings.apiKey.providerMissing": "Necesita una clave API de %@",
         "settings.engineNote": "Motor: %@",
         "settings.engineNote.change": "Cambiar en Modelos de IA",
         "settings.row.dictationShortcut": "Atajo al mantener pulsado",
