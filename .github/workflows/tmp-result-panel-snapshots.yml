@@ -1,0 +1,25 @@
+name: Temporary result panel snapshots
+
+on:
+  push:
+    branches: [claude/project-thread-6vg34i]
+
+jobs:
+  snapshots:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Light
+        env:
+          INKLET_LOCALIZATION_SNAPSHOT_DIR: ${{ github.workspace }}/snapshots/light
+        run: swift test --filter "SelectionActionResultPanelSizeTests|SelectionPanelPlacementTests"
+      - name: Dark
+        env:
+          INKLET_LOCALIZATION_SNAPSHOT_DIR: ${{ github.workspace }}/snapshots/dark
+          INKLET_SNAPSHOT_APPEARANCE: dark
+        run: swift test --filter SelectionActionResultPanelSizeTests
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: result-panel-snapshots
+          path: snapshots

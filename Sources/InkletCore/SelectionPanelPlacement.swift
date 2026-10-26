@@ -74,52 +74,51 @@ public enum SelectionPanelPlacement {
 }
 
 public enum SelectionPanelSizing {
+    /// The width is the one the user last dragged to, or grows with longer text. The height fits
+    /// the content, measured at that width, between the minimum and the remembered height (or
+    /// `defaultMaximumHeight`), so a one-line result is a short panel and a long one scrolls.
     public static func translationResultSize(
         textLength: Int,
-        fittingSize: SelectionPanelSize,
         rememberedSize: SelectionPanelSize? = nil,
-        rememberedMinimumSize: SelectionPanelSize? = nil,
-        rememberedMaximumSize: SelectionPanelSize? = nil,
-        minimumSize: SelectionPanelSize = SelectionPanelSize(width: 320, height: 220),
-        mediumSize: SelectionPanelSize = SelectionPanelSize(width: 440, height: 340),
-        maximumSize: SelectionPanelSize = SelectionPanelSize(width: 520, height: 420)
+        minimumSize: SelectionPanelSize = SelectionPanelSize(width: 300, height: 72),
+        maximumSize: SelectionPanelSize = SelectionPanelSize(width: 560, height: 520),
+        defaultMaximumHeight: Double = 360,
+        contentHeight: (Double) -> Double
     ) -> SelectionPanelSize {
+        let preferredWidth: Double
         if let rememberedSize {
-            return clamped(
-                rememberedSize,
-                minimumSize: rememberedMinimumSize ?? minimumSize,
-                maximumSize: rememberedMaximumSize ?? maximumSize
-            )
-        }
-
-        let targetSize: SelectionPanelSize
-        if textLength >= 900 {
-            targetSize = maximumSize
+            preferredWidth = rememberedSize.width
+        } else if textLength >= 900 {
+            preferredWidth = 520
         } else if textLength >= 240 {
-            targetSize = mediumSize
+            preferredWidth = 440
         } else {
-            targetSize = minimumSize
+            preferredWidth = 320
         }
 
-        return clamped(
-            SelectionPanelSize(
-                width: max(fittingSize.width, targetSize.width),
-                height: max(fittingSize.height, targetSize.height)
-            ),
-            minimumSize: targetSize,
-            maximumSize: maximumSize
+        let width = clamped(preferredWidth, minimum: minimumSize.width, maximum: maximumSize.width)
+        let maximumHeight = clamped(
+            rememberedSize?.height ?? defaultMaximumHeight,
+            minimum: minimumSize.height,
+            maximum: maximumSize.height
         )
+        let height = clamped(contentHeight(width).rounded(.up), minimum: minimumSize.height, maximum: maximumHeight)
+        return SelectionPanelSize(width: width, height: height)
     }
 
-    private static func clamped(
+    public static func clamped(
         _ size: SelectionPanelSize,
         minimumSize: SelectionPanelSize,
         maximumSize: SelectionPanelSize
     ) -> SelectionPanelSize {
         SelectionPanelSize(
-            width: min(max(size.width, minimumSize.width), maximumSize.width),
-            height: min(max(size.height, minimumSize.height), maximumSize.height)
+            width: clamped(size.width, minimum: minimumSize.width, maximum: maximumSize.width),
+            height: clamped(size.height, minimum: minimumSize.height, maximum: maximumSize.height)
         )
+    }
+
+    private static func clamped(_ value: Double, minimum: Double, maximum: Double) -> Double {
+        min(max(value, minimum), maximum)
     }
 }
 
@@ -139,10 +138,10 @@ public struct SelectionPanelDragRegions: Equatable, Sendable {
     }
 
     public static func translationResultRegions(panelSize: SelectionPanelSize) -> SelectionPanelDragRegions {
-        let padding = 10.0
-        let toolbarHeight = 48.0
-        let buttonHeight = 34.0
-        let buttonY = 7.0
+        let padding = 4.0
+        let toolbarHeight = 40.0
+        let buttonHeight = 32.0
+        let buttonY = 2.0
         let audioClusterWidth = min(180.0, max(120.0, panelSize.width * 0.42))
 
         return SelectionPanelDragRegions(
@@ -154,7 +153,7 @@ public struct SelectionPanelDragRegions: Equatable, Sendable {
                     width: max(0, panelSize.width - padding * 2),
                     height: max(0, panelSize.height - toolbarHeight - padding)
                 ),
-                SelectionPanelRect(x: padding, y: buttonY, width: 46, height: buttonHeight),
+                SelectionPanelRect(x: padding, y: buttonY, width: 40, height: buttonHeight),
                 SelectionPanelRect(
                     x: max(padding, panelSize.width - audioClusterWidth - padding),
                     y: buttonY,

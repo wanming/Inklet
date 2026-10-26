@@ -28,6 +28,8 @@ struct SelectionActionView: View {
     let state: SelectionActionViewState
     var menuItems: [SelectionMenuItem] = SelectionMenuItem.defaults
     var resultKind: SelectionActionResultKind = .translation
+    /// Lays the result out at its full height instead of scrolling, so the panel can be sized to fit it.
+    var measuresFullResult = false
     let onTranslate: () -> Void
     let onPronounce: () -> Void
     let onPronounceOriginal: () -> Void
@@ -162,6 +164,9 @@ struct SelectionActionView: View {
         switch state {
         case .menu:
             EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4)
+        case .translationResult:
+            // The toolbar sits 4 pt from the bottom edge, like the selection bar's buttons.
+            EdgeInsets(top: 12, leading: 12, bottom: 4, trailing: 8)
         default:
             EdgeInsets(top: 12, leading: 12, bottom: 8, trailing: 8)
         }
@@ -179,18 +184,26 @@ struct SelectionActionView: View {
         InkletTheme.secondaryLabel.opacity(toolbarDisplayStyle.foregroundOpacity)
     }
 
+    @ViewBuilder
     private func translationResultText(_ text: String) -> some View {
-        ScrollView {
-            Text(text)
-                .font(.system(size: 14))
-                .lineSpacing(3)
-                .foregroundStyle(InkletTheme.label)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.trailing, 4)
-                .padding(.vertical, 2)
+        let content = Text(text)
+            .font(.system(size: 14))
+            .lineSpacing(3)
+            .foregroundStyle(InkletTheme.label)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.trailing, 4)
+            .padding(.vertical, 2)
+
+        if measuresFullResult {
+            content
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            ScrollView {
+                content
+            }
+            .frame(maxHeight: usesFlexiblePanelSize ? .infinity : 180)
         }
-        .frame(maxHeight: usesFlexiblePanelSize ? .infinity : 180)
     }
 
     private func menuButtonRow(feedback: SelectionActionFeedback?) -> some View {
@@ -263,7 +276,7 @@ struct SelectionActionView: View {
     }
 
     private func translationToolbar(feedback: SelectionActionFeedback?) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 2) {
             compactIconButton(
                 title: L10n.text(
                     resultKind == .translation ? "selection.action.copyTranslation" : "selection.action.copyResult"
@@ -292,11 +305,15 @@ struct SelectionActionView: View {
                 action: onPronounceTranslation
             )
         }
-        .padding(.top, 6)
+        // Pull the chromeless buttons out to the text edges, so the copy icon lines up with the
+        // first letter and the last label with the text's right edge.
+        .padding(.leading, -7)
+        .padding(.trailing, -3)
+        .padding(.top, 4)
         .overlay(alignment: .top) {
             InkletTheme.hairline
                 .frame(height: 1)
-                .padding(.trailing, 4)
+                .padding(.horizontal, 7)
         }
     }
 
