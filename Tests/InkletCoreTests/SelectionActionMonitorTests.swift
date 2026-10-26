@@ -166,6 +166,38 @@ final class SelectionActionMonitorTests: XCTestCase {
     }
 
     @MainActor
+    func testShiftTypingDoesNotTriggerCandidateSelection() throws {
+        let tracker = SelectionInteractionTracker()
+        let installation = ControlledSelectionMonitorInstallation()
+        let copyTap = ControlledSelectionCopyTapLifecycle(startResults: [true])
+        let scheduler = ControlledSelectionMonitorHandoffScheduler()
+        let monitor = makeMonitor(
+            tracker: tracker,
+            installation: installation,
+            copyTap: copyTap,
+            scheduler: scheduler
+        )
+        var candidateCount = 0
+        monitor.onCandidateSelection = { _ in candidateCount += 1 }
+
+        XCTAssertTrue(monitor.start())
+        let flagsHandler = try XCTUnwrap(installation.latestHandler(matching: [.flagsChanged]))
+        let keyUpHandler = try XCTUnwrap(installation.latestHandler(matching: [.keyUp]))
+
+        flagsHandler(try makeKeyEvent(type: .flagsChanged, modifiers: [.shift], timestamp: 1))
+        keyUpHandler(try makeShiftKeyUpEvent(timestamp: 2, keyCode: 0))
+        keyUpHandler(try makeShiftKeyUpEvent(timestamp: 3, keyCode: 18))
+        XCTAssertEqual(scheduler.count, 1)
+
+        keyUpHandler(try makeShiftKeyUpEvent(timestamp: 4, keyCode: 123))
+        XCTAssertEqual(scheduler.count, 2)
+        scheduler.runAction(at: 0)
+        scheduler.runAction(at: 1)
+        XCTAssertEqual(candidateCount, 1)
+        monitor.stop()
+    }
+
+    @MainActor
     func testLocalShiftReleaseEndsInteractionStartedOutsideInklet() throws {
         let tracker = SelectionInteractionTracker()
         let installation = ControlledSelectionMonitorInstallation()
@@ -432,14 +464,15 @@ final class SelectionActionMonitorTests: XCTestCase {
         )
     }
 
-    private func makeShiftKeyUpEvent(timestamp: TimeInterval) throws -> NSEvent {
-        try makeKeyEvent(type: .keyUp, modifiers: [.shift], timestamp: timestamp)
+    private func makeShiftKeyUpEvent(timestamp: TimeInterval, keyCode: UInt16 = 124) throws -> NSEvent {
+        try makeKeyEvent(type: .keyUp, modifiers: [.shift], timestamp: timestamp, keyCode: keyCode)
     }
 
     private func makeKeyEvent(
         type: NSEvent.EventType,
         modifiers: NSEvent.ModifierFlags,
-        timestamp: TimeInterval
+        timestamp: TimeInterval,
+        keyCode: UInt16 = 56
     ) throws -> NSEvent {
         try XCTUnwrap(NSEvent.keyEvent(
             with: type,
@@ -451,7 +484,7 @@ final class SelectionActionMonitorTests: XCTestCase {
             characters: "",
             charactersIgnoringModifiers: "",
             isARepeat: false,
-            keyCode: 56
+            keyCode: keyCode
         ))
     }
 
@@ -599,6 +632,12 @@ private final class ControlledSelectionMonitorHandoffScheduler: @unchecked Senda
 
     private let lock = NSLock()
     private var actions: [Action] = []
+
+    var count: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return actions.count
+    }
 
     func enqueue(_ action: @escaping Action) {
         lock.lock()

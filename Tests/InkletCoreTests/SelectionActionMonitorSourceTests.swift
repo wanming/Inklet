@@ -73,6 +73,7 @@ final class SelectionActionMonitorSourceTests: XCTestCase {
 
         XCTAssertTrue(keyUpMonitorBlock.contains("modifiers.contains(.shift)"))
         XCTAssertTrue(keyUpMonitorBlock.contains("onCandidateSelection?"))
+        XCTAssertTrue(keyUpMonitorBlock.contains("SelectionKeyboardPolicy.isSelectionExtendingKey(keyCode: event.keyCode)"))
     }
 
     func testRawSelectionBoundariesTrackActivityBeforeTaskHandoffs() throws {

@@ -232,7 +232,9 @@ final class SelectionActionMonitor {
 
         guard registerMonitor(matching: [.keyUp], handler: { [weak self, session, interactionTracker] event in
             let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            guard modifiers.contains(.shift) else {
+            guard modifiers.contains(.shift),
+                  SelectionKeyboardPolicy.isSelectionExtendingKey(keyCode: event.keyCode)
+            else {
                 return
             }
             let point = SelectionPoint(x: NSEvent.mouseLocation.x, y: NSEvent.mouseLocation.y)
