@@ -130,7 +130,7 @@ final class LocalizationSettingsLayoutTests: XCTestCase {
     }
 
     /// The guide window is 560 × 520: 44 pt side margins, and the step indicator above and the action
-    /// bar below leave 390 pt for the step.
+    /// bar below leave 390 pt for the step. The last 16 pt stay free so the text never touches the bar.
     func testWelcomeLanguageStepFitsTheGuideInEveryLanguage() throws {
         let suiteName = "InkletLocalizationWelcome-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -152,7 +152,7 @@ final class LocalizationSettingsLayoutTests: XCTestCase {
                 let guide = WelcomeGuideViewModel(settings: settings)
                 let step = NSHostingView(rootView: WelcomeLanguageStep(model: guide, settings: settings)
                     .frame(width: 472))
-                XCTAssertLessThanOrEqual(step.fittingSize.height, 390, language.rawValue)
+                XCTAssertLessThanOrEqual(step.fittingSize.height, 374, language.rawValue)
                 try LocalizationSnapshot.record(
                     WelcomeGuideView(model: guide, settings: settings),
                     name: "welcome-language-\(language.localeIdentifier)",

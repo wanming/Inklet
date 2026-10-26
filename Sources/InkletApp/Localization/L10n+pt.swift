@@ -329,7 +329,7 @@ extension L10n {
         "welcome.action.finish": "Começar a escrever",
         "welcome.action.back": "Voltar",
         "welcome.intro.title": "Boas-vindas ao Inklet",
-        "welcome.language.message": "Diga ao Inklet quais idiomas você usa. Você pode alterá-los depois em Ajustes.",
+        "welcome.language.message": "Diga ao Inklet quais idiomas você usa. Dá para mudar depois em Ajustes.",
         "welcome.accessibility.title": "Permitir acessibilidade",
         "welcome.accessibility.message": "O Inklet usa esta permissão para ler o texto selecionado e colar os resultados no app que você estava usando.",
         "welcome.permission.granted": "Permitido",
