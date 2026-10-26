@@ -880,7 +880,7 @@ struct WelcomeReadyStep: View {
                         detail: L10n.text("welcome.ready.selection.detail")
                     )
                 }
-                if model.microphoneStatus == .authorized {
+                if settings.config.voiceInput.isEnabled, model.microphoneStatus == .authorized {
                     InkletRowDivider()
                     usageRow(
                         systemImage: "mic",
