@@ -373,21 +373,22 @@ struct SettingsView: View {
             set: { model.selectProvider($0) }
         )
 
-        settingsRow(L10n.text("settings.row.engine"), help: L10n.text("settings.help.textEngine")) {
-            HStack(spacing: InkletTheme.Spacing.sm) {
-                openAIKeyMissingLabel(isShown: model.usesOpenAIForWriting)
-                Picker("", selection: selectedProviderBinding) {
-                    ForEach(model.cloudProviders) { preset in
-                        Text(model.providerDisplayName(preset)).tag(preset.id)
-                    }
-                    Divider()
-                    ForEach(model.localProviders) { preset in
-                        Text(model.providerDisplayName(preset)).tag(preset.id)
-                    }
+        settingsRow(
+            L10n.text("settings.row.engine"),
+            help: L10n.text("settings.help.textEngine"),
+            warning: openAIKeyWarning(isNeeded: model.usesOpenAIForWriting)
+        ) {
+            Picker("", selection: selectedProviderBinding) {
+                ForEach(model.cloudProviders) { preset in
+                    Text(model.providerDisplayName(preset)).tag(preset.id)
                 }
-                .labelsHidden()
-                .fixedSize()
+                Divider()
+                ForEach(model.localProviders) { preset in
+                    Text(model.providerDisplayName(preset)).tag(preset.id)
+                }
             }
+            .labelsHidden()
+            .fixedSize()
         }
 
         if model.isBuiltInProvider {
@@ -414,23 +415,24 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var speechToTextRows: some View {
-        settingsRow(L10n.text("settings.row.engine"), help: L10n.text("settings.help.dictationEngine")) {
-            HStack(spacing: InkletTheme.Spacing.sm) {
-                openAIKeyMissingLabel(isShown: !model.usesBuiltInDictation)
-                if model.isBuiltInEngineAvailable {
-                    Picker("", selection: $model.config.voiceInput.engine) {
-                        ForEach(VoiceInputConfig.Engine.allCases) { engine in
-                            Text(engine.localizedName).tag(engine)
-                        }
+        settingsRow(
+            L10n.text("settings.row.engine"),
+            help: L10n.text("settings.help.dictationEngine"),
+            warning: openAIKeyWarning(isNeeded: !model.usesBuiltInDictation)
+        ) {
+            if model.isBuiltInEngineAvailable {
+                Picker("", selection: $model.config.voiceInput.engine) {
+                    ForEach(VoiceInputConfig.Engine.allCases) { engine in
+                        Text(engine.localizedName).tag(engine)
                     }
-                    .labelsHidden()
-                    .fixedSize()
-                } else {
-                    Text(VoiceInputConfig.Engine.openAI.localizedName)
-                        .font(InkletTheme.Typography.body)
-                        .foregroundStyle(InkletTheme.secondaryLabel)
-                        .fixedSize()
                 }
+                .labelsHidden()
+                .fixedSize()
+            } else {
+                Text(VoiceInputConfig.Engine.openAI.localizedName)
+                    .font(InkletTheme.Typography.body)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize()
             }
         }
 
@@ -463,6 +465,10 @@ struct SettingsView: View {
                     .frame(width: SettingsLayoutMetrics.fieldWidth)
             }
         }
+    }
+
+    private func openAIKeyWarning(isNeeded: Bool) -> String? {
+        isNeeded && model.isOpenAIAPIKeyMissing ? L10n.text("settings.apiKey.openAIMissing") : nil
     }
 
     @ViewBuilder
@@ -1608,7 +1614,7 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func settingsRowLabel(_ title: String, help: String) -> some View {
+    private func settingsRowLabel(_ title: String, help: String, warning: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(InkletTheme.Typography.body)
@@ -1620,6 +1626,12 @@ struct SettingsView: View {
                     .foregroundStyle(InkletTheme.secondaryLabel)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if let warning {
+                Label(warning, systemImage: "exclamationmark.triangle")
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.statusWarning)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1628,12 +1640,13 @@ struct SettingsView: View {
     private func settingsRow<Content: View>(
         _ title: String,
         help: String = "",
+        warning: String? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(spacing: 0) {
             InkletRowDivider()
             HStack(alignment: .center, spacing: InkletTheme.Spacing.md) {
-                settingsRowLabel(title, help: help)
+                settingsRowLabel(title, help: help, warning: warning)
                 content()
             }
             .padding(.horizontal, InkletTheme.Spacing.sm)
