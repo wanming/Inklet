@@ -76,6 +76,9 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     private var isStopping = false
     private var mainUpdateCheckMenuItem: NSMenuItem?
     private var statusUpdateCheckMenuItem: NSMenuItem?
+    /// About, feedback and the changelog would only pull people away from an unfinished welcome guide.
+    private var mainMenuItemsDisabledDuringWelcomeGuide: [NSMenuItem] = []
+    private var statusMenuItemsDisabledDuringWelcomeGuide: [NSMenuItem] = []
     private var trackedMenus: Set<ObjectIdentifier> = []
     private lazy var automaticUpdatePresentationGate = AutomaticUpdatePresentationGate(
         canPresent: { [weak self] in
@@ -349,6 +352,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         )
         aboutItem.target = self
         appMenu.addItem(aboutItem)
+        mainMenuItemsDisabledDuringWelcomeGuide = [aboutItem]
         let updateItem = makeCheckForUpdatesMenuItem()
         mainUpdateCheckMenuItem = updateItem
         appMenu.addItem(updateItem)
@@ -391,7 +395,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         mainMenu.addItem(editMenuItem)
 
         NSApp.mainMenu = mainMenu
-        refreshUpdateCheckMenuItems()
+        refreshWelcomeGuideMenuItems()
     }
 
     private func installSettingsShortcutMonitor() {
@@ -679,6 +683,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         )
         welcomeGuideController = controller
         controller.show()
+        refreshWelcomeGuideMenuItems()
         return true
     }
 
@@ -688,6 +693,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         userDefaults.set(OnboardingPolicy.welcomeGuideVersion, forKey: InkletPreferenceKeys.completedWelcomeGuideVersion)
         welcomeGuideController?.close()
         welcomeGuideController = nil
+        refreshWelcomeGuideMenuItems()
         openPopover()
     }
 
@@ -815,6 +821,18 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     private var isUpdateCheckAvailable: Bool {
         !updateCheckCoordinator.isChecking
             && !updateCheckAlertPresenter.isPresentingAlert
+            && !isWelcomeGuidePending
+    }
+
+    private var isWelcomeGuidePending: Bool {
+        welcomeGuideController != nil
+    }
+
+    private func refreshWelcomeGuideMenuItems() {
+        for item in mainMenuItemsDisabledDuringWelcomeGuide + statusMenuItemsDisabledDuringWelcomeGuide {
+            item.isEnabled = !isWelcomeGuidePending
+        }
+        refreshUpdateCheckMenuItems()
     }
 
     private func refreshUpdateCheckMenuItems() {
@@ -851,27 +869,25 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         statusUpdateCheckMenuItem = updateItem
         menu.addItem(updateItem)
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(
-            NSMenuItem(
-                title: L10n.text("app.menu.sendFeedback"),
-                action: #selector(sendFeedback),
-                keyEquivalent: ""
-            )
+        let feedbackItem = NSMenuItem(
+            title: L10n.text("app.menu.sendFeedback"),
+            action: #selector(sendFeedback),
+            keyEquivalent: ""
         )
-        menu.addItem(
-            NSMenuItem(
-                title: L10n.text("app.menu.changelog"),
-                action: #selector(openChangelog),
-                keyEquivalent: ""
-            )
+        menu.addItem(feedbackItem)
+        let changelogItem = NSMenuItem(
+            title: L10n.text("app.menu.changelog"),
+            action: #selector(openChangelog),
+            keyEquivalent: ""
         )
-        menu.addItem(
-            NSMenuItem(
-                title: L10n.text("app.menu.about"),
-                action: #selector(openAbout),
-                keyEquivalent: ""
-            )
+        menu.addItem(changelogItem)
+        let aboutItem = NSMenuItem(
+            title: L10n.text("app.menu.about"),
+            action: #selector(openAbout),
+            keyEquivalent: ""
         )
+        menu.addItem(aboutItem)
+        statusMenuItemsDisabledDuringWelcomeGuide = [feedbackItem, changelogItem, aboutItem]
         menu.addItem(
             NSMenuItem(
                 title: L10n.text("app.menu.quit"),
@@ -881,7 +897,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         )
         menu.items.forEach { $0.target = self }
         statusItem.menu = menu
-        refreshUpdateCheckMenuItems()
+        refreshWelcomeGuideMenuItems()
     }
 
     func menuWillOpen(_ menu: NSMenu) {
@@ -904,6 +920,11 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     @objc func openPopover() {
         guard !isStopping, !isMigrationMaintenanceActive else { return }
         selectionActions.forceDismissSelectionActions(reason: "openPopover")
+        // Until the welcome guide is done, opening Inklet brings the guide back where the person left it.
+        if let welcomeGuideController {
+            welcomeGuideController.show()
+            return
+        }
         windowController.show(fallbackApplication: lastTargetApplication)
     }
 

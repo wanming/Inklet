@@ -11,6 +11,7 @@ import InkletCore
 final class WelcomeGuideWindowController: NSWindowController {
     private let model: WelcomeGuideViewModel
     private var languageChangeCancellable: AnyCancellable?
+    private var hasShownWindow = false
 
     init(
         settings: SettingsViewModel,
@@ -51,8 +52,12 @@ final class WelcomeGuideWindowController: NSWindowController {
         fatalError("init(coder:) has not been implemented")
     }
 
+    /// Centers the window the first time only; later calls bring it back where the person left it.
     func show() {
-        window?.center()
+        if !hasShownWindow {
+            window?.center()
+            hasShownWindow = true
+        }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
