@@ -73,7 +73,7 @@ final class SettingsProviderSelectionTests: XCTestCase {
         XCTAssertFalse(didFinish)
 
         guide.goBack()
-        XCTAssertEqual(guide.step, .dictation)
+        XCTAssertEqual(guide.step, .selectionBar)
         guide.performPrimaryAction()
         guide.performPrimaryAction()
         XCTAssertTrue(didFinish)
@@ -140,8 +140,43 @@ final class SettingsProviderSelectionTests: XCTestCase {
 
         settings.config.voiceInput.shortcut = .leftCommand
         guide.performPrimaryAction()
-        XCTAssertEqual(guide.step, .ready)
+        XCTAssertEqual(guide.step, .selectionBar)
         XCTAssertEqual(try configStore.load().voiceInput.shortcut, .leftCommand)
+    }
+
+    @MainActor
+    func testWelcomeGuideSelectionStepSavesTheSelectionBarSwitch() throws {
+        let (settings, configStore) = try makeModel(keychain: ProviderSelectionKeychainClient())
+        let guide = WelcomeGuideViewModel(settings: settings)
+        while guide.step != .selectionBar {
+            guide.performPrimaryAction()
+        }
+
+        XCTAssertTrue(settings.config.selectionActions.isEnabled)
+        settings.config.selectionActions.isEnabled = false
+        guide.performPrimaryAction()
+        XCTAssertEqual(guide.step, .ready)
+        XCTAssertFalse(try configStore.load().selectionActions.isEnabled)
+    }
+
+    @MainActor
+    func testReopenedWelcomeGuideStartsFromTheCurrentSettings() throws {
+        let (settings, _) = try makeModel(keychain: ProviderSelectionKeychainClient())
+        settings.selectProvider("deepseek")
+        settings.providerAPIKey = "sk-deepseek"
+        settings.config.hotkey = "⌘⇧K"
+        _ = settings.flushPendingEdits()
+
+        let guide = WelcomeGuideViewModel(settings: settings)
+        XCTAssertEqual(guide.step, .welcome)
+        XCTAssertEqual(guide.writingChoice, .cloud)
+        XCTAssertTrue(guide.isOtherProviderSetUp)
+        XCTAssertFalse(guide.needsCloudAPIKey)
+        while guide.step != .ready {
+            guide.performPrimaryAction()
+        }
+        XCTAssertEqual(settings.config.providerID, "deepseek")
+        XCTAssertEqual(settings.config.hotkey, "⌘⇧K")
     }
 
     @MainActor

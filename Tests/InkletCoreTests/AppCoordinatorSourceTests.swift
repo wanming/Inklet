@@ -263,6 +263,38 @@ final class AppCoordinatorSourceTests: XCTestCase {
         XCTAssertLessThan(release.lowerBound, refresh.lowerBound)
     }
 
+    func testMenuBarMenuReopensTheWelcomeGuideWithoutTakingOverOpenInklet() throws {
+        let source = try appCoordinatorSource()
+        let menuStart = try XCTUnwrap(source.range(of: "private func configureStatusItemMenu()"))
+        let menuEnd = try XCTUnwrap(source.range(
+            of: "func menuWillOpen(_ menu: NSMenu)",
+            range: menuStart.upperBound..<source.endIndex
+        ))
+        let menuBlock = source[menuStart.lowerBound..<menuEnd.lowerBound]
+        let guideItem = try XCTUnwrap(menuBlock.range(of: "L10n.text(\"app.menu.welcomeGuide\")"))
+        let feedbackItem = try XCTUnwrap(menuBlock.range(of: "L10n.text(\"app.menu.sendFeedback\")"))
+        XCTAssertLessThan(guideItem.lowerBound, feedbackItem.lowerBound)
+        XCTAssertTrue(menuBlock.contains("action: #selector(openWelcomeGuide)"))
+
+        let openStart = try XCTUnwrap(source.range(of: "@objc func openWelcomeGuide()"))
+        let changelogStart = try XCTUnwrap(source.range(
+            of: "@objc func openChangelog()",
+            range: openStart.upperBound..<source.endIndex
+        ))
+        let openBlock = source[openStart.lowerBound..<changelogStart.lowerBound]
+        XCTAssertTrue(openBlock.contains("guard !migrationOutcome.hasIncompleteComponents else { return }"))
+        let reopened = try XCTUnwrap(openBlock.range(of: "isWelcomeGuideReopened = true"))
+        let show = try XCTUnwrap(openBlock.range(of: "controller.show()"))
+        XCTAssertLessThan(reopened.lowerBound, show.lowerBound)
+
+        XCTAssertTrue(source.contains("welcomeGuideController != nil && !isWelcomeGuideReopened"))
+        XCTAssertTrue(source.contains("if let welcomeGuideController, isWelcomeGuidePending {"))
+        let closeStart = try XCTUnwrap(source.range(of: "private func welcomeGuideDidClose()"))
+        let closeBlock = source[closeStart.lowerBound...].prefix(400)
+        XCTAssertTrue(closeBlock.contains("guard isWelcomeGuideReopened else { return }"))
+        XCTAssertTrue(closeBlock.contains("welcomeGuideController = nil"))
+    }
+
     func testUpdateMenusTrackPresentationAndFlushOnClose() throws {
         let source = try appCoordinatorSource()
 

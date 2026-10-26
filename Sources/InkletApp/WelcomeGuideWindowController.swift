@@ -6,10 +6,12 @@ import InkletCore
 
 /// The first-launch guide: it asks for the permissions Inklet needs one at a time and downloads the
 /// built-in model when the person keeps it. It edits the Settings window's own model, so neither saves
-/// over the other.
+/// over the other, and every step starts from the current settings when the guide is opened again.
 @MainActor
-final class WelcomeGuideWindowController: NSWindowController {
+final class WelcomeGuideWindowController: NSWindowController, NSWindowDelegate {
     private let model: WelcomeGuideViewModel
+    /// Called whenever the window closes, by its close button or after the last step.
+    var onClose: (() -> Void)?
     private var languageChangeCancellable: AnyCancellable?
     private var hasShownWindow = false
 
@@ -33,6 +35,7 @@ final class WelcomeGuideWindowController: NSWindowController {
 
         super.init(window: window)
         shouldCascadeWindows = false
+        window.delegate = self
         model.onAccessibilityTrusted = { [weak window] in
             onAccessibilityTrusted()
             NSApp.activate(ignoringOtherApps: true)
@@ -62,6 +65,10 @@ final class WelcomeGuideWindowController: NSWindowController {
         window?.makeKeyAndOrderFront(nil)
     }
 
+    func windowWillClose(_ notification: Notification) {
+        onClose?()
+    }
+
     private func refreshLocalizedContent() {
         window?.title = L10n.text("welcome.window.title")
         guard let hostingView = window?.contentView as? NSHostingView<WelcomeGuideView> else { return }
@@ -76,6 +83,7 @@ final class WelcomeGuideViewModel: ObservableObject {
         case accessibility
         case writingModel
         case dictation
+        case selectionBar
         case ready
     }
 
@@ -157,6 +165,8 @@ final class WelcomeGuideViewModel: ObservableObject {
             needsBuiltInDownload ? L10n.text("welcome.action.downloadAndContinue") : L10n.text("welcome.action.continue")
         case .dictation:
             microphoneStatus == .authorized ? L10n.text("welcome.action.continue") : L10n.text("welcome.action.later")
+        case .selectionBar:
+            L10n.text("welcome.action.continue")
         case .ready:
             L10n.text("welcome.action.finish")
         }
@@ -216,7 +226,7 @@ final class WelcomeGuideViewModel: ObservableObject {
                 downloadDictationModelIfNeeded()
             }
             _ = settings.flushPendingEdits()
-        case .welcome:
+        case .welcome, .selectionBar:
             _ = settings.flushPendingEdits()
         case .accessibility:
             break
@@ -346,8 +356,10 @@ struct WelcomeGuideView: View {
             writingModelStep
         case .dictation:
             dictationStep
+        case .selectionBar:
+            WelcomeSelectionStep(model: model, settings: settings)
         case .ready:
-            readyStep
+            WelcomeReadyStep(model: model, settings: settings)
         }
     }
 
@@ -527,31 +539,6 @@ struct WelcomeGuideView: View {
         }
     }
 
-    private var readyStep: some View {
-        VStack(spacing: 18) {
-            Image(systemName: "checkmark.circle")
-                .font(.system(size: 44, weight: .light))
-                .foregroundStyle(InkletTheme.primary)
-            stepHeader(
-                title: L10n.text("welcome.ready.title"),
-                message: L10n.format("welcome.ready.message", settings.config.hotkey)
-            )
-            if model.writingChoice == .builtIn, case .downloading(let fraction) = model.builtInModelState {
-                Text(L10n.format("welcome.ready.downloading", model.builtInModel.displayName, fraction * 100))
-                    .font(.system(size: 12))
-                    .foregroundStyle(InkletTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
-            if model.usesBuiltInDictation, case .downloading(let fraction) = model.dictationModelState {
-                Text(L10n.format("welcome.ready.downloading", model.dictationModel.displayName, fraction * 100))
-                    .font(.system(size: 12))
-                    .foregroundStyle(InkletTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
-        }
-        .padding(.top, 10)
-    }
-
     private var actionBar: some View {
         HStack {
             if model.step != .welcome {
@@ -575,25 +562,7 @@ struct WelcomeGuideView: View {
     }
 
     private func stepHeader(systemImage: String? = nil, title: String, message: String) -> some View {
-        VStack(alignment: systemImage == nil ? .center : .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                if let systemImage {
-                    Image(systemName: systemImage)
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(InkletTheme.primary)
-                }
-                Text(title)
-                    .font(InkletTheme.Typography.pageTitle)
-                    .tracking(-0.2)
-                    .foregroundStyle(InkletTheme.label)
-            }
-            Text(message)
-                .font(.system(size: 13))
-                .foregroundStyle(InkletTheme.textSecondary)
-                .multilineTextAlignment(systemImage == nil ? .center : .leading)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: systemImage == nil ? .center : .leading)
+        WelcomeStepHeader(systemImage: systemImage, title: title, message: message)
     }
 
     private func permissionRow(
@@ -764,5 +733,200 @@ struct WelcomeLanguageStep: View {
                 .fixedSize()
         }
         .padding(InkletTheme.Spacing.sm)
+    }
+}
+
+/// The title and message at the top of each step; with an icon it is leading-aligned, without one centered.
+struct WelcomeStepHeader: View {
+    var systemImage: String?
+    let title: String
+    let message: String
+
+    var body: some View {
+        VStack(alignment: systemImage == nil ? .center : .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(InkletTheme.primary)
+                }
+                Text(title)
+                    .font(InkletTheme.Typography.pageTitle)
+                    .tracking(-0.2)
+                    .foregroundStyle(InkletTheme.label)
+            }
+            Text(message)
+                .font(.system(size: 13))
+                .foregroundStyle(InkletTheme.textSecondary)
+                .multilineTextAlignment(systemImage == nil ? .center : .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: systemImage == nil ? .center : .leading)
+    }
+}
+
+/// Introduces the bar that appears next to selected text. The preview is the real bar with the
+/// person's own buttons, so it matches what they will see.
+struct WelcomeSelectionStep: View {
+    @ObservedObject var model: WelcomeGuideViewModel
+    @ObservedObject var settings: SettingsViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            WelcomeStepHeader(
+                systemImage: SettingsSection.selectionAssistant.icon,
+                title: L10n.text("welcome.selection.title"),
+                message: L10n.text("welcome.selection.message")
+            )
+            preview
+            VStack(spacing: 0) {
+                HStack(alignment: .center, spacing: InkletTheme.Spacing.sm) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.text("welcome.selection.toggle"))
+                            .font(InkletTheme.Typography.control)
+                            .foregroundStyle(InkletTheme.label)
+                        if !model.isAccessibilityTrusted {
+                            Text(L10n.text("welcome.selection.needsAccessibility"))
+                                .font(InkletTheme.Typography.help)
+                                .foregroundStyle(InkletTheme.secondaryLabel)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Toggle("", isOn: $settings.config.selectionActions.isEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+                .padding(InkletTheme.Spacing.sm)
+            }
+            .inkletCard()
+            HStack(alignment: .firstTextBaseline, spacing: InkletTheme.Spacing.xs) {
+                // The Selection Assistant icon in Settings, so the hint points at the same place.
+                Image(systemName: SettingsSection.selectionAssistant.icon)
+                    .font(.system(size: InkletTheme.IconSize.small))
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                Text(L10n.format("welcome.selection.customize", L10n.text("settings.section.selectionAssistant")))
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, InkletTheme.Spacing.xxs)
+        }
+    }
+
+    /// A line of sample text with a selected word, and the bar below it. It only shows; nothing runs.
+    private var preview: some View {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.xs) {
+            Text(sampleText)
+                .font(InkletTheme.Typography.body)
+                .foregroundStyle(InkletTheme.secondaryLabel)
+                .fixedSize(horizontal: false, vertical: true)
+            SelectionActionView(
+                state: .menu(errorMessage: nil, feedback: nil),
+                menuItems: SelectionMenuItem.enabledItems(for: settings.config),
+                onTranslate: {},
+                onPronounce: {},
+                onPronounceOriginal: {},
+                onPronounceTranslation: {},
+                onCopyTranslation: {},
+                onRetryTranslation: {}
+            )
+            .allowsHitTesting(false)
+            .opacity(settings.config.selectionActions.isEnabled ? 1 : 0.4)
+            .accessibilityHidden(true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(InkletTheme.Spacing.md)
+        .background(InkletTheme.surfaceSunken, in: RoundedRectangle(cornerRadius: InkletTheme.Radius.card))
+        .animation(InkletTheme.Motion.standard, value: settings.config.selectionActions.isEnabled)
+    }
+
+    private var sampleText: AttributedString {
+        var selected = AttributedString(L10n.text("welcome.selection.sample.selected"))
+        selected.swiftUI.foregroundColor = InkletTheme.label
+        selected.swiftUI.backgroundColor = InkletTheme.primary.opacity(0.22)
+        return AttributedString(L10n.text("welcome.selection.sample.before"))
+            + selected
+            + AttributedString(L10n.text("welcome.selection.sample.after"))
+    }
+}
+
+/// The last step: the three ways to use Inklet, each with the shortcut chosen earlier in the guide.
+struct WelcomeReadyStep: View {
+    @ObservedObject var model: WelcomeGuideViewModel
+    @ObservedObject var settings: SettingsViewModel
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 36, weight: .light))
+                .foregroundStyle(InkletTheme.primary)
+            WelcomeStepHeader(
+                title: L10n.text("welcome.ready.title"),
+                message: L10n.text("welcome.ready.message")
+            )
+            VStack(spacing: 0) {
+                usageRow(
+                    systemImage: "keyboard",
+                    title: L10n.text("welcome.ready.writing.title"),
+                    detail: L10n.format("welcome.ready.writing.detail", settings.config.hotkey)
+                )
+                if settings.config.selectionActions.isEnabled {
+                    InkletRowDivider()
+                    usageRow(
+                        systemImage: SettingsSection.selectionAssistant.icon,
+                        title: L10n.text("welcome.ready.selection.title"),
+                        detail: L10n.text("welcome.ready.selection.detail")
+                    )
+                }
+                if model.microphoneStatus == .authorized {
+                    InkletRowDivider()
+                    usageRow(
+                        systemImage: "mic",
+                        title: L10n.text("welcome.ready.dictation.title"),
+                        detail: L10n.format(
+                            "welcome.ready.dictation.detail",
+                            settings.config.voiceInput.shortcut.localizedName
+                        )
+                    )
+                }
+            }
+            .inkletCard()
+            if model.writingChoice == .builtIn, case .downloading(let fraction) = model.builtInModelState {
+                downloadNote(L10n.format("welcome.ready.downloading", model.builtInModel.displayName, fraction * 100))
+            }
+            if model.usesBuiltInDictation, case .downloading(let fraction) = model.dictationModelState {
+                downloadNote(L10n.format("welcome.ready.downloading", model.dictationModel.displayName, fraction * 100))
+            }
+        }
+    }
+
+    private func usageRow(systemImage: String, title: String, detail: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: InkletTheme.Spacing.sm) {
+            Image(systemName: systemImage)
+                .font(.system(size: InkletTheme.IconSize.regular))
+                .foregroundStyle(InkletTheme.secondaryLabel)
+                .frame(width: InkletTheme.IconSize.regular + 4)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(InkletTheme.Typography.control)
+                    .foregroundStyle(InkletTheme.label)
+                Text(detail)
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(InkletTheme.Spacing.sm)
+    }
+
+    private func downloadNote(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 12))
+            .foregroundStyle(InkletTheme.textSecondary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }

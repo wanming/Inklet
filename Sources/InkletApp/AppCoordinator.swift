@@ -54,6 +54,8 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     private let settingsController: SettingsWindowController
     private let aboutController: AboutWindowController
     private var welcomeGuideController: WelcomeGuideWindowController?
+    /// The guide was opened again from the menu after it was done, so closing it simply dismisses it.
+    private var isWelcomeGuideReopened = false
     private var whatsNewController: WhatsNewWindowController?
     private var pendingWhatsNewReleases: [WhatsNewRelease] = []
     private var whatsNewTask: Task<Void, Never>?
@@ -672,7 +674,15 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         ) else {
             return false
         }
-        let controller = welcomeGuideController ?? WelcomeGuideWindowController(
+        let controller = welcomeGuideController ?? makeWelcomeGuideController()
+        welcomeGuideController = controller
+        controller.show()
+        refreshWelcomeGuideMenuItems()
+        return true
+    }
+
+    private func makeWelcomeGuideController() -> WelcomeGuideWindowController {
+        let controller = WelcomeGuideWindowController(
             settings: settingsController.settingsModel,
             onAccessibilityTrusted: {
                 NotificationCenter.default.post(name: .inkletAccessibilityDidBecomeTrusted, object: nil)
@@ -681,10 +691,19 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
                 self?.finishWelcomeGuide()
             }
         )
-        welcomeGuideController = controller
-        controller.show()
+        controller.onClose = { [weak self] in
+            self?.welcomeGuideDidClose()
+        }
+        return controller
+    }
+
+    /// An unfinished first-launch guide stays pending when its window closes and comes back with
+    /// Open Inklet; a reopened one is simply done.
+    private func welcomeGuideDidClose() {
+        guard isWelcomeGuideReopened else { return }
+        isWelcomeGuideReopened = false
+        welcomeGuideController = nil
         refreshWelcomeGuideMenuItems()
-        return true
     }
 
     private func finishWelcomeGuide() {
@@ -693,6 +712,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         userDefaults.set(OnboardingPolicy.welcomeGuideVersion, forKey: InkletPreferenceKeys.completedWelcomeGuideVersion)
         welcomeGuideController?.close()
         welcomeGuideController = nil
+        isWelcomeGuideReopened = false
         refreshWelcomeGuideMenuItems()
         openPopover()
     }
@@ -742,6 +762,25 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         pendingWhatsNewReleases = []
         whatsNewTask = nil
         showWhatsNew(releases, style: .update, activating: false)
+    }
+
+    /// Opens the welcome guide again from its first step. Each step shows the current settings, so
+    /// walking through it changes only what the person changes.
+    @objc func openWelcomeGuide() {
+        guard !isStopping, !isMigrationMaintenanceActive else { return }
+        selectionActions.forceDismissSelectionActions(reason: "openWelcomeGuide")
+        if let welcomeGuideController {
+            welcomeGuideController.show()
+            return
+        }
+        // The guide's choices would overwrite data still waiting to be imported from the sandboxed version.
+        guard !migrationOutcome.hasIncompleteComponents else { return }
+        windowController.hide()
+        let controller = makeWelcomeGuideController()
+        welcomeGuideController = controller
+        isWelcomeGuideReopened = true
+        controller.show()
+        refreshWelcomeGuideMenuItems()
     }
 
     @objc func openChangelog() {
@@ -825,7 +864,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     }
 
     private var isWelcomeGuidePending: Bool {
-        welcomeGuideController != nil
+        welcomeGuideController != nil && !isWelcomeGuideReopened
     }
 
     private func refreshWelcomeGuideMenuItems() {
@@ -869,6 +908,13 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         statusUpdateCheckMenuItem = updateItem
         menu.addItem(updateItem)
         menu.addItem(NSMenuItem.separator())
+        menu.addItem(
+            NSMenuItem(
+                title: L10n.text("app.menu.welcomeGuide"),
+                action: #selector(openWelcomeGuide),
+                keyEquivalent: ""
+            )
+        )
         let feedbackItem = NSMenuItem(
             title: L10n.text("app.menu.sendFeedback"),
             action: #selector(sendFeedback),
@@ -921,7 +967,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         guard !isStopping, !isMigrationMaintenanceActive else { return }
         selectionActions.forceDismissSelectionActions(reason: "openPopover")
         // Until the welcome guide is done, opening Inklet brings the guide back where the person left it.
-        if let welcomeGuideController {
+        if let welcomeGuideController, isWelcomeGuidePending {
             welcomeGuideController.show()
             return
         }
