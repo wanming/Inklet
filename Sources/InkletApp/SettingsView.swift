@@ -16,6 +16,7 @@ private extension SelectionForceSelectionMode {
 /// Sidebar order follows docs/DESIGN.md; About sits apart at the bottom of the sidebar.
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general = "General"
+    case aiModels = "AI Models"
     case writeAssistant = "Write Assistant"
     case promptModes = "Prompt Modes"
     case dictation = "Live Dictation"
@@ -28,6 +29,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .general: L10n.text("settings.section.general")
+        case .aiModels: L10n.text("settings.section.aiModels")
         case .writeAssistant: L10n.text("settings.section.writeAssistant")
         case .dictation: L10n.text("settings.section.dictation")
         case .selectionAssistant: L10n.text("settings.section.selectionAssistant")
@@ -40,6 +42,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .general: "gearshape"
+        case .aiModels: "cpu"
         case .writeAssistant: "pencil.and.scribble"
         case .dictation: "mic"
         case .selectionAssistant: "text.viewfinder"
@@ -217,6 +220,11 @@ struct SettingsView: View {
                     settingsPage {
                         generalPanel
                     }
+                case .aiModels:
+                    settingsPage {
+                        aiModelsPanel
+                    }
+                    .disabled(model.isMigrationMaintenanceActive)
                 case .writeAssistant:
                     writeAssistantPanel
                         .disabled(model.isMigrationMaintenanceActive)
@@ -288,10 +296,6 @@ struct SettingsView: View {
             }
 
             VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
-                settingsGroup(L10n.text("settings.group.provider")) {
-                    providerRows
-                }
-
                 settingsGroup(L10n.text("settings.group.interface")) {
                     settingsRow(L10n.text("settings.row.language"), help: L10n.text("settings.help.language")) {
                         Picker("", selection: $model.interfaceLanguage) {
@@ -330,14 +334,50 @@ struct SettingsView: View {
         }
     }
 
+    /// One card per capability, each starting with its engine, and the API keys they share at the end.
+    /// The feature pages keep only their own settings and name the engine they use.
+    private var aiModelsPanel: some View {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
+            settingsGroup(L10n.text("settings.group.textEngine")) {
+                textEngineRows
+            }
+
+            settingsGroup(L10n.text("settings.group.speechToText")) {
+                speechToTextRows
+            }
+
+            settingsGroup(L10n.text("settings.group.textToSpeech")) {
+                settingsRow(L10n.text("settings.row.engine"), help: L10n.text("settings.help.speechOutputEngine")) {
+                    // Not a choice yet, so no warning here; Pronounce shows it where it is used.
+                    Text(LLMProviderPreset.openAI.name)
+                        .font(InkletTheme.Typography.body)
+                        .foregroundStyle(InkletTheme.secondaryLabel)
+                        .fixedSize()
+                }
+            }
+
+            settingsGroup(L10n.text("settings.group.apiKeys")) {
+                apiKeyRows
+            }
+
+            if !model.usesBuiltInDictation {
+                openAIDictationAdvancedSettings
+            }
+        }
+    }
+
     @ViewBuilder
-    private var providerRows: some View {
+    private var textEngineRows: some View {
         let selectedProviderBinding = Binding(
             get: { model.config.providerID },
             set: { model.selectProvider($0) }
         )
 
-        settingsRow(L10n.text("settings.row.provider"), help: L10n.text("settings.help.provider")) {
+        settingsRow(
+            L10n.text("settings.row.engine"),
+            help: L10n.text("settings.help.textEngine"),
+            warning: textEngineKeyWarning
+        ) {
             Picker("", selection: selectedProviderBinding) {
                 ForEach(model.cloudProviders) { preset in
                     Text(model.providerDisplayName(preset)).tag(preset.id)
@@ -351,25 +391,11 @@ struct SettingsView: View {
             .fixedSize()
         }
 
-        if model.usesOpenAIForWriting {
-            settingsRow(L10n.text("settings.row.openAIAPIKey"), help: L10n.text("settings.help.openAIAPIKey")) {
-                SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $model.providerAPIKey)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: SettingsLayoutMetrics.fieldWidth)
-            }
+        if model.isBuiltInProvider {
+            builtInModelRow
         } else {
-            if model.isBuiltInProvider {
-                builtInModelRow
-            } else if model.isLocalServerProvider {
+            if model.isLocalServerProvider {
                 localServerRow
-            }
-
-            if model.showsAPIKeyField {
-                settingsRow(L10n.text("settings.row.apiKey"), help: L10n.text("settings.help.apiKey")) {
-                    SecureField(model.selectedProvider.apiKeyPlaceholder, text: $model.providerAPIKey)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: SettingsLayoutMetrics.fieldWidth)
-                }
             }
 
             if model.isCustomOpenAICompatibleProvider {
@@ -382,20 +408,121 @@ struct SettingsView: View {
                     .frame(width: SettingsLayoutMetrics.fieldWidth)
                 }
             }
+
+            textModelRow
         }
     }
 
-    /// The OpenAI key that pronunciation and OpenAI dictation need when writing uses another provider.
-    /// It shows next to the feature that needs it instead of in General; every copy edits the same key.
     @ViewBuilder
-    private func openAIVoiceKeyRow(help: String) -> some View {
-        if !model.usesOpenAIForWriting {
-            settingsRow(L10n.text("settings.row.openAIAPIKey"), help: help) {
-                SecureField(LLMProviderPreset.openAI.apiKeyPlaceholder, text: $model.openAIAPIKey)
+    private var speechToTextRows: some View {
+        settingsRow(
+            L10n.text("settings.row.engine"),
+            help: L10n.text("settings.help.dictationEngine"),
+            warning: openAIKeyWarning(isNeeded: !model.usesBuiltInDictation)
+        ) {
+            if model.isBuiltInEngineAvailable {
+                Picker("", selection: $model.config.voiceInput.engine) {
+                    ForEach(VoiceInputConfig.Engine.allCases) { engine in
+                        Text(engine.localizedName).tag(engine)
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
+            } else {
+                Text(VoiceInputConfig.Engine.openAI.localizedName)
+                    .font(InkletTheme.Typography.body)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize()
+            }
+        }
+
+        if model.usesBuiltInDictation {
+            dictationModelRow
+        }
+    }
+
+    /// Every key is typed once. OpenAI is always listed because text to speech needs it; the selected
+    /// text provider's key joins it when that provider is another cloud service.
+    @ViewBuilder
+    private var apiKeyRows: some View {
+        settingsRow(L10n.text("settings.row.openAIAPIKey"), help: L10n.text("settings.help.openAIAPIKey.shared")) {
+            // While OpenAI handles text, its key is the provider key; both bindings edit the same stored key.
+            SecureField(
+                LLMProviderPreset.openAI.apiKeyPlaceholder,
+                text: model.usesOpenAIForWriting ? $model.providerAPIKey : $model.openAIAPIKey
+            )
+            .textFieldStyle(.roundedBorder)
+            .frame(width: SettingsLayoutMetrics.fieldWidth)
+        }
+
+        if model.showsAPIKeyField, !model.usesOpenAIForWriting {
+            settingsRow(
+                L10n.format("settings.row.providerAPIKey", model.selectedProvider.localizedName),
+                help: L10n.text("settings.help.apiKey")
+            ) {
+                SecureField(model.selectedProvider.apiKeyPlaceholder, text: $model.providerAPIKey)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: SettingsLayoutMetrics.fieldWidth)
             }
         }
+    }
+
+    private func openAIKeyWarning(isNeeded: Bool) -> String? {
+        isNeeded && model.isOpenAIAPIKeyMissing ? L10n.text("settings.apiKey.openAIMissing") : nil
+    }
+
+    /// The selected text provider's own key, or the OpenAI key while OpenAI handles text.
+    private var textEngineKeyWarning: String? {
+        if model.usesOpenAIForWriting {
+            return openAIKeyWarning(isNeeded: true)
+        }
+        guard model.selectedProvider.requiresAPIKey,
+              model.providerAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            return nil
+        }
+        return L10n.format("settings.apiKey.providerMissing", model.selectedProvider.localizedName)
+    }
+
+    /// The first row on a feature page: which engine it uses, with a way to the AI Models page.
+    private func engineNoteRow(_ engine: String, warning: String? = nil) -> some View {
+        VStack(spacing: 0) {
+            InkletRowDivider()
+            HStack(spacing: InkletTheme.Spacing.md) {
+                Text(L10n.format("settings.engineNote", engine))
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let warning {
+                    Label(warning, systemImage: "exclamationmark.triangle")
+                        .font(InkletTheme.Typography.caption)
+                        .foregroundStyle(InkletTheme.statusWarning)
+                        .fixedSize()
+                }
+                Button(L10n.text("settings.engineNote.change")) {
+                    selectedSection = .aiModels
+                }
+                .buttonStyle(InkletButtonStyle(kind: .ghost, size: .small))
+                .fixedSize()
+            }
+            .padding(.horizontal, InkletTheme.Spacing.sm)
+            .padding(.vertical, InkletTheme.Spacing.xs)
+            .frame(minHeight: SettingsLayoutMetrics.rowHeight)
+        }
+    }
+
+    private var textEngineNote: String {
+        if model.isBuiltInProvider {
+            return "\(model.selectedProvider.localizedName) · \(model.selectedBuiltInModel.displayName)"
+        }
+        return "\(model.selectedProvider.localizedName) · \(model.selectedProvider.displayModelName(model.config.model))"
+    }
+
+    private var dictationEngineNote: String {
+        model.usesBuiltInDictation
+            ? "\(VoiceInputConfig.Engine.builtIn.localizedName) · \(model.dictationModel.displayName)"
+            : VoiceInputConfig.Engine.openAI.localizedName
     }
 
     @ViewBuilder
@@ -411,7 +538,7 @@ struct SettingsView: View {
             builtInModel.recommendedMemoryGB
         )
 
-        settingsRow(L10n.text("settings.row.localModel"), help: L10n.text("settings.help.localModel")) {
+        settingsRow(L10n.text("settings.row.model"), help: L10n.text("settings.help.localModel")) {
             Picker("", selection: selectedBuiltInModelBinding) {
                 ForEach(BuiltInModel.all) { option in
                     Text(model.builtInModelTitle(option)).tag(option.id)
@@ -693,51 +820,54 @@ struct SettingsView: View {
         .accessibilityLabel(L10n.text(titleKey))
     }
 
-    private var writeAssistantControls: some View {
+    /// The model for a cloud or local server provider; the built-in provider uses `builtInModelRow`.
+    private var textModelRow: some View {
         let selectedModelBinding = Binding(
             get: { model.selectedModelMenuValue },
             set: { model.selectModelMenuValue($0) }
         )
 
-        return settingsGroup {
+        return settingsRow(L10n.text("settings.row.model"), help: L10n.format("settings.help.model.default", model.selectedProvider.defaultModel)) {
+            VStack(alignment: .trailing, spacing: InkletTheme.Spacing.xs) {
+                if !model.selectedProviderModelOptions.isEmpty {
+                    Picker("", selection: selectedModelBinding) {
+                        ForEach(model.selectedProviderModelOptions, id: \.self) { modelID in
+                            Text(model.modelMenuTitle(for: modelID)).tag(modelID)
+                        }
+                        Divider()
+                        Text(L10n.text("settings.model.custom")).tag(SettingsViewModel.customModelMenuID)
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+
+                if model.shouldShowCustomModelField {
+                    TextField(model.selectedProvider.defaultModel, text: $model.config.model)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: SettingsLayoutMetrics.fieldWidth)
+                    if !model.selectedModelIsDefault {
+                        Text(L10n.text("settings.model.customized"))
+                            .font(InkletTheme.Typography.caption)
+                            .foregroundStyle(InkletTheme.secondaryLabel)
+                    }
+                }
+
+                if model.isRefreshingModelCatalog {
+                    Text(L10n.text("settings.model.refreshing"))
+                        .font(InkletTheme.Typography.caption)
+                        .foregroundStyle(InkletTheme.tertiaryLabel)
+                }
+            }
+        }
+    }
+
+    private var writeAssistantControls: some View {
+        settingsGroup {
+            engineNoteRow(textEngineNote, warning: textEngineKeyWarning)
+
             settingsRow(L10n.text("settings.row.hotkey"), help: L10n.text("settings.help.hotkey")) {
                 HotkeyRecorderField(hotkey: $model.config.hotkey)
                     .frame(width: 200, height: InkletTheme.ControlHeight.regular)
-            }
-
-            settingsRow(L10n.text("settings.row.model"), help: L10n.format("settings.help.model.default", model.selectedProvider.defaultModel)) {
-                VStack(alignment: .trailing, spacing: InkletTheme.Spacing.xs) {
-                    if !model.selectedProviderModelOptions.isEmpty {
-                        Picker("", selection: selectedModelBinding) {
-                            ForEach(model.selectedProviderModelOptions, id: \.self) { modelID in
-                                Text(model.modelMenuTitle(for: modelID)).tag(modelID)
-                            }
-                            if !model.isBuiltInProvider {
-                                Divider()
-                                Text(L10n.text("settings.model.custom")).tag(SettingsViewModel.customModelMenuID)
-                            }
-                        }
-                        .labelsHidden()
-                        .fixedSize()
-                    }
-
-                    if model.shouldShowCustomModelField {
-                        TextField(model.selectedProvider.defaultModel, text: $model.config.model)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: SettingsLayoutMetrics.fieldWidth)
-                        if !model.selectedModelIsDefault {
-                            Text(L10n.text("settings.model.customized"))
-                                .font(InkletTheme.Typography.caption)
-                                .foregroundStyle(InkletTheme.secondaryLabel)
-                        }
-                    }
-
-                    if model.isRefreshingModelCatalog {
-                        Text(L10n.text("settings.model.refreshing"))
-                            .font(InkletTheme.Typography.caption)
-                            .foregroundStyle(InkletTheme.tertiaryLabel)
-                    }
-                }
             }
 
             settingsRow(L10n.text("settings.row.timeout"), help: L10n.text("settings.help.timeout")) {
@@ -775,59 +905,32 @@ struct SettingsView: View {
                         .labelsHidden()
                         .toggleStyle(.switch)
                 }
+
+                engineNoteRow(dictationEngineNote, warning: openAIKeyWarning(isNeeded: !model.usesBuiltInDictation))
             }
 
-            VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
-                settingsGroup {
-                    if model.isBuiltInEngineAvailable {
-                        settingsRow(
-                            L10n.text("settings.row.dictationEngine"),
-                            help: L10n.text("settings.help.dictationEngine")
-                        ) {
-                            Picker("", selection: $model.config.voiceInput.engine) {
-                                ForEach(VoiceInputConfig.Engine.allCases) { engine in
-                                    Text(engine.localizedName).tag(engine)
-                                }
-                            }
-                            .labelsHidden()
-                            .fixedSize()
+            settingsGroup {
+                settingsRow(
+                    L10n.text("settings.row.dictationShortcut"),
+                    help: L10n.text("settings.help.dictationShortcut")
+                ) {
+                    Picker("", selection: $model.config.voiceInput.shortcut) {
+                        ForEach(VoiceInputConfig.Shortcut.settingsCases) { shortcut in
+                            Text(shortcut.localizedName).tag(shortcut)
                         }
                     }
-
-                    if model.usesBuiltInDictation {
-                        dictationModelRow
-                    }
-
-                    settingsRow(
-                        L10n.text("settings.row.dictationShortcut"),
-                        help: L10n.text("settings.help.dictationShortcut")
-                    ) {
-                        Picker("", selection: $model.config.voiceInput.shortcut) {
-                            ForEach(VoiceInputConfig.Shortcut.settingsCases) { shortcut in
-                                Text(shortcut.localizedName).tag(shortcut)
-                            }
-                        }
-                        .labelsHidden()
-                        .fixedSize()
-                    }
-
-                    settingsRow(L10n.text("settings.row.microphone"), help: L10n.text("settings.help.microphone")) {
-                        Picker("", selection: selectedMicrophoneBinding) {
-                            ForEach(model.microphoneOptions) { option in
-                                Text(option.localizedName).tag(option.id)
-                            }
-                        }
-                        .labelsHidden()
-                        .fixedSize()
-                    }
-
-                    if !model.usesBuiltInDictation {
-                        openAIVoiceKeyRow(help: L10n.text("settings.help.openAIAPIKey.dictation"))
-                    }
+                    .labelsHidden()
+                    .fixedSize()
                 }
 
-                if !model.usesBuiltInDictation {
-                    openAIDictationAdvancedSettings
+                settingsRow(L10n.text("settings.row.microphone"), help: L10n.text("settings.help.microphone")) {
+                    Picker("", selection: selectedMicrophoneBinding) {
+                        ForEach(model.microphoneOptions) { option in
+                            Text(option.localizedName).tag(option.id)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
                 }
             }
             .disabled(!model.config.voiceInput.isEnabled)
@@ -950,6 +1053,8 @@ struct SettingsView: View {
 
     private var selectionTranslationGroup: some View {
         settingsGroup(L10n.text("settings.group.translation")) {
+            engineNoteRow(textEngineNote, warning: textEngineKeyWarning)
+
             settingsRow(
                 L10n.text("settings.row.translationLanguage"),
                 help: L10n.text("settings.help.translationLanguage")
@@ -982,6 +1087,8 @@ struct SettingsView: View {
 
     private var selectionPronunciationGroup: some View {
         settingsGroup(L10n.text("settings.group.pronunciation")) {
+            engineNoteRow(LLMProviderPreset.openAI.name, warning: openAIKeyWarning(isNeeded: true))
+
             settingsRow(
                 L10n.text("settings.row.aiPronunciation"),
                 help: L10n.text("settings.help.aiPronunciation")
@@ -1043,8 +1150,6 @@ struct SettingsView: View {
                         .frame(width: 44, alignment: .trailing)
                 }
             }
-
-            openAIVoiceKeyRow(help: L10n.text("settings.help.openAIAPIKey.pronunciation"))
         }
     }
 
@@ -1517,7 +1622,7 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func settingsRowLabel(_ title: String, help: String) -> some View {
+    private func settingsRowLabel(_ title: String, help: String, warning: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(InkletTheme.Typography.body)
@@ -1529,6 +1634,12 @@ struct SettingsView: View {
                     .foregroundStyle(InkletTheme.secondaryLabel)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if let warning {
+                Label(warning, systemImage: "exclamationmark.triangle")
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.statusWarning)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1537,12 +1648,13 @@ struct SettingsView: View {
     private func settingsRow<Content: View>(
         _ title: String,
         help: String = "",
+        warning: String? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(spacing: 0) {
             InkletRowDivider()
             HStack(alignment: .center, spacing: InkletTheme.Spacing.md) {
-                settingsRowLabel(title, help: help)
+                settingsRowLabel(title, help: help, warning: warning)
                 content()
             }
             .padding(.horizontal, InkletTheme.Spacing.sm)

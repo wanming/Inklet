@@ -211,7 +211,7 @@ final class SettingsWindowController: NSWindowController {
             providerAPIKey: providerAPIKey,
             requiresAPIKey: configuredProviderRequiresAPIKey
         ) else {
-            show(section: .general)
+            show(section: .aiModels)
             return
         }
 

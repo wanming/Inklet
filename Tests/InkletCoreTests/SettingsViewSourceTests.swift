@@ -60,6 +60,41 @@ final class SettingsViewSourceTests: XCTestCase {
         XCTAssertFalse(dictationBlock.contains("ForEach(VoiceInputConfig.Shortcut.allCases)"))
     }
 
+    func testAIModelsPageOwnsEveryEngineAndKey() throws {
+        let source = try settingsViewSource()
+        let aiModels = try sourceScope(
+            startingAt: "private var aiModelsPanel",
+            endingBefore: "@ViewBuilder\n    private var builtInModelRow",
+            in: source
+        )
+        let general = try sourceScope(
+            startingAt: "private var generalPanel",
+            endingBefore: "private var aiModelsPanel",
+            in: source
+        )
+        let featurePages = try sourceScope(
+            startingAt: "private var writeAssistantControls",
+            endingBefore: "\n    private var historyPanel",
+            in: source
+        )
+
+        XCTAssertTrue(source.contains("case aiModels = \"AI Models\""))
+        for group in ["settings.group.textEngine", "settings.group.speechToText", "settings.group.textToSpeech", "settings.group.apiKeys"] {
+            XCTAssertTrue(aiModels.contains(group), group)
+        }
+        XCTAssertTrue(aiModels.contains("selectedProviderBinding"))
+        XCTAssertTrue(aiModels.contains("$model.config.voiceInput.engine"))
+        XCTAssertTrue(aiModels.contains("$model.openAIAPIKey"))
+        XCTAssertTrue(aiModels.contains("$model.providerAPIKey"))
+
+        XCTAssertFalse(general.contains("selectedProviderBinding"))
+        XCTAssertFalse(general.contains("SecureField"))
+        XCTAssertFalse(featurePages.contains("SecureField"))
+        XCTAssertFalse(featurePages.contains("$model.config.voiceInput.engine"))
+        XCTAssertFalse(featurePages.contains("selectedModelBinding"))
+        XCTAssertEqual(featurePages.components(separatedBy: "engineNoteRow(").count - 1, 4)
+    }
+
     func testWriteAssistantExposesRecoveryModelWithoutEditableEndpoint() throws {
         let source = try settingsViewSource()
 

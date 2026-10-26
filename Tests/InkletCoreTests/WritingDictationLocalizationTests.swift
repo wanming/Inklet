@@ -19,7 +19,6 @@ final class WritingDictationLocalizationTests: XCTestCase {
         "settings.help.microphone",
         "settings.row.fallbackSpeechModel",
         "settings.help.fallbackSpeechModel",
-        "settings.row.dictationEngine",
         "settings.help.dictationEngine",
         "settings.dictationEngine.builtIn",
         "settings.dictationEngine.openAI",

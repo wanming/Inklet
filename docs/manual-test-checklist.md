@@ -9,7 +9,7 @@ Record the tested Inklet version, artifact checksum, macOS version, hardware arc
 - For release testing, install the exact signed artifact from the GitHub Releases DMG. Do not substitute an unsigned archive or a development build.
 - For source or local testing, run `scripts/run-local-app.sh` and use `/Applications/Inklet Local.app`. Do not launch a bare SwiftPM executable, a worktree-local `dist/...` app, or an ad-hoc-signed app for routine QA.
 - Confirm the local runner uses the stable `com.tomwan.inklet.local` bundle, and do not print or record the configured signing identity.
-- Configure a test OpenAI API key in General. Use non-production text, audio, and credentials.
+- Configure a test OpenAI API key in Settings › AI Models. Use non-production text, audio, and credentials.
 - Confirm the default writing shortcut is `Option+Space` and the default Dictation hold shortcut is Right Option, unless the test intentionally changes them.
 - Use `scripts/reset-rebuild-install.sh` only for intentional local first-launch or permission-reset QA; it removes the selected local state by design.
 
@@ -142,8 +142,9 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 ## Settings And History
 
 - `Command+,`: open Settings while Inklet is active.
-- General: configure the OpenAI API key, then change language and appearance.
-- Provider: switch to another provider (for example DeepSeek), enter its key, and confirm the OpenAI API Key field becomes the optional voice-only field. Transform text in the popover and translate a selection with that provider; confirm dictation and pronunciation still use the OpenAI key. Choose Custom (OpenAI Compatible), set a local endpoint, and transform text. Switch back to OpenAI and confirm the shared key and default model return. Check the General panel in English and Chinese for fit.
+- General: change language and appearance.
+- AI Models: configure the OpenAI API key in the API keys card. Check that each feature page (Write Assistant, Live Dictation, Selection Assistant) names its engine and that "Change in AI Models" opens this page.
+- Provider: switch to another provider (for example DeepSeek), enter its key in the API keys card, and confirm the OpenAI API Key row stays for text to speech and OpenAI dictation, and that clearing the provider key shows a missing-key warning under the text engine. Transform text in the popover and translate a selection with that provider; confirm dictation and pronunciation still use the OpenAI key. Choose Custom (OpenAI Compatible), set a local endpoint, and transform text. Switch back to OpenAI and confirm the shared key and default model return. Check the AI Models page in English and Chinese for fit.
 - Write Assistant: configure the model for the selected provider, writing shortcut, and timeout.
 - Writing Assistant: configure the Dictation hold shortcut and microphone. In Advanced Dictation, confirm only the recovery model is available and there is no endpoint field.
 - Selection Assistant: configure translation language, Translate prompt, Force Selection mode, pronunciation voice, and speed; preview the voice.
