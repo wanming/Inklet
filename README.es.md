@@ -72,9 +72,11 @@ El atajo de Dictado solo funciona en el editor de origen y solo se mantiene puls
 - Reproduce directamente el texto seleccionado y, desde el resultado de la traducción, puede reproducir tanto el original como la traducción.
 - Te permite elegir qué botones muestra el menú de selección y en qué orden, en **Ajustes** › **Asistente de selección** › **Botones del menú**. **Traducir**, **Pronunciar** y cualquier modo de prompt pueden ser un botón; se muestran hasta cuatro a la vez y el resto va en **Más**. Un botón de modo de prompt ejecuta ese modo sobre el texto seleccionado y muestra el resultado en el panel con controles para copiar y reproducir.
 - Transforma texto con modos de prompt integrados:
-  - A inglés simple y correcto (en tu idioma de escritura, que eliges en Ajustes › General; inglés por defecto)
-  - Resumir (en tu idioma de traducción, que por defecto sigue el idioma de la interfaz)
-  - Limpieza de voz
+  - To Simple and Correct English (en tu idioma de escritura, que eliges en Ajustes › General; inglés por defecto)
+  - Summarize (en tu idioma de traducción, que por defecto sigue el idioma de la interfaz)
+  - To Spanish, To Japanese, etc. (traduce a tu idioma de traducción; con una sola palabra muestra su significado, pronunciación y frases de ejemplo)
+  - Voice Cleanup
+  - Los nombres de los modos integrados quedan en inglés en todos los idiomas de la interfaz, para que las mismas letras los encuentren; muestran tus idiomas hasta que los renombres.
 - Muestra el resultado en el popover a medida que se genera y después lo inserta en la app que tenía el foco o lo copia con el botón de copiar del resultado.
 - Usa una única vía de selección independiente de la app y basada primero en Accesibilidad. Las acciones de selección automáticas piden primero la selección a la Accesibilidad de macOS y solo usan el método alternativo de portapapeles temporal configurado cuando la **Selección forzada** lo permite. Cada lectura queda ligada al proceso de origen capturado y se cancela si ese proceso termina o pierde el foco.
 - Mantiene desactivado por defecto el `Command+C` simulado. La copia desde el menú sigue siendo el método alternativo seguro de **Selección forzada**; puedes activar explícitamente la copia simulada como alternativa avanzada para apps sin un menú Copiar utilizable, pero puede interferir con juegos, escritorios remotos o máquinas virtuales.

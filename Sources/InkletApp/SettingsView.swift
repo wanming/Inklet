@@ -1218,6 +1218,7 @@ struct SettingsView: View {
             VStack(spacing: InkletTheme.Spacing.xs) {
                 PromptModeTableView(
                     modes: model.orderedPromptModes,
+                    languages: model.config.promptLanguages,
                     selectedModeID: $model.selectedPromptModeID,
                     canDelete: model.config.promptModes.count > 1,
                     onMove: { source, destination in

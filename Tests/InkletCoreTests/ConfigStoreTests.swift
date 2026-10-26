@@ -508,10 +508,11 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(config.promptModes.map(\.id), [
             PromptMode.rewriteID,
             PromptMode.summaryID,
+            PromptMode.toMyLanguageID,
             PromptMode.voiceCleanupID
         ])
         XCTAssertEqual(config.promptModes[0].systemPrompt, "Translate prompt.")
-        XCTAssertEqual(config.promptModes[2].id, PromptMode.voiceCleanupID)
+        XCTAssertEqual(config.promptModes.map(\.sortOrder), [0, 1, 2, 3])
     }
 
     func testConfigDecodeRefreshesLegacyDefaultVoiceCleanupPrompt() throws {

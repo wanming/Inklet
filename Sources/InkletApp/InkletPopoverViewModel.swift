@@ -51,7 +51,7 @@ final class InkletPopoverViewModel: ObservableObject {
             return nil
         }
 
-        return modes.first(where: { $0.id == resultModeID })?.localizedName ?? resultModeID
+        return modes.first(where: { $0.id == resultModeID }).map { config.promptModeName($0) } ?? resultModeID
     }
 
     var currentProviderName: String {
@@ -232,7 +232,7 @@ final class InkletPopoverViewModel: ObservableObject {
         self.config = loadedConfig
         self.modes = visibleModes
         self.modePickerState = WritingModePickerState(
-            items: Self.modePickerItems(for: visibleModes),
+            items: Self.modePickerItems(for: visibleModes, languages: loadedConfig.promptLanguages),
             preferredModeID: selectedModeID
         )
         self.popoverSession = WritingPopoverSessionState(selectedModeID: selectedModeID)
@@ -253,7 +253,7 @@ final class InkletPopoverViewModel: ObservableObject {
 
     private func refreshLocalizedContent() {
         modePickerState = WritingModePickerState(
-            items: Self.modePickerItems(for: modes),
+            items: Self.modePickerItems(for: modes, languages: config.promptLanguages),
             preferredModeID: modePickerState.highlightedModeID,
             query: modePickerState.query
         )
@@ -284,7 +284,7 @@ final class InkletPopoverViewModel: ObservableObject {
         BuiltInDictationResidency.shared.popoverWillOpen(voiceInput: config.voiceInput)
         popoverSession = WritingPopoverSessionState(selectedModeID: selectedModeID)
         modePickerState = WritingModePickerState(
-            items: Self.modePickerItems(for: modes),
+            items: Self.modePickerItems(for: modes, languages: config.promptLanguages),
             preferredModeID: selectedModeID
         )
         modeSearchFocusRevision += 1
@@ -541,7 +541,7 @@ final class InkletPopoverViewModel: ObservableObject {
         invalidateSourceInputFocusRequests()
         mutatePopoverSession { $0.showModePicker() }
         modePickerState = WritingModePickerState(
-            items: Self.modePickerItems(for: modes),
+            items: Self.modePickerItems(for: modes, languages: config.promptLanguages),
             preferredModeID: selectedModeID
         )
         modeSearchFocusRevision += 1
@@ -788,7 +788,7 @@ final class InkletPopoverViewModel: ObservableObject {
                     source: .write,
                     inputText: source,
                     outputText: result.outputText,
-                    modeName: mode.localizedName,
+                    modeName: config.promptModeName(mode),
                     targetLanguageName: nil,
                     model: model,
                     metadata: [
@@ -922,8 +922,12 @@ final class InkletPopoverViewModel: ObservableObject {
         return visibleModes.first?.id ?? PromptMode.rewriteID
     }
 
-    private static func modePickerItems(for modes: [PromptMode]) -> [WritingModePickerItem] {
-        modes.map { WritingModePickerItem(id: $0.id, title: $0.localizedName) }
+    func modeName(_ mode: PromptMode) -> String {
+        config.promptModeName(mode)
+    }
+
+    private static func modePickerItems(for modes: [PromptMode], languages: PromptLanguages) -> [WritingModePickerItem] {
+        modes.map { WritingModePickerItem(id: $0.id, title: $0.displayName(languages: languages)) }
     }
 
     private func localizedStateMachineMessage(_ message: String) -> String {

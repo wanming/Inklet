@@ -236,6 +236,8 @@ func writingModeIconName(for modeID: String) -> String {
         "globe.asia.australia"
     case PromptMode.summaryID:
         "text.alignleft"
+    case PromptMode.toMyLanguageID:
+        "character.bubble"
     case PromptMode.polishEnglishID, PromptMode.improveWritingID:
         "wand.and.stars"
     default:

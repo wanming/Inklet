@@ -433,8 +433,5 @@ extension L10n {
         "welcome.language.writing.detail": "改写会把你的文字转成这种语言。",
         "welcome.language.prompts": "这些只是默认设置。在设置 ›「%@」里，你可以把任何 prompt 改成你想要的，不限于语言转换。",
         "settings.help.systemPrompt": "{myLanguage} 会替换成你的翻译语言，{writingLanguage} 会替换成你的写作语言。",
-        "prompt.rewrite.name": "改写成简单正确的%@",
-        "prompt.summary.name": "摘要",
-        "prompt.voiceCleanup.name": "语音整理"
     ]
 }

@@ -72,7 +72,9 @@ The Dictation shortcut is source-local and hold-only. You can change its modifie
 - Transforms text with built-in prompt modes:
   - To Simple and Correct English (into your Writing Language, set in Settings › General; English by default)
   - Summarize (into your Translation Language, which follows the interface language by default)
+  - To Chinese, To Japanese, and so on (translates into your Translation Language; for a single word it shows the meaning, pronunciation, and example sentences)
   - Voice Cleanup
+  - Built-in mode names stay in English in every interface language, so the same letters find them; they name your languages until you rename them.
 - Streams the result into the popover as it is generated, then inserts it back into the previously focused app or copies it with the result's copy button.
 - Uses one application-agnostic, Accessibility-first selection path. Automatic Selection Actions first ask macOS Accessibility for the selection, then use the configured temporary clipboard fallback only when Force Selection permits it. Each read stays bound to the captured source process and cancels if that process exits or loses focus.
 - Keeps simulated `Command+C` off by default. Menu Copy remains the safe Force Selection fallback; you can explicitly enable simulated copy as an advanced fallback for apps without a usable Copy menu, but it may interfere with games, remote desktops, or virtual machines.

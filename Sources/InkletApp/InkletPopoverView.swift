@@ -85,7 +85,7 @@ struct InkletPopoverView: View {
         guard let selectedMode else {
             return L10n.text("popover.mode.picker")
         }
-        return selectedMode.localizedName
+        return model.modeName(selectedMode)
     }
 
     private var popoverHeight: CGFloat {

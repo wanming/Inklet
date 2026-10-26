@@ -433,8 +433,5 @@ extension L10n {
         "welcome.language.writing.detail": "Rewrite turns your text into this language.",
         "welcome.language.prompts": "These are only defaults. In Settings › %@ you can change any prompt to do whatever you want, not just languages.",
         "settings.help.systemPrompt": "{myLanguage} becomes your Translation Language and {writingLanguage} your Writing Language.",
-        "prompt.rewrite.name": "To Simple and Correct %@",
-        "prompt.summary.name": "Summarize",
-        "prompt.voiceCleanup.name": "Voice Cleanup"
     ]
 }

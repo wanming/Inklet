@@ -49,21 +49,14 @@ final class LocalizationCoverageTests: XCTestCase {
         XCTAssertGreaterThan(referenceCount, 0)
     }
 
-    func testBuiltInPromptModesShowTranslatedNamesUntilRenamed() throws {
-        var mode = try XCTUnwrap(PromptModeStore.defaultStore().mode(id: PromptMode.summaryID))
-        XCTAssertEqual(mode.localizedName, L10n.text("prompt.summary.name"))
+    func testBuiltInPromptModeNamesAreNotTranslated() throws {
+        let english = try XCTUnwrap(L10n.translationTables[.english])
+        XCTAssertFalse(english.keys.contains { $0.hasPrefix("prompt.") && $0.hasSuffix(".name") })
 
-        mode.name = "My Summary"
-        XCTAssertEqual(mode.localizedName, "My Summary")
-    }
-
-    func testRewriteModeNamesTheWritingLanguage() throws {
-        let mode = try XCTUnwrap(PromptModeStore.defaultStore().mode(id: PromptMode.rewriteID))
-
-        XCTAssertEqual(
-            mode.localizedName,
-            L10n.format("prompt.rewrite.name", InkletLanguageStore.writingLanguage.nameInInterfaceLanguage)
-        )
+        var config = AppConfig.defaultConfig()
+        config.selectionActions.translationLanguage = .japanese
+        let mode = try XCTUnwrap(config.promptModes.first { $0.id == PromptMode.toMyLanguageID })
+        XCTAssertEqual(config.promptModeName(mode), "To Japanese")
     }
 
     func testSystemLanguageHonorsTheFirstSupportedPreferenceIncludingEnglish() {

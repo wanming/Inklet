@@ -845,7 +845,7 @@ final class SelectionActionsController {
                     source: .selection,
                     inputText: sourceText,
                     outputText: result.outputText,
-                    modeName: mode.localizedName,
+                    modeName: config.promptModeName(mode),
                     targetLanguageName: nil,
                     model: config.model,
                     metadata: [
