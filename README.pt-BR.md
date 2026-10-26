@@ -12,10 +12,6 @@ Abra o popover de escrita com o atalho global e digite, cole ou dite no mesmo ra
 
 > Este documento é uma tradução do [README.md](README.md) em inglês. Em caso de divergência, vale a versão em inglês.
 
-## Demonstração
-
-Assista ao vídeo de demonstração: [Inklet no YouTube](https://www.youtube.com/watch?v=F5wmFruo0a4).
-
 ## Instalação
 
 O GitHub Releases é o único canal de distribuição oficial do Inklet. Baixe o DMG mais recente, assinado e notarizado, em [GitHub Releases](https://github.com/wanming/Inklet/releases), abra-o e copie o Inklet para `/Applications`.

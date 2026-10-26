@@ -10,10 +10,6 @@
 
 你可以用全局快捷键打开写作浮窗，然后在同一份可编辑原文草稿中输入、粘贴或听写。实时听写已合并到写作助手，转写完成后会停留在草稿里，等待你检查和编辑。在 Apple 芯片的 Mac 上，新安装默认在本机识别语音，声音不会离开这台 Mac。
 
-## 演示
-
-观看演示视频：[Inklet on YouTube](https://www.youtube.com/watch?v=F5wmFruo0a4)。
-
 ## 安装
 
 GitHub Releases 是 Inklet 唯一支持的发布渠道。请从 [GitHub Releases](https://github.com/wanming/Inklet/releases) 下载最新已签名并完成 Apple 公证的 DMG，打开后把 Inklet 复制到 `/Applications`。
