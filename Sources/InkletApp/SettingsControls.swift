@@ -5,6 +5,7 @@ import InkletCore
 
 struct PromptModeTableView: NSViewRepresentable {
     let modes: [PromptMode]
+    let languages: PromptLanguages
     @Binding var selectedModeID: String
     let canDelete: Bool
     let onMove: (Int, Int) -> Void
@@ -14,6 +15,7 @@ struct PromptModeTableView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator {
         Coordinator(
             modes: modes,
+            languages: languages,
             selectedModeID: $selectedModeID,
             canDelete: canDelete,
             onMove: onMove,
@@ -54,6 +56,7 @@ struct PromptModeTableView: NSViewRepresentable {
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         context.coordinator.modes = modes
+        context.coordinator.languages = languages
         context.coordinator.selectedModeID = $selectedModeID
         context.coordinator.canDelete = canDelete
         context.coordinator.onMove = onMove
@@ -76,6 +79,7 @@ struct PromptModeTableView: NSViewRepresentable {
         static let dragPasteboardType = NSPasteboard.PasteboardType("com.inklet.prompt-mode")
 
         var modes: [PromptMode]
+        var languages: PromptLanguages
         var selectedModeID: Binding<String>
         var canDelete: Bool
         var onMove: (Int, Int) -> Void
@@ -86,6 +90,7 @@ struct PromptModeTableView: NSViewRepresentable {
 
         init(
             modes: [PromptMode],
+            languages: PromptLanguages,
             selectedModeID: Binding<String>,
             canDelete: Bool,
             onMove: @escaping (Int, Int) -> Void,
@@ -93,6 +98,7 @@ struct PromptModeTableView: NSViewRepresentable {
             onDelete: @escaping (String) -> Void
         ) {
             self.modes = modes
+            self.languages = languages
             self.selectedModeID = selectedModeID
             self.canDelete = canDelete
             self.onMove = onMove
@@ -114,6 +120,7 @@ struct PromptModeTableView: NSViewRepresentable {
             let mode = modes[row]
             cell.configure(
                 mode: mode,
+                title: mode.displayName(languages: languages),
                 isSelected: mode.id == selectedModeID.wrappedValue,
                 canDelete: canDelete,
                 target: self
@@ -260,6 +267,7 @@ private final class PromptModeTableCellView: NSTableCellView {
 
     func configure(
         mode: PromptMode,
+        title: String,
         isSelected: Bool,
         canDelete: Bool,
         target: PromptModeTableView.Coordinator
@@ -268,7 +276,7 @@ private final class PromptModeTableCellView: NSTableCellView {
         isCellSelected = isSelected
         isModeVisible = mode.isVisible
         canDeleteMode = canDelete
-        titleField.stringValue = mode.name.isEmpty ? L10n.text("settings.mode.untitled") : mode.localizedName
+        titleField.stringValue = mode.name.isEmpty ? L10n.text("settings.mode.untitled") : title
         titleField.font = .systemFont(ofSize: 13, weight: isSelected ? .medium : .regular)
         visibilityButton.image = NSImage(systemSymbolName: mode.isVisible ? "eye" : "eye.slash", accessibilityDescription: nil)?
             .withSymbolConfiguration(symbolConfiguration)

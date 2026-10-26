@@ -514,7 +514,7 @@ final class SettingsViewModel: ObservableObject {
     }
 
     func selectionMenuItem(for button: SelectionMenuButton) -> SelectionMenuItem {
-        SelectionMenuItem.items(for: [button], promptModes: config.promptModes)[0]
+        SelectionMenuItem.items(for: [button], promptModes: config.promptModes, languages: config.promptLanguages)[0]
     }
 
     func canDisableSelectionMenuButton(_ button: SelectionMenuButton) -> Bool {
@@ -645,7 +645,7 @@ final class SettingsViewModel: ObservableObject {
         guard let mode = config.promptModes.first(where: { $0.id == modeID }) else {
             return L10n.text("settings.mode.untitled")
         }
-        return mode.name.isEmpty ? L10n.text("settings.mode.untitled") : mode.localizedName
+        return mode.name.isEmpty ? L10n.text("settings.mode.untitled") : config.promptModeName(mode)
     }
 
     func togglePromptModeVisibility(modeID: String) {
@@ -663,16 +663,21 @@ final class SettingsViewModel: ObservableObject {
         save()
     }
 
-    /// Shows a built-in mode's translated name; typing a different name makes it the user's own.
+    /// Shows a built-in mode's name with its languages filled in; typing a different name makes it the user's own.
     func promptModeNameBinding(modeID: String) -> Binding<String> {
         Binding(
             get: { [weak self] in
-                self?.config.promptModes.first(where: { $0.id == modeID })?.localizedName ?? ""
+                guard let self,
+                      let mode = self.config.promptModes.first(where: { $0.id == modeID })
+                else {
+                    return ""
+                }
+                return self.config.promptModeName(mode)
             },
             set: { [weak self] newValue in
                 guard let self,
                       let index = self.config.promptModes.firstIndex(where: { $0.id == modeID }),
-                      self.config.promptModes[index].localizedName != newValue
+                      self.config.promptModeName(self.config.promptModes[index]) != newValue
                 else {
                     return
                 }

@@ -72,9 +72,11 @@ Le raccourci de dictée ne fonctionne que dans l’éditeur source et uniquement
 - Lit directement le texte sélectionné et peut lire, depuis le résultat de traduction, le texte original comme le texte traduit.
 - Vous laisse choisir les boutons du menu de sélection et leur ordre, dans **Réglages** › **Assistant de sélection** › **Boutons du menu**. **Traduire**, **Prononcer** et n’importe quel mode de prompt peuvent devenir un bouton ; jusqu’à quatre s’affichent à la fois, les autres sont regroupés sous **Plus**. Un bouton de mode de prompt exécute ce mode sur le texte sélectionné et affiche le résultat dans le panneau avec des commandes de copie et de lecture.
 - Transforme le texte avec des modes de prompt intégrés :
-  - En anglais simple et correct (dans votre langue d’écriture, à choisir dans Réglages › Général ; anglais par défaut)
-  - Résumer (dans votre langue de traduction, qui suit par défaut la langue de l’interface)
-  - Nettoyage vocal
+  - To Simple and Correct English (dans votre langue d’écriture, à choisir dans Réglages › Général ; anglais par défaut)
+  - Summarize (dans votre langue de traduction, qui suit par défaut la langue de l’interface)
+  - To French, To Japanese, etc. (traduit dans votre langue de traduction ; pour un seul mot, affiche son sens, sa prononciation et des phrases d’exemple)
+  - Voice Cleanup
+  - Les noms des modes intégrés restent en anglais dans toutes les langues de l’interface, pour que les mêmes lettres les retrouvent ; ils indiquent vos langues jusqu’à ce que vous les renommiez.
 - Affiche le résultat dans le popover au fur et à mesure de sa génération, puis l’insère dans l’app qui avait le focus ou le copie avec le bouton de copie du résultat.
 - Utilise un seul chemin de sélection, indépendant de l’app et fondé d’abord sur l’Accessibilité. Les actions de sélection automatiques demandent d’abord la sélection à l’Accessibilité de macOS, puis n’utilisent le repli configuré via un presse-papiers temporaire que si la **Sélection forcée** l’autorise. Chaque lecture reste liée au processus source capturé et s’annule si ce processus se termine ou perd le focus.
 - Laisse le `Command+C` simulé désactivé par défaut. La copie par le menu reste le repli sûr de la **Sélection forcée** ; vous pouvez activer explicitement la copie simulée comme repli avancé pour les apps sans menu Copier utilisable, mais elle peut perturber les jeux, les bureaux à distance ou les machines virtuelles.

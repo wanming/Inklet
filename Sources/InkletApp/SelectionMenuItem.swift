@@ -34,12 +34,12 @@ struct SelectionMenuItem: Equatable, Identifiable {
         }
     }
 
-    static func items(for buttons: [SelectionMenuButton], promptModes: [PromptMode]) -> [SelectionMenuItem] {
+    static func items(for buttons: [SelectionMenuButton], promptModes: [PromptMode], languages: PromptLanguages) -> [SelectionMenuItem] {
         buttons.map { button in
             guard case .promptMode(let modeID) = button.action else {
                 return SelectionMenuItem(action: button.action)
             }
-            let name = promptModes.first { $0.id == modeID }?.localizedName
+            let name = promptModes.first { $0.id == modeID }?.displayName(languages: languages)
             return SelectionMenuItem(action: button.action, promptModeName: name)
         }
     }
@@ -47,7 +47,8 @@ struct SelectionMenuItem: Equatable, Identifiable {
     static func enabledItems(for config: AppConfig) -> [SelectionMenuItem] {
         items(
             for: config.selectionActions.enabledMenuButtons(promptModes: config.promptModes),
-            promptModes: config.promptModes
+            promptModes: config.promptModes,
+            languages: config.promptLanguages
         )
     }
 }

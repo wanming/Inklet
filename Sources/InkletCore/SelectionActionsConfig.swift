@@ -214,22 +214,6 @@ public enum SelectionTranslationLanguage: String, Codable, CaseIterable, Equatab
 
     public static let defaultWritingLanguage = SelectionTranslationLanguage.english
 
-    /// ISO language code for naming the language in the interface language, such as "ja".
-    public var languageCode: String? {
-        switch self {
-        case .followInterfaceLanguage: nil
-        case .english: "en"
-        case .simplifiedChinese, .traditionalChinese: "zh"
-        case .japanese: "ja"
-        case .korean: "ko"
-        case .spanish: "es"
-        case .french: "fr"
-        case .german: "de"
-        case .portuguese: "pt"
-        case .italian: "it"
-        }
-    }
-
     /// A stored writing language, or English when nothing valid is stored.
     public static func writingLanguage(rawValue: String?) -> SelectionTranslationLanguage {
         guard let rawValue,

@@ -72,9 +72,11 @@ Der Diktat-Kurzbefehl wirkt nur im Quelleditor und nur durch Halten. Unter **Ein
 - Spielt ausgewählten Text direkt ab und kann im Übersetzungsergebnis sowohl den Original- als auch den übersetzten Text abspielen.
 - Unter **Einstellungen** › **Auswahlassistent** › **Menütasten** wählen Sie, welche Tasten das Auswahlmenü zeigt und in welcher Reihenfolge. **Übersetzen**, **Aussprechen** und jeder Prompt-Modus können eine Taste sein; bis zu vier werden gleichzeitig angezeigt, der Rest landet unter **Mehr**. Eine Prompt-Modus-Taste führt diesen Modus auf den ausgewählten Text aus und zeigt das Ergebnis im Bereich mit Kopier- und Wiedergabesteuerung.
 - Wandelt Text mit integrierten Prompt-Modi um:
-  - In einfaches, korrektes Englisch (in Ihrer Schreibsprache, wählbar unter Einstellungen › Allgemein; standardmäßig Englisch)
-  - Zusammenfassen (in Ihrer Übersetzungssprache, standardmäßig die Sprache der Oberfläche)
-  - Sprachbereinigung
+  - To Simple and Correct English (in Ihre Schreibsprache, wählbar unter Einstellungen › Allgemein; standardmäßig Englisch)
+  - Summarize (in Ihre Übersetzungssprache, standardmäßig die Sprache der Oberfläche)
+  - To German, To Japanese usw. (übersetzt in Ihre Übersetzungssprache; bei einem einzelnen Wort zeigt es Bedeutung, Aussprache und Beispielsätze)
+  - Voice Cleanup
+  - Die Namen der integrierten Modi bleiben in jeder Oberflächensprache englisch, damit dieselben Buchstaben sie finden; sie nennen Ihre Sprachen, bis Sie sie umbenennen.
 - Streamt das Ergebnis während der Generierung ins Popover und fügt es dann in die zuvor fokussierte App ein oder kopiert es über die Kopiertaste am Ergebnis.
 - Verwendet einen einzigen, app-unabhängigen Auswahlweg, der zuerst auf Bedienungshilfen setzt. Automatische Auswahlaktionen fragen die Auswahl zunächst über die macOS-Bedienungshilfen ab und nutzen den konfigurierten temporären Zwischenablage-Fallback nur, wenn **Erzwungene Auswahl** es erlaubt. Jeder Lesevorgang bleibt an den erfassten Quellprozess gebunden und wird abgebrochen, wenn dieser Prozess endet oder den Fokus verliert.
 - Lässt simuliertes `Command+C` standardmäßig ausgeschaltet. Das Kopieren über das Menü bleibt der sichere Fallback für **Erzwungene Auswahl**; für Apps ohne nutzbares Kopieren-Menü können Sie simuliertes Kopieren ausdrücklich als erweiterten Fallback aktivieren, das jedoch Spiele, Remote-Desktops oder virtuelle Maschinen stören kann.

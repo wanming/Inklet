@@ -195,9 +195,7 @@ public struct AppConfig: Codable, Equatable, Sendable {
             }
             migratedModes = defaultModes + customModes
         } else {
-            let existingIDs = Set(modes.map(\.id))
-            let missingDefaultModes = hasCurrentBuiltIns ? defaultModes.filter { !existingIDs.contains($0.id) } : []
-            migratedModes = modes + missingDefaultModes
+            migratedModes = insertingMissingDefaultModes(defaultModes, into: modes)
         }
 
         return migratedModes
@@ -227,6 +225,20 @@ public struct AppConfig: Codable, Equatable, Sendable {
                 migratedMode.sortOrder = index
                 return migratedMode
             }
+    }
+
+    /// New built-in modes appear right after the built-in mode that precedes them, so they don't land after a hidden mode.
+    private static func insertingMissingDefaultModes(_ defaultModes: [PromptMode], into modes: [PromptMode]) -> [PromptMode] {
+        var result = modes
+        for (defaultIndex, defaultMode) in defaultModes.enumerated() where !result.contains(where: { $0.id == defaultMode.id }) {
+            let precedingIDs = Set(defaultModes.prefix(defaultIndex).map(\.id))
+            if let anchor = result.lastIndex(where: { precedingIDs.contains($0.id) }) {
+                result.insert(defaultMode, at: anchor + 1)
+            } else {
+                result.append(defaultMode)
+            }
+        }
+        return result
     }
 
     private static var legacyVoiceCleanupSystemPrompt: String {
