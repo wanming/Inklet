@@ -216,7 +216,9 @@ final class WelcomeGuideViewModel: ObservableObject {
                 downloadDictationModelIfNeeded()
             }
             _ = settings.flushPendingEdits()
-        case .welcome, .accessibility:
+        case .welcome:
+            _ = settings.flushPendingEdits()
+        case .accessibility:
             break
         case .ready:
             onFinish?()
@@ -337,7 +339,7 @@ struct WelcomeGuideView: View {
     private var content: some View {
         switch model.step {
         case .welcome:
-            welcomeStep
+            WelcomeLanguageStep(model: model, settings: settings)
         case .accessibility:
             accessibilityStep
         case .writingModel:
@@ -347,75 +349,6 @@ struct WelcomeGuideView: View {
         case .ready:
             readyStep
         }
-    }
-
-    /// The first step picks the interface language, so everything after it reads in that language.
-    private var welcomeStep: some View {
-        VStack(spacing: 16) {
-            PenNibShape()
-                .stroke(style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
-                .foregroundStyle(InkletTheme.primary)
-                .padding(11)
-                .frame(width: 46, height: 46)
-                .background(InkletTheme.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
-            stepHeader(
-                title: L10n.text("welcome.intro.title"),
-                message: L10n.text("welcome.language.message")
-            )
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3),
-                spacing: 8
-            ) {
-                ForEach(InterfaceLanguage.allCases) { language in
-                    languageButton(language)
-                }
-            }
-            writingLanguageRow
-        }
-    }
-
-    /// The language the rewrite mode writes in, asked right after the interface language.
-    private var writingLanguageRow: some View {
-        HStack(spacing: InkletTheme.Spacing.xs) {
-            Text(L10n.text("welcome.writingLanguage.title"))
-                .font(InkletTheme.Typography.body)
-                .foregroundStyle(InkletTheme.secondaryLabel)
-            Picker("", selection: $settings.writingLanguage) {
-                ForEach(SelectionTranslationLanguage.writingLanguageCases) { language in
-                    Text(language.localizedDisplayName).tag(language)
-                }
-            }
-            .labelsHidden()
-            .fixedSize()
-        }
-        .padding(.top, InkletTheme.Spacing.xxs)
-    }
-
-    private func languageButton(_ language: InterfaceLanguage) -> some View {
-        let isSelected = settings.interfaceLanguage == language
-        return Button {
-            model.selectLanguage(language)
-        } label: {
-            Text(language.localizedDisplayName)
-                .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
-                .foregroundStyle(InkletTheme.label)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, minHeight: InkletTheme.ControlHeight.large)
-                .background(
-                    isSelected ? InkletTheme.surfaceRaised : InkletTheme.fill,
-                    in: RoundedRectangle(cornerRadius: InkletTheme.Radius.control)
-                )
-                .overlay {
-                    if isSelected {
-                        RoundedRectangle(cornerRadius: InkletTheme.Radius.control)
-                            .stroke(InkletTheme.strokeStrong)
-                    }
-                }
-                .shadow(color: .black.opacity(isSelected ? 0.06 : 0), radius: 1, y: 1)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var accessibilityStep: some View {
@@ -728,5 +661,108 @@ struct WelcomeGuideView: View {
             RoundedRectangle(cornerRadius: InkletTheme.cornerRadius)
                 .stroke(isSelected ? InkletTheme.strokeStrong : InkletTheme.hairline)
         }
+    }
+}
+
+/// The first step: the three languages Inklet works with. The interface language applies right away,
+/// so everything after it reads in that language.
+struct WelcomeLanguageStep: View {
+    @ObservedObject var model: WelcomeGuideViewModel
+    @ObservedObject var settings: SettingsViewModel
+
+    var body: some View {
+        VStack(spacing: InkletTheme.Spacing.sm) {
+            PenNibShape()
+                .stroke(style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                .foregroundStyle(InkletTheme.primary)
+                .padding(11)
+                .frame(width: 46, height: 46)
+                .background(InkletTheme.primary.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+            VStack(spacing: InkletTheme.Spacing.xs) {
+                Text(L10n.text("welcome.intro.title"))
+                    .font(InkletTheme.Typography.pageTitle)
+                    .tracking(-0.2)
+                    .foregroundStyle(InkletTheme.label)
+                Text(L10n.text("welcome.language.message"))
+                    .font(InkletTheme.Typography.body)
+                    .foregroundStyle(InkletTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(spacing: 0) {
+                languageRow(
+                    title: L10n.text("welcome.language.interface.title"),
+                    detail: L10n.text("welcome.language.interface.detail")
+                ) {
+                    Picker("", selection: Binding(
+                        get: { settings.interfaceLanguage },
+                        set: { model.selectLanguage($0) }
+                    )) {
+                        ForEach(InterfaceLanguage.allCases) { language in
+                            Text(language.localizedDisplayName).tag(language)
+                        }
+                    }
+                }
+                InkletRowDivider()
+                languageRow(
+                    title: L10n.text("welcome.language.mine.title"),
+                    detail: L10n.text("welcome.language.mine.detail")
+                ) {
+                    Picker("", selection: $settings.config.selectionActions.translationLanguage) {
+                        ForEach(SelectionTranslationLanguage.allCases) { language in
+                            Text(language.localizedDisplayName).tag(language)
+                        }
+                    }
+                }
+                InkletRowDivider()
+                languageRow(
+                    title: L10n.text("welcome.language.writing.title"),
+                    detail: L10n.text("welcome.language.writing.detail")
+                ) {
+                    Picker("", selection: $settings.writingLanguage) {
+                        ForEach(SelectionTranslationLanguage.writingLanguageCases) { language in
+                            Text(language.localizedDisplayName).tag(language)
+                        }
+                    }
+                }
+            }
+            .inkletCard()
+            .padding(.top, InkletTheme.Spacing.xxs)
+            HStack(alignment: .firstTextBaseline, spacing: InkletTheme.Spacing.xs) {
+                // The Prompt Modes icon in Settings, so the hint points at the same place.
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: InkletTheme.IconSize.small))
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                Text(L10n.format("welcome.language.prompts", L10n.text("settings.section.promptModes")))
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, InkletTheme.Spacing.xxs)
+        }
+    }
+
+    private func languageRow<Control: View>(
+        title: String,
+        detail: String,
+        @ViewBuilder control: () -> Control
+    ) -> some View {
+        HStack(alignment: .center, spacing: InkletTheme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(InkletTheme.Typography.control)
+                    .foregroundStyle(InkletTheme.label)
+                Text(detail)
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            control()
+                .labelsHidden()
+                .fixedSize()
+        }
+        .padding(InkletTheme.Spacing.sm)
     }
 }
