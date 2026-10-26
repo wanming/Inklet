@@ -32,57 +32,56 @@ final class SelectionPanelPlacementTests: XCTestCase {
         XCTAssertEqual(origin, SelectionPoint(x: 218, y: 58))
     }
 
-    func testTranslationInitialSizeGrowsForLongText() {
-        let shortSize = SelectionPanelSizing.translationResultSize(
-            textLength: 40,
-            fittingSize: SelectionPanelSize(width: 300, height: 180)
-        )
-        let longSize = SelectionPanelSizing.translationResultSize(
-            textLength: 500,
-            fittingSize: SelectionPanelSize(width: 300, height: 180)
-        )
+    func testTranslationHeightFitsShortContentAndWidthGrowsForLongText() {
+        let shortSize = SelectionPanelSizing.translationResultSize(textLength: 40) { _ in 78 }
+        let longSize = SelectionPanelSizing.translationResultSize(textLength: 500) { _ in 200 }
 
-        XCTAssertEqual(shortSize, SelectionPanelSize(width: 320, height: 220))
-        XCTAssertEqual(longSize, SelectionPanelSize(width: 440, height: 340))
+        XCTAssertEqual(shortSize, SelectionPanelSize(width: 320, height: 78))
+        XCTAssertEqual(longSize, SelectionPanelSize(width: 440, height: 200))
     }
 
-    func testTranslationInitialSizeStillRespectsMaximums() {
-        let size = SelectionPanelSizing.translationResultSize(
-            textLength: 2_000,
-            fittingSize: SelectionPanelSize(width: 900, height: 900)
-        )
+    func testTranslationHeightIsMeasuredAtThePanelWidth() {
+        var measuredWidths: [Double] = []
+        _ = SelectionPanelSizing.translationResultSize(
+            textLength: 40,
+            rememberedSize: SelectionPanelSize(width: 480, height: 300)
+        ) { width in
+            measuredWidths.append(width)
+            return 100
+        }
 
-        XCTAssertEqual(size, SelectionPanelSize(width: 520, height: 420))
+        XCTAssertEqual(measuredWidths, [480])
     }
 
-    func testTranslationInitialSizeUsesRememberedUserSize() {
-        let size = SelectionPanelSizing.translationResultSize(
-            textLength: 40,
-            fittingSize: SelectionPanelSize(width: 300, height: 180),
-            rememberedSize: SelectionPanelSize(width: 480, height: 360)
-        )
+    func testTranslationHeightStaysBetweenTheMinimumAndTheDefaultMaximum() {
+        let tiny = SelectionPanelSizing.translationResultSize(textLength: 1) { _ in 20 }
+        let long = SelectionPanelSizing.translationResultSize(textLength: 2_000) { _ in 1_500 }
 
-        XCTAssertEqual(size, SelectionPanelSize(width: 480, height: 360))
+        XCTAssertEqual(tiny, SelectionPanelSize(width: 320, height: 72))
+        XCTAssertEqual(long, SelectionPanelSize(width: 520, height: 360))
     }
 
-    func testTranslationRememberedSizeUsesManualResizeBounds() {
-        let expandedSize = SelectionPanelSizing.translationResultSize(
-            textLength: 40,
-            fittingSize: SelectionPanelSize(width: 300, height: 180),
-            rememberedSize: SelectionPanelSize(width: 540, height: 500),
-            rememberedMinimumSize: SelectionPanelSize(width: 300, height: 180),
-            rememberedMaximumSize: SelectionPanelSize(width: 560, height: 520)
-        )
-        let clampedSize = SelectionPanelSizing.translationResultSize(
-            textLength: 40,
-            fittingSize: SelectionPanelSize(width: 300, height: 180),
-            rememberedSize: SelectionPanelSize(width: 260, height: 120),
-            rememberedMinimumSize: SelectionPanelSize(width: 300, height: 180),
-            rememberedMaximumSize: SelectionPanelSize(width: 560, height: 520)
-        )
+    func testTranslationRememberedSizeSetsTheWidthAndHowTallThePanelMayGrow() {
+        let remembered = SelectionPanelSize(width: 480, height: 300)
+        let short = SelectionPanelSizing.translationResultSize(textLength: 40, rememberedSize: remembered) { _ in 78 }
+        let long = SelectionPanelSizing.translationResultSize(textLength: 900, rememberedSize: remembered) { _ in 900 }
 
-        XCTAssertEqual(expandedSize, SelectionPanelSize(width: 540, height: 500))
-        XCTAssertEqual(clampedSize, SelectionPanelSize(width: 300, height: 180))
+        XCTAssertEqual(short, SelectionPanelSize(width: 480, height: 78))
+        XCTAssertEqual(long, SelectionPanelSize(width: 480, height: 300))
+    }
+
+    func testTranslationRememberedSizeIsClampedToTheResizeBounds() {
+        let wide = SelectionPanelSizing.translationResultSize(
+            textLength: 900,
+            rememberedSize: SelectionPanelSize(width: 900, height: 900)
+        ) { _ in 900 }
+        let narrow = SelectionPanelSizing.translationResultSize(
+            textLength: 900,
+            rememberedSize: SelectionPanelSize(width: 100, height: 40)
+        ) { _ in 900 }
+
+        XCTAssertEqual(wide, SelectionPanelSize(width: 560, height: 520))
+        XCTAssertEqual(narrow, SelectionPanelSize(width: 300, height: 72))
     }
 
     func testTranslationDragRegionAllowsToolbarBlankButExcludesTextAndButtons() {

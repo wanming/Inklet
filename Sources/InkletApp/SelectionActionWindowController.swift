@@ -90,8 +90,9 @@ private final class SelectionActionHostingView<Content: View>: NSHostingView<Con
 @MainActor
 final class SelectionActionWindowController: NSWindowController {
     private static let translationPanelSizeKey = InkletPreferenceKeys.translationPanelSize
-    private static let translationPanelMinimumSize = SelectionPanelSize(width: 300, height: 180)
+    private static let translationPanelMinimumSize = SelectionPanelSize(width: 300, height: 72)
     private static let translationPanelMaximumSize = SelectionPanelSize(width: 560, height: 520)
+    private static let translationPanelDefaultMaximumHeight: Double = 360
 
     var onTranslate: (() -> Void)?
     var onPronounce: (() -> Void)?
@@ -333,10 +334,11 @@ final class SelectionActionWindowController: NSWindowController {
         if case .translationResult(let text, _, _) = state {
             return SelectionPanelSizing.translationResultSize(
                 textLength: text.count,
-                fittingSize: fittingSize,
                 rememberedSize: rememberedTranslationPanelSize,
-                rememberedMinimumSize: Self.translationPanelMinimumSize,
-                rememberedMaximumSize: Self.translationPanelMaximumSize
+                minimumSize: Self.translationPanelMinimumSize,
+                maximumSize: Self.translationPanelMaximumSize,
+                defaultMaximumHeight: Self.translationPanelDefaultMaximumHeight,
+                contentHeight: { [self] width in Double(translationResultContentHeight(width: CGFloat(width))) }
             )
         }
 
@@ -345,6 +347,20 @@ final class SelectionActionWindowController: NSWindowController {
             width: min(max(fittingSize.width, 120), maximumWidth),
             height: min(max(fittingSize.height, minimumPanelHeight), 260)
         )
+    }
+
+    /// The result's full height at `width`, measured with the text unscrolled, so the panel fits it.
+    private func translationResultContentHeight(width: CGFloat) -> CGFloat {
+        let measuringView = NSHostingView(rootView: SelectionActionView(
+            state: state,
+            menuItems: menuItems,
+            resultKind: resultKind,
+            measuresFullResult: true,
+            onTranslate: {}, onPronounce: {}, onPronounceOriginal: {},
+            onPronounceTranslation: {}, onCopyTranslation: {}, onRetryTranslation: {}
+        )
+        .frame(width: width))
+        return measuringView.fittingSize.height
     }
 
     private func setWindowFrame(_ frame: NSRect) {
@@ -476,8 +492,15 @@ final class SelectionActionWindowController: NSWindowController {
     }
 
     private func saveRememberedTranslationPanelSize(_ size: NSSize) {
+        // A height that cuts the text off is a limit the user chose. A panel dragged taller than
+        // its text only says how far later results may grow, so a short result never caps them
+        // below the default.
+        let cutsOffText = size.height < translationResultContentHeight(width: size.width) - 1
+        let maximumHeight = cutsOffText
+            ? size.height
+            : max(size.height, Self.translationPanelDefaultMaximumHeight)
         let clampedSize = Self.clampedRememberedTranslationPanelSize(
-            SelectionPanelSize(width: size.width, height: size.height)
+            SelectionPanelSize(width: size.width, height: maximumHeight)
         )
         rememberedTranslationPanelSize = clampedSize
         UserDefaults.standard.set(
@@ -493,15 +516,15 @@ final class SelectionActionWindowController: NSWindowController {
         return (value as? NSNumber)?.doubleValue
     }
 
+    /// The remembered width is the result panel's width; the remembered height is how tall it
+    /// may grow before the text scrolls.
     private static func clampedRememberedTranslationPanelSize(
         _ size: SelectionPanelSize
     ) -> SelectionPanelSize {
-        SelectionPanelSizing.translationResultSize(
-            textLength: 0,
-            fittingSize: Self.translationPanelMinimumSize,
-            rememberedSize: size,
-            rememberedMinimumSize: Self.translationPanelMinimumSize,
-            rememberedMaximumSize: Self.translationPanelMaximumSize
+        SelectionPanelSizing.clamped(
+            size,
+            minimumSize: translationPanelMinimumSize,
+            maximumSize: translationPanelMaximumSize
         )
     }
 }
@@ -514,10 +537,21 @@ extension SelectionActionWindowController: NSWindowDelegate {
         }
 
         hasUserResizedTranslationPanel = true
-        if let window = notification.object as? NSWindow {
+        // A drag saves once when it ends, not on every frame.
+        if let window = notification.object as? NSWindow, !window.inLiveResize {
             saveRememberedTranslationPanelSize(window.frame.size)
         }
         updateBackgroundDragExclusionRects()
+    }
+
+    func windowDidEndLiveResize(_ notification: Notification) {
+        guard hasUserResizedTranslationPanel, isTranslationResultState,
+              let window = notification.object as? NSWindow
+        else {
+            return
+        }
+
+        saveRememberedTranslationPanelSize(window.frame.size)
     }
 }
 
