@@ -1,0 +1,30 @@
+name: Temporary settings snapshots
+
+on:
+  push:
+    branches: [claude/project-thread-wor84q]
+
+permissions:
+  contents: read
+
+jobs:
+  snapshots:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Light snapshots
+        run: swift test --filter testSettingsSnapshotsUseSyntheticDataInEveryLanguage
+        env:
+          INKLET_LOCALIZATION_SNAPSHOT_DIR: ${{ runner.temp }}/snapshots/light
+      - name: Dark snapshots
+        run: swift test --filter testSettingsSnapshotsUseSyntheticDataInEveryLanguage
+        env:
+          INKLET_LOCALIZATION_SNAPSHOT_DIR: ${{ runner.temp }}/snapshots/dark
+          INKLET_SNAPSHOT_APPEARANCE: dark
+      - name: Full test suite
+        run: swift test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: settings-snapshots
+          path: ${{ runner.temp }}/snapshots

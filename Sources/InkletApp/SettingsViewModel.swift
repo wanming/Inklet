@@ -134,6 +134,12 @@ final class SettingsViewModel: ObservableObject {
         selectedProvider.id == LLMProviderPreset.openAI.id
     }
 
+    /// Text to speech always needs the OpenAI key, and so does any engine set to OpenAI.
+    var isOpenAIAPIKeyMissing: Bool {
+        let key = usesOpenAIForWriting ? providerAPIKey : openAIAPIKey
+        return key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     func providerDisplayName(_ preset: LLMProviderPreset) -> String {
         preset.localizedPickerName
     }
