@@ -351,6 +351,13 @@ else
   echo "Installed app removal: not requested"
 fi
 
+# Completion markers of LegacySandboxDataMigrator (LegacyMigrationVersions are all 1).
+legacy_migration_keys=(
+  "Inklet.LegacySandboxMigration.preferencesVersion"
+  "Inklet.LegacySandboxMigration.credentialsVersion"
+  "Inklet.LegacySandboxMigration.historyVersion"
+)
+
 for target_index in "${!bundle_ids[@]}"; do
   bundle_id="${bundle_ids[$target_index]}"
   app_name="${app_names[$target_index]}"
@@ -374,7 +381,15 @@ for target_index in "${!bundle_ids[@]}"; do
   else
     run rm -rf "${application_support_paths[$target_index]}"
   fi
-  run rm -rf "${legacy_container_paths[$target_index]}"
+  run_silently_allow_failure rm -rf "${legacy_container_paths[$target_index]}"
+  # macOS can protect an old sandbox container from deletion. Mark its data as already imported,
+  # so the next launch starts like a new install instead of bringing the old settings back.
+  if [[ "$dry_run" == "0" && -e "${legacy_container_paths[$target_index]}" ]]; then
+    echo "Legacy container is protected by macOS; kept and marked as already imported."
+    for migration_key in "${legacy_migration_keys[@]}"; do
+      run defaults write "${preference_paths[$target_index]}" "$migration_key" -int 1
+    done
+  fi
   run rm -f "${diagnostic_paths[$target_index]}"
 
   if [[ "$remove_installed_app" == "1" ]]; then

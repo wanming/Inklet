@@ -519,6 +519,27 @@ fi
 assert_log_line "$command_log" $'rm\t-rf\t'"${local_container}"
 /bin/rm -rf "$keep_models_support"
 
+# The stubbed rm leaves the container in place, as macOS does with a protected sandbox container.
+protected_container_log="${test_root}/protected-container.log"
+mkdir -p "$local_container"
+: >"$command_log"
+if ! env "${reset_environment[@]}" "$reset_script" --scope local >"$protected_container_log" 2>&1; then
+  sed -n '1,200p' "$protected_container_log" >&2
+  fail "reset-local-state.sh must finish when the legacy container can't be removed."
+fi
+assert_output_line \
+  "$protected_container_log" \
+  "Legacy container is protected by macOS; kept and marked as already imported."
+for migration_key in \
+  Inklet.LegacySandboxMigration.preferencesVersion \
+  Inklet.LegacySandboxMigration.credentialsVersion \
+  Inklet.LegacySandboxMigration.historyVersion; do
+  assert_log_line \
+    "$command_log" \
+    $'defaults\twrite\t'"${canonical_test_home}/Library/Preferences/${local_bundle}"$'\t'"${migration_key}"$'\t-int\t1'
+done
+/bin/rm -rf "$local_container"
+
 expected_reset_line='"${repo_root}/scripts/reset-local-state.sh" --scope local --remove-installed-app "$@"'
 expected_runner_line='"${repo_root}/scripts/run-local-app.sh"'
 if ! grep -Fxq "$expected_reset_line" "$rebuild_script"; then
