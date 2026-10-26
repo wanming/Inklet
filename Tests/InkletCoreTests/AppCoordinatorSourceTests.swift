@@ -227,6 +227,42 @@ final class AppCoordinatorSourceTests: XCTestCase {
         XCTAssertTrue(source.contains("NSWorkspace.shared.open(Self.feedbackURL)"))
     }
 
+    func testUnfinishedWelcomeGuideTakesOverOpenInkletAndDisablesSideMenuItems() throws {
+        let source = try appCoordinatorSource()
+        let openStart = try XCTUnwrap(source.range(of: "@objc func openPopover()"))
+        let settingsStart = try XCTUnwrap(source.range(
+            of: "@objc func openSettings()",
+            range: openStart.upperBound..<source.endIndex
+        ))
+        let openBlock = source[openStart.lowerBound..<settingsStart.lowerBound]
+        let guideShow = try XCTUnwrap(openBlock.range(of: "welcomeGuideController.show()"))
+        let popoverShow = try XCTUnwrap(openBlock.range(of: "windowController.show(fallbackApplication:"))
+        XCTAssertLessThan(guideShow.lowerBound, popoverShow.lowerBound)
+
+        XCTAssertTrue(source.contains("mainMenuItemsDisabledDuringWelcomeGuide = [aboutItem]"))
+        XCTAssertTrue(source.contains(
+            "statusMenuItemsDisabledDuringWelcomeGuide = [feedbackItem, changelogItem, aboutItem]"
+        ))
+        XCTAssertTrue(source.contains("item.isEnabled = !isWelcomeGuidePending"))
+        XCTAssertTrue(source.contains("&& !isWelcomeGuidePending"))
+
+        let showGuideStart = try XCTUnwrap(source.range(of: "private func showWelcomeGuideIfPending() -> Bool"))
+        let finishStart = try XCTUnwrap(source.range(
+            of: "private func finishWelcomeGuide()",
+            range: showGuideStart.upperBound..<source.endIndex
+        ))
+        let prepareWhatsNewStart = try XCTUnwrap(source.range(
+            of: "private func prepareWhatsNew()",
+            range: finishStart.upperBound..<source.endIndex
+        ))
+        XCTAssertTrue(source[showGuideStart.lowerBound..<finishStart.lowerBound]
+            .contains("refreshWelcomeGuideMenuItems()"))
+        let finishBlock = source[finishStart.lowerBound..<prepareWhatsNewStart.lowerBound]
+        let release = try XCTUnwrap(finishBlock.range(of: "welcomeGuideController = nil"))
+        let refresh = try XCTUnwrap(finishBlock.range(of: "refreshWelcomeGuideMenuItems()"))
+        XCTAssertLessThan(release.lowerBound, refresh.lowerBound)
+    }
+
     func testUpdateMenusTrackPresentationAndFlushOnClose() throws {
         let source = try appCoordinatorSource()
 
