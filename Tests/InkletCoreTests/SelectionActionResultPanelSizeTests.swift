@@ -72,6 +72,42 @@ final class SelectionActionResultPanelSizeTests: XCTestCase {
         }
     }
 
+    func testResizingAShortResultRemembersOnlyTheLastHeightNotTheTallest() throws {
+        try withoutRememberedPanelSize {
+            let controller = SelectionActionWindowController()
+            defer { controller.hidePanel() }
+            controller.showMenu(at: SelectionPoint(x: 400, y: 400))
+            controller.showTranslation("Z-Man Finesse TRD")
+            let window = try XCTUnwrap(controller.window)
+
+            window.setFrame(NSRect(x: 400, y: 100, width: 320, height: 500), display: false)
+            XCTAssertEqual(rememberedPanelSize()?["height"], 500)
+
+            window.setFrame(NSRect(x: 400, y: 300, width: 320, height: 300), display: false)
+            XCTAssertEqual(rememberedPanelSize()?["width"], 320)
+            XCTAssertEqual(rememberedPanelSize()?["height"], 360)
+        }
+    }
+
+    func testResizingThatCutsTheTextOffRemembersThatHeight() throws {
+        try withoutRememberedPanelSize {
+            let controller = SelectionActionWindowController()
+            defer { controller.hidePanel() }
+            controller.showMenu(at: SelectionPoint(x: 400, y: 400))
+            controller.showTranslation(String(repeating: "A longer translation that wraps. ", count: 5))
+            let window = try XCTUnwrap(controller.window)
+
+            window.setFrame(NSRect(x: 400, y: 300, width: 320, height: 100), display: false)
+
+            XCTAssertEqual(rememberedPanelSize()?["height"], 100)
+        }
+    }
+
+    private func rememberedPanelSize() -> [String: Double]? {
+        UserDefaults.standard.dictionary(forKey: InkletPreferenceKeys.translationPanelSize)?
+            .compactMapValues { ($0 as? NSNumber)?.doubleValue }
+    }
+
     private func withoutRememberedPanelSize(_ body: () throws -> Void) rethrows {
         try withRememberedPanelSize(nil, body)
     }

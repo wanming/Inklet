@@ -493,11 +493,12 @@ final class SelectionActionWindowController: NSWindowController {
 
     private func saveRememberedTranslationPanelSize(_ size: NSSize) {
         // A height that cuts the text off is a limit the user chose. A panel dragged taller than
-        // its text only says how far later results may grow, so a short result never caps them.
+        // its text only says how far later results may grow, so a short result never caps them
+        // below the default.
         let cutsOffText = size.height < translationResultContentHeight(width: size.width) - 1
         let maximumHeight = cutsOffText
             ? size.height
-            : max(size.height, rememberedTranslationPanelSize?.height ?? Self.translationPanelDefaultMaximumHeight)
+            : max(size.height, Self.translationPanelDefaultMaximumHeight)
         let clampedSize = Self.clampedRememberedTranslationPanelSize(
             SelectionPanelSize(width: size.width, height: maximumHeight)
         )
@@ -536,10 +537,21 @@ extension SelectionActionWindowController: NSWindowDelegate {
         }
 
         hasUserResizedTranslationPanel = true
-        if let window = notification.object as? NSWindow {
+        // A drag saves once when it ends, not on every frame.
+        if let window = notification.object as? NSWindow, !window.inLiveResize {
             saveRememberedTranslationPanelSize(window.frame.size)
         }
         updateBackgroundDragExclusionRects()
+    }
+
+    func windowDidEndLiveResize(_ notification: Notification) {
+        guard hasUserResizedTranslationPanel, isTranslationResultState,
+              let window = notification.object as? NSWindow
+        else {
+            return
+        }
+
+        saveRememberedTranslationPanelSize(window.frame.size)
     }
 }
 
