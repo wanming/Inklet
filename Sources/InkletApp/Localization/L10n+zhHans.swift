@@ -156,7 +156,7 @@ extension L10n {
         "settings.group.apiKeys": "API Key",
         "settings.row.engine": "引擎",
         "settings.help.textEngine": "用于写作助手和选区翻译。",
-        "settings.help.speechOutputEngine": "用于选区助手的“发音”。目前只支持 OpenAI。",
+        "settings.help.speechOutputEngine": "用于选区助手的“发音”。目前只支持 OpenAI，需要 OpenAI API Key。",
         "settings.help.openAIAPIKey.shared": "文字转语音需要它，上面选了 OpenAI 的引擎也用它。保存在本机，清空输入框即可删除。",
         "settings.row.providerAPIKey": "%@ API Key",
         "settings.apiKey.openAIMissing": "需要 OpenAI API Key",

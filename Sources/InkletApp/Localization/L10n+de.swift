@@ -78,7 +78,7 @@ extension L10n {
         "settings.group.apiKeys": "API-Schlüssel",
         "settings.row.engine": "Engine",
         "settings.help.textEngine": "Wird vom Schreibassistenten und für die Übersetzung der Auswahl verwendet.",
-        "settings.help.speechOutputEngine": "Wird von „Aussprechen“ im Auswahlassistenten verwendet. Derzeit gibt es nur OpenAI.",
+        "settings.help.speechOutputEngine": "Wird von „Aussprechen“ im Auswahlassistenten verwendet. Derzeit gibt es nur OpenAI, das einen OpenAI-API-Schlüssel braucht.",
         "settings.help.openAIAPIKey.shared": "Wird für Text zu Sprache gebraucht und von jeder Engine oben, die auf OpenAI steht. Wird auf diesem Mac gespeichert. Zum Entfernen das Feld leeren.",
         "settings.row.providerAPIKey": "%@-API-Schlüssel",
         "settings.apiKey.openAIMissing": "OpenAI-API-Schlüssel nötig",

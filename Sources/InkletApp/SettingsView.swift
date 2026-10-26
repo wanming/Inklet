@@ -348,13 +348,11 @@ struct SettingsView: View {
 
             settingsGroup(L10n.text("settings.group.textToSpeech")) {
                 settingsRow(L10n.text("settings.row.engine"), help: L10n.text("settings.help.speechOutputEngine")) {
-                    HStack(spacing: InkletTheme.Spacing.sm) {
-                        openAIKeyMissingLabel(isShown: true)
-                        Text(LLMProviderPreset.openAI.name)
-                            .font(InkletTheme.Typography.body)
-                            .foregroundStyle(InkletTheme.secondaryLabel)
-                            .fixedSize()
-                    }
+                    // Not a choice yet, so no warning here; Pronounce shows it where it is used.
+                    Text(LLMProviderPreset.openAI.name)
+                        .font(InkletTheme.Typography.body)
+                        .foregroundStyle(InkletTheme.secondaryLabel)
+                        .fixedSize()
                 }
             }
 
