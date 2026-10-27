@@ -312,7 +312,7 @@ extension L10n {
         "whatsNew.2.1.0.plainText.title": "结果不再带 Markdown 符号",
         "whatsNew.2.1.0.plainText.detail": "改写、翻译和总结的结果现在都是纯文本，不会再出现 **、# 这类 Markdown 符号。原文本身用到的 Markdown 会保留。",
         "whatsNew.2.1.0.beta.title": "抢先体验 Beta 版",
-        "whatsNew.2.1.0.beta.detail": "想先用上新功能？在设置 › 通用里打开“Beta 版更新”。随时可以关掉，回到正式版。",
+        "whatsNew.2.1.0.beta.detail": "想先用上新功能？在设置 › 通用里打开“Beta 版更新”。关掉后会在下一个正式版发布时回到正式版。",
         "welcome.shortcuts.writing": "打开 Inklet",
         "welcome.shortcuts.writing.detail": "在任何 App 里按下就会打开写作浮窗。点一下输入框，再按新的按键。在浮窗里按住 ⌘ 可以查看所有快捷键。",
         "welcome.shortcuts.dictation": "长按的按键",

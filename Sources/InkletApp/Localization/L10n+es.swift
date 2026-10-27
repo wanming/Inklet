@@ -379,7 +379,7 @@ extension L10n {
         "whatsNew.2.1.0.plainText.title": "Resultados en texto plano",
         "whatsNew.2.1.0.plainText.detail": "Las reescrituras, traducciones y resúmenes ahora llegan como texto plano, sin símbolos de Markdown sueltos como ** o #. Se conserva el Markdown que ya usa tu propio texto.",
         "whatsNew.2.1.0.beta.title": "Prueba las betas antes",
-        "whatsNew.2.1.0.beta.detail": "¿Quieres las novedades primero? Activa Actualizaciones beta en Ajustes › General. Desactívalo cuando quieras para volver a las versiones estables.",
+        "whatsNew.2.1.0.beta.detail": "¿Quieres las novedades primero? Activa Actualizaciones beta en Ajustes › General. Si lo desactivas, Inklet vuelve a las versiones estables con la próxima versión estable.",
         "welcome.shortcuts.writing": "Abrir Inklet",
         "welcome.shortcuts.writing.detail": "Púlsalo en cualquier app para abrir la ventana de escritura. Haz clic en el campo y pulsa las nuevas teclas. En la ventana, mantén pulsada ⌘ para ver todos los atajos.",
         "welcome.shortcuts.dictation": "Tecla para mantener",

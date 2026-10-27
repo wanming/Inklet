@@ -379,7 +379,7 @@ extension L10n {
         "whatsNew.2.1.0.plainText.title": "結果不再帶 Markdown 符號",
         "whatsNew.2.1.0.plainText.detail": "改寫、翻譯和摘要的結果現在都是純文字，不會再出現 **、# 這類 Markdown 符號。原文本身用到的 Markdown 會保留。",
         "whatsNew.2.1.0.beta.title": "搶先體驗 Beta 版",
-        "whatsNew.2.1.0.beta.detail": "想先用上新功能？在設定 › 一般裡打開「Beta 版更新」。隨時可以關掉，回到正式版。",
+        "whatsNew.2.1.0.beta.detail": "想先用上新功能？在設定 › 一般裡打開「Beta 版更新」。關掉後會在下一個正式版發布時回到正式版。",
         "welcome.shortcuts.writing": "開啟 Inklet",
         "welcome.shortcuts.writing.detail": "在任何 App 中按下就會開啟寫作浮窗。點一下輸入框，再按新的按鍵。在浮窗中按住 ⌘ 可以查看所有快捷鍵。",
         "welcome.shortcuts.dictation": "長按的按鍵",

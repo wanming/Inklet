@@ -379,7 +379,7 @@ extension L10n {
         "whatsNew.2.1.0.plainText.title": "결과는 일반 텍스트로",
         "whatsNew.2.1.0.plainText.detail": "다시 쓰기, 번역, 요약 결과가 이제 ** 나 # 같은 Markdown 기호 없이 일반 텍스트로 나옵니다. 원문에 이미 쓰인 Markdown은 그대로 유지됩니다.",
         "whatsNew.2.1.0.beta.title": "베타 버전 먼저 써 보기",
-        "whatsNew.2.1.0.beta.detail": "새 기능을 먼저 써 보고 싶다면 설정 › 일반에서 '베타 업데이트'를 켜세요. 언제든 끄고 정식 버전으로 돌아갈 수 있습니다.",
+        "whatsNew.2.1.0.beta.detail": "새 기능을 먼저 써 보고 싶다면 설정 › 일반에서 '베타 업데이트'를 켜세요. 끄면 다음 정식 버전이 나올 때 정식 버전으로 돌아갑니다.",
         "welcome.shortcuts.writing": "Inklet 열기",
         "welcome.shortcuts.writing.detail": "어떤 앱에서든 누르면 글쓰기 팝오버가 열립니다. 칸을 클릭한 뒤 새 키를 누르세요. 팝오버에서 ⌘를 길게 누르면 모든 단축키가 표시됩니다.",
         "welcome.shortcuts.dictation": "길게 누를 키",

@@ -312,7 +312,7 @@ extension L10n {
         "whatsNew.2.1.0.plainText.title": "Plain Text Results",
         "whatsNew.2.1.0.plainText.detail": "Rewrites, translations and summaries now come back as plain text, without stray Markdown symbols like ** or #. Markdown your own text already uses is kept.",
         "whatsNew.2.1.0.beta.title": "Try Betas Early",
-        "whatsNew.2.1.0.beta.detail": "Want new features first? Turn on Beta updates in Settings › General. Turn it off any time to go back to stable releases.",
+        "whatsNew.2.1.0.beta.detail": "Want new features first? Turn on Beta updates in Settings › General. If you turn it off, Inklet moves back to stable with the next stable release.",
         "welcome.shortcuts.writing": "Open Inklet",
         "welcome.shortcuts.writing.detail": "Press in any app to open the writing popover. Click the field, then press new keys. In the popover, hold ⌘ to see every shortcut.",
         "welcome.shortcuts.dictation": "Hold Key",

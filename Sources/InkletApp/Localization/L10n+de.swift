@@ -379,7 +379,7 @@ extension L10n {
         "whatsNew.2.1.0.plainText.title": "Ergebnisse als reiner Text",
         "whatsNew.2.1.0.plainText.detail": "Umformulierungen, Übersetzungen und Zusammenfassungen kommen jetzt als reiner Text, ohne verirrte Markdown-Zeichen wie ** oder #. Markdown, das dein eigener Text schon nutzt, bleibt erhalten.",
         "whatsNew.2.1.0.beta.title": "Betas früher testen",
-        "whatsNew.2.1.0.beta.detail": "Neue Funktionen zuerst? Aktiviere Beta-Updates unter Einstellungen › Allgemein. Du kannst es jederzeit ausschalten und zu stabilen Versionen zurückkehren.",
+        "whatsNew.2.1.0.beta.detail": "Neue Funktionen zuerst? Aktiviere Beta-Updates unter Einstellungen › Allgemein. Wenn du es ausschaltest, wechselt Inklet mit der nächsten stabilen Version zurück.",
         "welcome.shortcuts.writing": "Inklet öffnen",
         "welcome.shortcuts.writing.detail": "Drücke es in jeder App, um das Schreibfenster zu öffnen. Klicke ins Feld und drücke dann die neuen Tasten. Halte im Fenster ⌘ gedrückt, um alle Kurzbefehle zu sehen.",
         "welcome.shortcuts.dictation": "Taste zum Halten",
