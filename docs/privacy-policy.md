@@ -49,6 +49,8 @@ If you choose the Built-in, Ollama, or LM Studio provider, Inklet sends writing 
 
 Production builds check GitHub Releases for public metadata about the latest stable Inklet release about once every 24 hours. Inklet Local does not schedule automatic checks, although both builds can check manually. GitHub receives ordinary connection metadata associated with this network request. The request does not include Inklet prompts, text, audio, History, API keys, provider configuration, or settings.
 
+If you turn on **Beta updates** in Settings, the same check reads the list of recent public releases, including prereleases, instead of only the latest stable release. It sends nothing more.
+
 Inklet announces only a release with an uploaded `Inklet.dmg`; it never downloads or installs an update automatically.
 
 ## Realtime Dictation

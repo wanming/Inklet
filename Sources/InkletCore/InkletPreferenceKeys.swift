@@ -9,6 +9,7 @@ public enum InkletPreferenceKeys {
     public static let translationPanelSize = "SelectionActionWindowController.translationPanelSize"
     public static let lastWritingPromptModeID = "lastWritingPromptModeID"
     public static let lastAutomaticUpdateCheckDate = "lastAutomaticUpdateCheckDate"
+    public static let receivesBetaUpdates = "receivesBetaUpdates"
     public static let providerAPIKeyPrefix = "providerAPIKey."
 
     public static let recognizedLegacyKeys = [

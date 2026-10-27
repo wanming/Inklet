@@ -28,6 +28,8 @@ Inklet utilise GitHub Releases comme unique source de mises à jour. Les version
 
 Utilisez **Rechercher des mises à jour…** dans le menu de l’app pour vérifier manuellement, dans l’app de production comme dans Inklet Local. Inklet Local ne planifie jamais de vérification automatique. Les échecs des vérifications automatiques restent silencieux, tandis qu’une vérification manuelle propose **Réessayer**. Si l’écriture, la dictée, les actions de sélection, une migration, une fenêtre modale ou un menu ouvert occupent Inklet, l’avis de mise à jour automatique attend que l’app soit inactive.
 
+Pour essayer les nouveautés en avant-première, activez **Mises à jour bêta** dans Réglages › Général. Inklet lit alors la liste des publications publiques récentes au lieu de la seule dernière version stable, et propose aussi les versions bêta publiées comme prereleases GitHub. Une bêta affiche **Beta** à côté de sa version. Désactiver l’option ne vous ramène pas en arrière : Inklet reste sur la bêta jusqu’à la sortie d’une version stable plus récente.
+
 Après une mise à jour, le premier lancement de la nouvelle version affiche une seule fois une courte fenêtre **Nouveautés**, lorsque Inklet est inactif et sans voler le focus à l’app que vous utilisez. Elle n’apparaît ni lors d’une nouvelle installation ni pendant que le guide de bienvenue est ouvert. **Historique des versions**, dans le menu de la barre des menus, liste toutes les versions et met en évidence celle que vous utilisez.
 
 ## Première configuration

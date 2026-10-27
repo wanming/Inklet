@@ -9,6 +9,12 @@ version="${INKLET_VERSION:-0.1.0}"
 build_number="${INKLET_BUILD_NUMBER:-$(git -C "$repo_root" rev-list --count HEAD 2>/dev/null || echo 1)}"
 sign_identity="${INKLET_SIGN_IDENTITY:--}"
 require_timestamp="${INKLET_REQUIRE_TIMESTAMP:-0}"
+# "beta" marks a prerelease build, so the app shows "Beta" next to its version.
+release_channel="${INKLET_RELEASE_CHANNEL:-stable}"
+if [[ "$release_channel" != "stable" && "$release_channel" != "beta" ]]; then
+  echo "INKLET_RELEASE_CHANNEL must be stable or beta." >&2
+  exit 1
+fi
 if [[ ${INKLET_ENTITLEMENTS_PATH+x} ]]; then
   entitlements_path="$INKLET_ENTITLEMENTS_PATH"
 else
@@ -59,6 +65,9 @@ ditto "${support_dir}/InfoPlistStrings" "$resources_dir"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier ${bundle_id}" "${contents_dir}/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${version}" "${contents_dir}/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${build_number}" "${contents_dir}/Info.plist"
+if [[ "$release_channel" == "beta" ]]; then
+  /usr/libexec/PlistBuddy -c "Add :InkletReleaseChannel string beta" "${contents_dir}/Info.plist"
+fi
 plutil -lint "${contents_dir}/Info.plist" >/dev/null
 
 echo "Signing ${app_path}..."

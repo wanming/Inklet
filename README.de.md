@@ -28,6 +28,8 @@ Inklet nutzt GitHub Releases als einzige Update-Quelle. Produktionsversionen ruf
 
 Mit **Nach Updates suchen…** im App-Menü können Sie in der Produktions-App wie in Inklet Local manuell suchen. Inklet Local plant nie automatische Prüfungen. Fehlgeschlagene automatische Prüfungen bleiben still, eine manuelle Prüfung bietet **Erneut versuchen** an. Ist Inklet durch Schreiben, Diktat, Auswahlaktionen, eine Migration, ein modales Fenster oder ein offenes Menü beschäftigt, wartet der automatische Update-Hinweis, bis die App untätig ist.
 
+Um neue Funktionen früh auszuprobieren, schalten Sie **Beta-Updates** unter Einstellungen › Allgemein ein. Inklet liest dann die Liste der letzten öffentlichen Releases statt nur der neuesten stabilen Version und bietet so auch Betaversionen an, die als GitHub-Prereleases veröffentlicht werden. Eine Beta zeigt **Beta** neben ihrer Version. Das Ausschalten führt nicht zurück: Inklet bleibt auf der Beta, bis eine neuere stabile Version erscheint.
+
 Nach einem Update zeigt der erste Start der neuen Version einmalig ein kurzes Fenster **Neuigkeiten**, sobald Inklet untätig ist, ohne der App, die Sie gerade verwenden, den Fokus zu nehmen. Bei einer Neuinstallation oder während der Willkommensassistent geöffnet ist, erscheint es nicht. **Änderungsprotokoll** im Menüleistenmenü listet alle Versionen auf und hebt die laufende Version hervor.
 
 ## Ersteinrichtung

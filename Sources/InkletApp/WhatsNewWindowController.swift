@@ -192,7 +192,8 @@ struct WhatsNewView: View {
                     .font(InkletTheme.Typography.title)
                     .foregroundStyle(InkletTheme.label)
                 if isCurrent {
-                    Text(L10n.text("whatsNew.changelog.current"))
+                    // A beta build shares its version's notes, so the running beta is marked here.
+                    Text(BuildInfo.isBeta ? "\(L10n.text("whatsNew.changelog.current")) · Beta" : L10n.text("whatsNew.changelog.current"))
                         .font(InkletTheme.Typography.caption)
                         .foregroundStyle(InkletTheme.accentText)
                         .padding(.horizontal, InkletTheme.Spacing.xs)

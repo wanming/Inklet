@@ -192,7 +192,10 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
             scheduler: FoundationUpdateCheckOneShotScheduler(),
             presenter: updateCheckAlertPresenter,
             check: {
-                try await checker.check(currentBuildNumber: currentBuildNumber)
+                try await checker.check(
+                    currentBuildNumber: currentBuildNumber,
+                    includesBetas: UserDefaults.standard.bool(forKey: InkletPreferenceKeys.receivesBetaUpdates)
+                )
             }
         )
         coordinator.onCheckingStateChange = { [weak self] _ in

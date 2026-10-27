@@ -21,11 +21,18 @@ struct BuildInfoPlugin: BuildToolPlugin {
         enum BuildInfo {
             static let version = "$build_version"
 
+            static var isBeta: Bool {
+                AppVersionDisplay.isBeta(
+                    releaseChannel: Bundle.main.infoDictionary?[AppVersionDisplay.releaseChannelInfoKey] as? String
+                )
+            }
+
             static var displayVersion: String {
                 AppVersionDisplay.format(
                     marketingVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
                     buildNumber: Bundle.main.infoDictionary?["CFBundleVersion"] as? String,
-                    fallback: version
+                    fallback: version,
+                    isBeta: isBeta
                 )
             }
         }
