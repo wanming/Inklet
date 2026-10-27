@@ -62,6 +62,8 @@ struct SettingsView: View {
     @State private var copiedHistoryControlID: String?
     @State private var historyCopyFeedbackTask: Task<Void, Never>?
     @State private var localeIdentifier = L10n.resolvedLanguage.localeIdentifier
+    /// Read by each update check, so a change applies to the next automatic or manual check.
+    @AppStorage(InkletPreferenceKeys.receivesBetaUpdates) private var receivesBetaUpdates = false
     private let onAppearanceChange: (AppAppearance) -> Void
     private let onRequestMigrationImport: () -> Void
     private let onRetryMigrationRelaunch: () -> Void
@@ -329,6 +331,14 @@ struct SettingsView: View {
                         }
                         .labelsHidden()
                         .fixedSize()
+                    }
+                }
+
+                settingsGroup(L10n.text("settings.group.updates")) {
+                    settingsRow(L10n.text("settings.row.betaUpdates"), help: L10n.text("settings.help.betaUpdates")) {
+                        Toggle("", isOn: $receivesBetaUpdates)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
                     }
                 }
 

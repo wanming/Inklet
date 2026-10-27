@@ -9,7 +9,7 @@ on:
         default: false
         type: boolean
       prerelease:
-        description: "Mark the release as a prerelease."
+        description: "Publish as a beta: a prerelease that only people who opted into beta updates are offered."
         required: true
         default: false
         type: boolean
@@ -48,6 +48,8 @@ jobs:
 
       - name: Resolve release metadata
         id: release
+        env:
+          PRERELEASE: ${{ inputs.prerelease }}
         shell: bash
         run: |
           set -euo pipefail
@@ -58,6 +60,9 @@ jobs:
           release_version="${app_version}-${build_number}"
           tag_name="v${release_version}"
           release_name="Inklet ${app_version} (${build_number})"
+          if [[ "$PRERELEASE" == "true" ]]; then
+            release_name="Inklet ${app_version} Beta (${build_number})"
+          fi
           asset_tag="${tag_name//\//-}"
           dmg_name="Inklet-${release_version}.dmg"
 
@@ -149,6 +154,7 @@ jobs:
           INKLET_BUILD_NUMBER: ${{ steps.release.outputs.build_number }}
           INKLET_OUTPUT_DIR: dist/release
           INKLET_REQUIRE_TIMESTAMP: "1"
+          INKLET_RELEASE_CHANNEL: ${{ inputs.prerelease && 'beta' || 'stable' }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         shell: bash
         run: |
@@ -396,10 +402,16 @@ jobs:
         run: |
           set -euo pipefail
 
+          # A beta never becomes "latest", so the website download and stable update checks skip it.
+          latest_flag="--latest"
+          if [[ "$PRERELEASE" == "true" ]]; then
+            latest_flag="--latest=false"
+          fi
+
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             gh release edit "$TAG_NAME" \
               --title "$RELEASE_NAME" \
-              --latest \
+              "$latest_flag" \
               --draft="$DRAFT" \
               --prerelease="$PRERELEASE"
           else
@@ -407,7 +419,7 @@ jobs:
               release create "$TAG_NAME"
               --target "$GITHUB_SHA"
               --title "$RELEASE_NAME"
-              --latest
+              "$latest_flag"
               --notes "macOS DMG build ${APP_VERSION} (${BUILD_NUMBER}) from workflow run ${GITHUB_RUN_NUMBER}."
             )
 

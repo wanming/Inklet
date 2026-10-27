@@ -32,7 +32,10 @@ final class AppCoordinatorSourceTests: XCTestCase {
         XCTAssertTrue(source.contains("private lazy var updateCheckAlertPresenter"))
         XCTAssertTrue(factoryBlock.contains("presenter: updateCheckAlertPresenter"))
         XCTAssertFalse(factoryBlock.contains("canPresentAutomatically:"))
-        XCTAssertTrue(factoryBlock.contains("checker.check(currentBuildNumber: currentBuildNumber)"))
+        XCTAssertTrue(factoryBlock.contains("checker.check(\n                    currentBuildNumber: currentBuildNumber,"))
+        XCTAssertTrue(factoryBlock.contains(
+            "includesBetas: UserDefaults.standard.bool(forKey: InkletPreferenceKeys.receivesBetaUpdates)"
+        ))
         XCTAssertFalse(factoryBlock.contains("userDefaults:"))
         XCTAssertEqual(
             factoryBlock.components(separatedBy: "coordinator.onCheckingStateChange").count - 1,

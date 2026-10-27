@@ -88,6 +88,9 @@ final class SettingsViewSourceTests: XCTestCase {
         XCTAssertTrue(aiModels.contains("$model.openAIAPIKey"))
         XCTAssertTrue(aiModels.contains("$model.providerAPIKey"))
 
+        XCTAssertTrue(general.contains("settings.group.updates"))
+        XCTAssertTrue(general.contains("$receivesBetaUpdates"))
+        XCTAssertTrue(source.contains("@AppStorage(InkletPreferenceKeys.receivesBetaUpdates)"))
         XCTAssertFalse(general.contains("selectedProviderBinding"))
         XCTAssertFalse(general.contains("SecureField"))
         XCTAssertFalse(featurePages.contains("SecureField"))

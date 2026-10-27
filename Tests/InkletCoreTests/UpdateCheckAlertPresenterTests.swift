@@ -98,6 +98,7 @@ final class UpdateCheckAlertPresenterTests: XCTestCase {
             "2.0.0 (build 200)",
             "Inklet 2.0.0 (200)",
             "Ínklet 2.0.0 (BuIlD 200)",
+            "Inklet 2.0.0 Beta (200)",
         ]
         let expectedInformativeText = "Latest: 2.0.0 (build 200)\n\nCurrent: 1.2.3\n\nRelease notes"
 
@@ -116,6 +117,26 @@ final class UpdateCheckAlertPresenterTests: XCTestCase {
                 name
             )
         }
+    }
+
+    func testPresentUpdateMarksBetaReleases() {
+        let recorder = AlertRecorder(response: .alertSecondButtonReturn)
+        let tagName = "v2.0.0-200"
+        let beta = InkletRelease(
+            version: try! InkletReleaseVersion(tagName: tagName),
+            tagName: tagName,
+            name: "Inklet 2.0.0 Beta (200)",
+            notes: "Release notes",
+            pageURL: URL(string: "https://github.com/wanming/Inklet/releases/tag/\(tagName)")!,
+            isPrerelease: true
+        )
+
+        makePresenter(recorder: recorder).presentUpdate(beta, currentVersion: "1.2.3 (199)")
+
+        XCTAssertEqual(
+            recorder.contents.first?.informativeText,
+            "Latest: 2.0.0 Beta (build 200)\n\nCurrent: 1.2.3 (199)\n\nRelease notes"
+        )
     }
 
     func testPresentUpdateOpensOnlyItsExactPageURLForFirstResponse() {

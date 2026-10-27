@@ -14,6 +14,8 @@ public enum AppUpdateCheckError: Error, Equatable, Sendable {
 
 public struct GitHubReleaseUpdateChecker: Sendable {
     private static let endpoint = URL(string: "https://api.github.com/repos/wanming/Inklet/releases/latest")!
+    /// Beta testers read the newest releases instead, because `releases/latest` never returns a prerelease.
+    private static let betaEndpoint = URL(string: "https://api.github.com/repos/wanming/Inklet/releases?per_page=10")!
     private static let maximumResponseSize = 1_048_576
     private static let defaultTimeoutInterval: TimeInterval = 15
 
@@ -42,7 +44,7 @@ public struct GitHubReleaseUpdateChecker: Sendable {
         return configuration
     }
 
-    public func check(currentBuildNumber: String?) async throws -> AppUpdateCheckResult {
+    public func check(currentBuildNumber: String?, includesBetas: Bool = false) async throws -> AppUpdateCheckResult {
         guard let currentBuildNumber,
               let currentBuild = Self.parseCanonicalPositiveInteger(currentBuildNumber)
         else {
@@ -51,10 +53,11 @@ public struct GitHubReleaseUpdateChecker: Sendable {
 
         try Task.checkCancellation()
 
-        let request = Self.makeRequest(timeoutInterval: timeoutInterval)
+        let endpoint = includesBetas ? Self.betaEndpoint : Self.endpoint
+        let request = Self.makeRequest(url: endpoint, timeoutInterval: timeoutInterval)
         let data: Data
         let responseLoader = BoundedHTTPResponseLoader(
-            expectedURL: Self.endpoint,
+            expectedURL: endpoint,
             maximumResponseSize: Self.maximumResponseSize
         )
 
@@ -93,7 +96,9 @@ public struct GitHubReleaseUpdateChecker: Sendable {
 
         let release: InkletRelease
         do {
-            release = try GitHubReleaseParser.parse(data)
+            release = try includesBetas
+                ? GitHubReleaseParser.parseNewest(data)
+                : GitHubReleaseParser.parse(data)
         } catch {
             throw AppUpdateCheckError.invalidResponse
         }
@@ -106,8 +111,8 @@ public struct GitHubReleaseUpdateChecker: Sendable {
         return .upToDate(release)
     }
 
-    private static func makeRequest(timeoutInterval: TimeInterval) -> URLRequest {
-        var request = URLRequest(url: endpoint)
+    private static func makeRequest(url: URL, timeoutInterval: TimeInterval) -> URLRequest {
+        var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.timeoutInterval = timeoutInterval
         request.httpShouldHandleCookies = false
@@ -530,19 +535,22 @@ public struct InkletRelease: Equatable, Sendable {
     public let name: String?
     public let notes: String
     public let pageURL: URL
+    public let isPrerelease: Bool
 
     init(
         version: InkletReleaseVersion,
         tagName: String,
         name: String?,
         notes: String,
-        pageURL: URL
+        pageURL: URL,
+        isPrerelease: Bool = false
     ) {
         self.version = version
         self.tagName = tagName
         self.name = name
         self.notes = notes
         self.pageURL = pageURL
+        self.isPrerelease = isPrerelease
     }
 }
 
@@ -552,8 +560,24 @@ enum GitHubReleaseParser {
     fileprivate static let maximumNameUTF8ByteCount = 1_920
 
     static func parse(_ data: Data) throws -> InkletRelease {
-        let response = try JSONDecoder().decode(Response.self, from: data)
-        guard !response.draft, !response.prerelease else {
+        try validated(JSONDecoder().decode(Response.self, from: data), allowsPrerelease: false)
+    }
+
+    /// Picks the highest build among published stable releases and prereleases.
+    /// Drafts and malformed entries are skipped, so one bad release can't hide the rest.
+    static func parseNewest(_ data: Data) throws -> InkletRelease {
+        let entries = try JSONDecoder().decode([LossyResponse].self, from: data)
+        let releases = entries.compactMap { entry in
+            entry.response.flatMap { try? validated($0, allowsPrerelease: true) }
+        }
+        guard let newest = releases.max(by: { $0.version.buildNumber < $1.version.buildNumber }) else {
+            throw InkletReleaseValidationError.unavailableRelease
+        }
+        return newest
+    }
+
+    private static func validated(_ response: Response, allowsPrerelease: Bool) throws -> InkletRelease {
+        guard !response.draft, allowsPrerelease || !response.prerelease else {
             throw InkletReleaseValidationError.unavailableRelease
         }
 
@@ -572,7 +596,8 @@ enum GitHubReleaseParser {
             tagName: response.tagName,
             name: name,
             notes: InkletReleaseNotes.excerpt(response.body),
-            pageURL: pageURL
+            pageURL: pageURL,
+            isPrerelease: response.prerelease
         )
     }
 
@@ -617,6 +642,14 @@ enum GitHubReleaseParser {
             case draft
             case prerelease
             case assets
+        }
+    }
+
+    private struct LossyResponse: Decodable {
+        let response: Response?
+
+        init(from decoder: Decoder) throws {
+            response = try? decoder.singleValueContainer().decode(Response.self)
         }
     }
 

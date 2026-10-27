@@ -187,6 +187,59 @@ final class GitHubReleaseUpdateCheckerTests: XCTestCase {
         }
     }
 
+    func testNewestParserPicksHighestBuildIncludingPrereleases() throws {
+        let release = try GitHubReleaseParser.parseNewest(
+            makeReleaseList([
+                makeReleaseData(tagName: "v2.1.0-36", prerelease: true),
+                makeReleaseData(tagName: "v2.0.0-35"),
+                makeReleaseData(tagName: "v1.2.0-34")
+            ])
+        )
+
+        XCTAssertEqual(release.tagName, "v2.1.0-36")
+        XCTAssertTrue(release.isPrerelease)
+    }
+
+    func testNewestParserPrefersNewerStableReleaseOverOlderBeta() throws {
+        let release = try GitHubReleaseParser.parseNewest(
+            makeReleaseList([
+                makeReleaseData(tagName: "v2.1.0-36", prerelease: true),
+                makeReleaseData(tagName: "v2.1.0-37")
+            ])
+        )
+
+        XCTAssertEqual(release.tagName, "v2.1.0-37")
+        XCTAssertFalse(release.isPrerelease)
+    }
+
+    func testNewestParserSkipsDraftsAndMalformedEntries() throws {
+        let release = try GitHubReleaseParser.parseNewest(
+            makeReleaseList([
+                makeReleaseData(tagName: "v2.2.0-40", draft: true),
+                makeReleaseData(tagName: "v2.1.0-39", assets: []),
+                makeReleaseData(tagName: "v2.1.0-beta-38"),
+                Data(#"{"tag_name": "v2.1.0-41"}"#.utf8),
+                makeReleaseData(tagName: "v2.1.0-36", prerelease: true)
+            ])
+        )
+
+        XCTAssertEqual(release.tagName, "v2.1.0-36")
+    }
+
+    func testNewestParserRejectsListWithoutUsableRelease() throws {
+        assertValidationError(.unavailableRelease) {
+            _ = try GitHubReleaseParser.parseNewest(Data("[]".utf8))
+        }
+        assertValidationError(.unavailableRelease) {
+            _ = try GitHubReleaseParser.parseNewest(
+                makeReleaseList([makeReleaseData(draft: true)])
+            )
+        }
+        XCTAssertThrowsError(try GitHubReleaseParser.parseNewest(makeReleaseData())) { error in
+            XCTAssertTrue(error is DecodingError)
+        }
+    }
+
     func testParserRejectsMissingOrNonUploadedDMG() throws {
         assertValidationError(.invalidAsset) {
             _ = try GitHubReleaseParser.parse(makeReleaseData(assets: []))
@@ -274,6 +327,46 @@ final class GitHubReleaseUpdateCheckerTests: XCTestCase {
 
         XCTAssertEqual(result, .updateAvailable(try expectedRelease(buildNumber: 11)))
         XCTAssertEqual(MockGitHubReleaseURLProtocol.requestCount, 1)
+    }
+
+    func testBetaCheckReadsRecentReleasesAndOffersNewestPrerelease() async throws {
+        MockGitHubReleaseURLProtocol.handler = { request in
+            XCTAssertEqual(
+                request.url?.absoluteString,
+                "https://api.github.com/repos/wanming/Inklet/releases?per_page=10"
+            )
+            XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+            return try self.httpResponse(
+                for: request,
+                statusCode: 200,
+                data: self.makeReleaseList([
+                    self.makeReleaseData(tagName: "v1.2.4-11", prerelease: true),
+                    self.releaseData(buildNumber: 10)
+                ])
+            )
+        }
+
+        let result = try await makeChecker().check(currentBuildNumber: "10", includesBetas: true)
+
+        guard case let .updateAvailable(release) = result else {
+            return XCTFail("Expected the beta to be offered, got \(result)")
+        }
+        XCTAssertEqual(release.tagName, "v1.2.4-11")
+        XCTAssertTrue(release.isPrerelease)
+        XCTAssertEqual(MockGitHubReleaseURLProtocol.requestCount, 1)
+    }
+
+    func testBetaCheckReportsInvalidResponseWhenNoReleaseIsUsable() async throws {
+        MockGitHubReleaseURLProtocol.handler = { request in
+            try self.httpResponse(for: request, statusCode: 200, data: Data("[]".utf8))
+        }
+
+        do {
+            _ = try await makeChecker().check(currentBuildNumber: "10", includesBetas: true)
+            XCTFail("Expected an invalid response")
+        } catch {
+            XCTAssertEqual(error as? AppUpdateCheckError, .invalidResponse)
+        }
     }
 
     func testDefaultSessionConfigurationDisablesPersistentPrivacySurfaces() {
@@ -1056,6 +1149,11 @@ final class GitHubReleaseUpdateCheckerTests: XCTestCase {
         payload["name"] = name ?? NSNull()
         payload["body"] = body ?? NSNull()
         return try JSONSerialization.data(withJSONObject: payload)
+    }
+
+    private func makeReleaseList(_ releases: [Data]) throws -> Data {
+        let objects = try releases.map { try JSONSerialization.jsonObject(with: $0) }
+        return try JSONSerialization.data(withJSONObject: objects)
     }
 
     private func makeChecker() -> GitHubReleaseUpdateChecker {

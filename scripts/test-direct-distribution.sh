@@ -1286,6 +1286,7 @@ expected_build_env = {
   "INKLET_BUILD_NUMBER" => "${{ steps.release.outputs.build_number }}",
   "INKLET_OUTPUT_DIR" => "dist/release",
   "INKLET_REQUIRE_TIMESTAMP" => "1",
+  "INKLET_RELEASE_CHANNEL" => "${{ inputs.prerelease && 'beta' || 'stable' }}",
   "APPLE_TEAM_ID" => "${{ secrets.APPLE_TEAM_ID }}"
 }
 expected_final_env = {

@@ -36,10 +36,14 @@ final class UpdateCheckAlertPresenter: UpdateCheckPresenting {
     }
 
     func presentUpdate(_ release: InkletRelease, currentVersion: String) {
+        // "Beta" stays English in every language, like the Beta label next to the app version.
+        let latestVersion = release.isPrerelease
+            ? "\(release.version.marketingVersion) Beta"
+            : release.version.marketingVersion
         var components = [
             L10n.format(
                 "update.available.latestVersion",
-                release.version.marketingVersion,
+                latestVersion,
                 String(release.version.buildNumber)
             ),
             L10n.format("update.available.currentVersion", currentVersion),
@@ -145,7 +149,7 @@ final class UpdateCheckAlertPresenter: UpdateCheckPresenting {
             return true
         }
 
-        let pattern = #"^(?:inklet\s+)?v?\d+(?:\.\d+)*(?:[-\s]*(?:build\s*)?\d+)?(?:\s*\(\s*(?:build\s*)?\d+\s*\))?$"#
+        let pattern = #"^(?:inklet\s+)?v?\d+(?:\.\d+)*(?:\s+beta)?(?:[-\s]*(?:build\s*)?\d+)?(?:\s*\(\s*(?:build\s*)?\d+\s*\))?$"#
         return name.range(of: pattern, options: [.regularExpression, .caseInsensitive, .diacriticInsensitive]) != nil
     }
 }

@@ -26,6 +26,8 @@ Inklet uses GitHub Releases as its only update source. Production builds check G
 
 Use **Check for Updates…** from the app menu to check manually in either the production app or Inklet Local. Inklet Local never schedules automatic checks. Automatic check failures are silent, while a manual check offers **Retry**. If writing, dictation, Selection Actions, migration, a modal, or an open menu makes Inklet busy, an automatic update notice waits until the app is idle.
 
+To try new features early, turn on **Beta updates** in Settings › General. Inklet then reads the list of recent public releases instead of only the latest stable one, so it also offers beta versions published as GitHub prereleases. A beta shows **Beta** next to its version. Turning the switch off doesn't move you back: Inklet stays on the beta until a newer stable release is out.
+
 After you update, the first launch of the new version shows a short **What's New** window once, when Inklet is idle and without taking focus from the app you're using. It doesn't appear on a new install or while the welcome guide is open. **Changelog** in the menu bar menu lists every release, with the version you're running highlighted.
 
 ## First-Time Setup
