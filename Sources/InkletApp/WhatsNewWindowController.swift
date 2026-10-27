@@ -25,6 +25,11 @@ enum WhatsNewCatalog {
                 titleKey: "whatsNew.2.1.0.systemVoice.title",
                 detailKey: "whatsNew.2.1.0.systemVoice.detail"
             ),
+            WhatsNewFeature(
+                systemImage: "text.alignleft",
+                titleKey: "whatsNew.2.1.0.plainText.title",
+                detailKey: "whatsNew.2.1.0.plainText.detail"
+            ),
         ]),
         WhatsNewRelease(version: "2.0.0", features: [
             WhatsNewFeature(
