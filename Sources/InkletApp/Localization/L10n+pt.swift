@@ -150,7 +150,7 @@ extension L10n {
         "settings.row.systemPronunciationVoice": "Voz de pronúncia",
         "settings.help.systemPronunciationVoice": "Usa a melhor voz instalada neste Mac para o idioma do texto. Para um som mais natural, baixe vozes aprimoradas ou premium em Ajustes do Sistema › Acessibilidade › Conteúdo Falado.",
         "settings.systemPronunciationVoice.automatic": "Automática",
-        "settings.row.aiPronunciationSpeed": "Velocidade da pronúncia com IA",
+        "settings.row.aiPronunciationSpeed": "Velocidade da pronúncia",
         "settings.help.aiPronunciationSpeed": "Velocidade de reprodução usada para Pronunciar texto selecionado e pré-visualizar a voz.",
         "settings.aiPronunciation.speedValue": "%.2fx",
         "settings.aiPronunciation.preview": "Previsualizar voz",
