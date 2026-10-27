@@ -136,7 +136,12 @@ public struct CachedSelectionTranslationService: Sendable {
         )
 
         if let cachedTranslation = try? cache.translation(for: cacheKey, now: now) {
-            return SelectionTranslation(text: cachedTranslation)
+            // Translations cached before Markdown was cleaned up still carry it.
+            return SelectionTranslation(text: PlainTextOutput.clean(
+                cachedTranslation,
+                sourceText: sourceText,
+                systemPrompt: systemPrompt
+            ))
         }
 
         let translated = try await service.translation(

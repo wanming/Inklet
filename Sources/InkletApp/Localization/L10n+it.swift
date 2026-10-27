@@ -373,6 +373,8 @@ extension L10n {
         "whatsNew.2.0.0.dictation.detail": "La Dettatura in tempo reale ora riconosce il parlato sul tuo Mac, anche il cinese misto all’inglese. Scegli Su questo Mac nelle impostazioni della Dettatura in tempo reale e la tua voce non lascerà mai il Mac.",
         "whatsNew.2.1.0.systemVoice.title": "Pronuncia senza chiave API",
         "whatsNew.2.1.0.systemVoice.detail": "Pronuncia ora può leggere il testo con la voce di sistema di macOS, offline e gratis. Le nuove installazioni e quelle senza chiave OpenAI la usano subito. Per cambiare, scegli Voce di sistema di macOS in Da testo a voce, in Impostazioni › Modelli di IA.",
+        "whatsNew.2.1.0.plainText.title": "Risultati in testo semplice",
+        "whatsNew.2.1.0.plainText.detail": "Riscritture, traduzioni e riassunti ora arrivano come testo semplice, senza simboli Markdown sparsi come ** o #. Il Markdown già presente nel tuo testo viene mantenuto.",
         "welcome.shortcuts.writing": "Apri Inklet",
         "welcome.shortcuts.writing.detail": "Premila in qualsiasi app per aprire la finestra di scrittura. Fai clic sul campo, poi premi i nuovi tasti. Nella finestra, tieni premuto ⌘ per vedere tutte le scorciatoie.",
         "welcome.shortcuts.dictation": "Tasto da tenere premuto",

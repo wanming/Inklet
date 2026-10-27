@@ -21,18 +21,23 @@ public struct TransformationService: Sendable {
 
         let request = TransformationRequest(
             sourceText: trimmedSource,
-            systemPrompt: mode.systemPrompt,
+            systemPrompt: PlainTextOutput.systemPrompt(mode.systemPrompt, sourceText: trimmedSource),
             modeID: mode.id,
             modeName: mode.name,
             model: model,
             timeoutSeconds: timeoutSeconds
         )
 
-        let trimmedPartialOutput = onPartialOutput.map { Self.trimmingPartialOutput($0) }
+        let modePrompt = mode.systemPrompt
+        let cleanOutput: @Sendable (String) -> String = { output in
+            PlainTextOutput.clean(output, sourceText: trimmedSource, systemPrompt: modePrompt)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let trimmedPartialOutput = onPartialOutput.map { Self.cleaningPartialOutput($0, clean: cleanOutput) }
         let result = try await withTimeout(seconds: timeoutSeconds) {
             try await transformWithNetworkConnectionLostRetry(request, onPartialOutput: trimmedPartialOutput)
         }
-        let trimmedOutput = result.outputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedOutput = cleanOutput(result.outputText)
         guard !trimmedOutput.isEmpty else {
             throw TransformationError.emptyResponse
         }
@@ -65,11 +70,12 @@ public struct TransformationService: Sendable {
         }
     }
 
-    private static func trimmingPartialOutput(
-        _ onPartialOutput: @escaping @Sendable (String) -> Void
+    private static func cleaningPartialOutput(
+        _ onPartialOutput: @escaping @Sendable (String) -> Void,
+        clean: @escaping @Sendable (String) -> String
     ) -> @Sendable (String) -> Void {
         { partialOutput in
-            let trimmedPartialOutput = partialOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedPartialOutput = clean(partialOutput)
             guard !trimmedPartialOutput.isEmpty else { return }
             onPartialOutput(trimmedPartialOutput)
         }
