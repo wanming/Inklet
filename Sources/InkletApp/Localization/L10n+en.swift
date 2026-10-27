@@ -305,7 +305,7 @@ extension L10n {
         "whatsNew.2.0.0.dictation.title": "Dictate on Your Mac",
         "whatsNew.2.0.0.dictation.detail": "Live Dictation can now recognize speech on your Mac, including Chinese mixed with English. Choose On this Mac in Live Dictation settings, and your voice never leaves your Mac.",
         "whatsNew.2.1.0.systemVoice.title": "Pronounce Without an API Key",
-        "whatsNew.2.1.0.systemVoice.detail": "Pronounce can now read text with the macOS system voice, offline and free. New installs use it right away. To switch, choose macOS system voice under Text to speech in Settings › AI Models.",
+        "whatsNew.2.1.0.systemVoice.detail": "Pronounce can now read text with the macOS system voice, offline and free. New installs, and setups without an OpenAI key, use it right away. To switch, choose macOS system voice under Text to speech in Settings › AI Models.",
         "welcome.shortcuts.writing": "Open Inklet",
         "welcome.shortcuts.writing.detail": "Press in any app to open the writing popover. Click the field, then press new keys. In the popover, hold ⌘ to see every shortcut.",
         "welcome.shortcuts.dictation": "Hold Key",

@@ -1101,6 +1101,33 @@ final class AppCoordinatorSourceTests: XCTestCase {
         XCTAssertFalse(source.contains("defaultIgnoredAutomaticSelectionAppBundleIDs"))
     }
 
+    func testKeylessPronunciationSwitchWaitsForAnUnfinishedImport() throws {
+        let source = try appCoordinatorSource()
+        let launchPreparation = try sourceBlock(
+            startingAt: "AppCoordinator.prepareWelcomeGuideIfNewInstall(",
+            endingBefore: "self.migrationOutcome = migrationOutcome",
+            in: source
+        )
+        try assertTokensAppearInOrder(
+            ["AppCoordinator.adoptSystemVoiceOnceIfOpenAIKeyMissing(", "migrationOutcome: migrationOutcome"],
+            in: String(launchPreparation)
+        )
+        let adoption = try sourceBlock(
+            startingAt: "private static func adoptSystemVoiceOnceIfOpenAIKeyMissing(",
+            endingBefore: "private func showWelcomeGuideIfPending()",
+            in: source
+        )
+        try assertTokensAppearInOrder(
+            [
+                "guard !migrationOutcome.hasIncompleteComponents else { return }",
+                "guard !userDefaults.bool(forKey: InkletPreferenceKeys.didReviewPronunciationEngine) else { return }",
+                "userDefaults.set(true, forKey: InkletPreferenceKeys.didReviewPronunciationEngine)",
+                "adoptSystemVoiceIfOpenAIKeyMissing(hasOpenAIKey: hasOpenAIKey)",
+            ],
+            in: String(adoption)
+        )
+    }
+
     private func sourceBlock(
         startingAt startToken: String,
         endingBefore endToken: String,

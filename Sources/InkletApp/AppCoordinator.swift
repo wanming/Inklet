@@ -119,6 +119,11 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
             apiKeyStore: apiKeyStore,
             migrationOutcome: migrationOutcome
         )
+        AppCoordinator.adoptSystemVoiceOnceIfOpenAIKeyMissing(
+            configStore: configStore,
+            apiKeyStore: apiKeyStore,
+            migrationOutcome: migrationOutcome
+        )
 
         self.migrationOutcome = migrationOutcome
         self.migrator = migrator
@@ -661,6 +666,27 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
             isEngineAvailable: BuiltInModelServer.isEngineAvailable,
             physicalMemoryBytes: ProcessInfo.processInfo.physicalMemory
         ) {
+            try? configStore.save(config)
+        }
+    }
+
+    /// Runs once, on the first launch with the system voice: a saved config that still pronounces with
+    /// OpenAI but has no OpenAI key switches to the system voice. Later choices are left alone. It waits
+    /// for an unfinished import, whose config or keys may not have arrived yet.
+    private static func adoptSystemVoiceOnceIfOpenAIKeyMissing(
+        configStore: UserDefaultsConfigStore,
+        apiKeyStore: LocalAPIKeyStore,
+        migrationOutcome: LegacySandboxMigrationOutcome
+    ) {
+        guard !migrationOutcome.hasIncompleteComponents else { return }
+        let userDefaults = UserDefaults.standard
+        guard !userDefaults.bool(forKey: InkletPreferenceKeys.didReviewPronunciationEngine) else { return }
+        userDefaults.set(true, forKey: InkletPreferenceKeys.didReviewPronunciationEngine)
+        guard configStore.hasSavedConfig, var config = try? configStore.load() else { return }
+        let hasOpenAIKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty == false
+        if config.selectionActions.adoptSystemVoiceIfOpenAIKeyMissing(hasOpenAIKey: hasOpenAIKey) {
             try? configStore.save(config)
         }
     }

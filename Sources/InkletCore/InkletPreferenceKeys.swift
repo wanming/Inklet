@@ -9,6 +9,8 @@ public enum InkletPreferenceKeys {
     public static let translationPanelSize = "SelectionActionWindowController.translationPanelSize"
     public static let lastWritingPromptModeID = "lastWritingPromptModeID"
     public static let lastAutomaticUpdateCheckDate = "lastAutomaticUpdateCheckDate"
+    /// Set once the first launch with the system voice has checked the saved pronunciation engine.
+    public static let didReviewPronunciationEngine = "didReviewPronunciationEngine"
     public static let providerAPIKeyPrefix = "providerAPIKey."
 
     public static let recognizedLegacyKeys = [
