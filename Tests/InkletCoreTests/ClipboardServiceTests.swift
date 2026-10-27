@@ -167,4 +167,62 @@ final class ClipboardServiceTests: XCTestCase {
         XCTAssertTrue(requestedDelays.allSatisfy { $0 > 0 })
         XCTAssertEqual(pasteboard.string(forType: .string), original)
     }
+    @MainActor
+    func testInsertionReportsTargetActivationBeforePasting() async throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        var events: [String] = []
+        var isTargetActive = false
+        let service = InsertionService(
+            clipboardService: ClipboardService(pasteboard: pasteboard),
+            restoreDelayNanoseconds: 0,
+            activationDelayNanoseconds: 1,
+            accessibilityTrustProvider: { true },
+            applicationActivator: { _ in
+                events.append("activate")
+                return true
+            },
+            applicationActivityProvider: { _ in isTargetActive },
+            pasteShortcutSender: { _ in
+                events.append("paste")
+            },
+            delayProvider: { _ in
+                events.append("wait")
+                isTargetActive = true
+            }
+        )
+
+        try await service.insert(text: "Generated replacement text", into: .current) {
+            events.append("targetActivated")
+        }
+
+        XCTAssertEqual(events, ["activate", "wait", "targetActivated", "paste"])
+    }
+
+    @MainActor
+    func testInsertionDoesNotReportTargetActivationWhenTargetNeverBecomesActive() async throws {
+        let pasteboard = NSPasteboard.withUniqueName()
+        var targetActivatedCount = 0
+        let service = InsertionService(
+            clipboardService: ClipboardService(pasteboard: pasteboard),
+            restoreDelayNanoseconds: 1,
+            activationDelayNanoseconds: 1,
+            activationTimeoutNanoseconds: 3,
+            accessibilityTrustProvider: { true },
+            applicationActivator: { _ in true },
+            applicationActivityProvider: { _ in false },
+            pasteShortcutSender: { _ in },
+            delayProvider: { _ in }
+        )
+
+        do {
+            try await service.insert(text: "Generated replacement text", into: .current) {
+                targetActivatedCount += 1
+            }
+            XCTFail("Expected activationFailed")
+        } catch let error as InsertionError {
+            XCTAssertEqual(error, .activationFailed)
+        }
+
+        XCTAssertEqual(targetActivatedCount, 0)
+    }
 }

@@ -29,6 +29,7 @@ final class InkletPopoverViewModel: ObservableObject {
     @Published private(set) var dictationModelDownloadState: BuiltInModelDownloadState?
 
     var onHidePopover: (() -> Void)?
+    var onConcealPopover: (() -> Void)?
     var onFocusPopover: (() -> Void)?
     var onFocusSourceInput: ((FocusRequestGeneration.Request) -> Void)?
     var onOpenSettings: (() -> Void)?
@@ -947,7 +948,8 @@ final class InkletPopoverViewModel: ObservableObject {
         }
 
         errorMessage = nil
-        onHidePopover?()
+        // The popover disappears at once but closes only after the target app is active again.
+        onConcealPopover?()
         isInserting = true
 
         let insertionSessionID = sessionID
@@ -955,7 +957,10 @@ final class InkletPopoverViewModel: ObservableObject {
         insertionTask = Task { [weak self] in
             guard let self else { return }
             do {
-                try await insertionService.insert(text: text, into: previousApplication)
+                try await insertionService.insert(text: text, into: previousApplication) {
+                    guard sessionID == insertionSessionID else { return }
+                    onHidePopover?()
+                }
                 guard sessionID == insertionSessionID else {
                     return
                 }
