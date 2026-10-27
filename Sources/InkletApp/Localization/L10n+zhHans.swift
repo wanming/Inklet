@@ -305,7 +305,7 @@ extension L10n {
         "whatsNew.2.0.0.dictation.title": "在本机听写",
         "whatsNew.2.0.0.dictation.detail": "实时听写现在可以在本机识别语音，也支持中英混说。在实时听写设置里选择「本机」，声音就不会离开这台 Mac。",
         "whatsNew.2.1.0.systemVoice.title": "不需要 API Key 也能发音",
-        "whatsNew.2.1.0.systemVoice.detail": "“发音”现在可以用 macOS 系统语音朗读，离线、免费。新安装直接使用它；如需切换，在设置 › AI 模型的“文字转语音”里选择“macOS 系统语音”。",
+        "whatsNew.2.1.0.systemVoice.detail": "“发音”现在可以用 macOS 系统语音朗读，离线、免费。新安装和没填 OpenAI Key 的用户直接使用它；如需切换，在设置 › AI 模型的“文字转语音”里选择“macOS 系统语音”。",
         "welcome.shortcuts.writing": "打开 Inklet",
         "welcome.shortcuts.writing.detail": "在任何 App 里按下就会打开写作浮窗。点一下输入框，再按新的按键。在浮窗里按住 ⌘ 可以查看所有快捷键。",
         "welcome.shortcuts.dictation": "长按的按键",

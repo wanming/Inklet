@@ -23,6 +23,20 @@ final class SelectionActionsConfigTests: XCTestCase {
         XCTAssertEqual(config.pronunciationVoice, .cedar)
     }
 
+    func testOnlyOpenAIPronunciationWithoutAKeyMovesToTheSystemVoice() {
+        var keyless = SelectionActionsConfig(pronunciationEngine: .openAI)
+        XCTAssertTrue(keyless.adoptSystemVoiceIfOpenAIKeyMissing(hasOpenAIKey: false))
+        XCTAssertEqual(keyless.pronunciationEngine, .system)
+
+        var withKey = SelectionActionsConfig(pronunciationEngine: .openAI)
+        XCTAssertFalse(withKey.adoptSystemVoiceIfOpenAIKeyMissing(hasOpenAIKey: true))
+        XCTAssertEqual(withKey.pronunciationEngine, .openAI)
+
+        var system = SelectionActionsConfig(pronunciationEngine: .system)
+        XCTAssertFalse(system.adoptSystemVoiceIfOpenAIKeyMissing(hasOpenAIKey: true))
+        XCTAssertEqual(system.pronunciationEngine, .system)
+    }
+
     func testPronunciationEngineRoundTrips() throws {
         for engine in SelectionPronunciationEngine.allCases {
             let data = try JSONEncoder().encode(SelectionActionsConfig(pronunciationEngine: engine))

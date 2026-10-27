@@ -372,7 +372,7 @@ extension L10n {
         "whatsNew.2.0.0.dictation.title": "この Mac で音声入力",
         "whatsNew.2.0.0.dictation.detail": "リアルタイム音声入力が、中国語と英語の混在も含めてこの Mac 上で音声を認識できるようになりました。リアルタイム音声入力の設定で「この Mac」を選ぶと、声が Mac の外に出ることはありません。",
         "whatsNew.2.1.0.systemVoice.title": "API キーなしで発音",
-        "whatsNew.2.1.0.systemVoice.detail": "「発音」が macOS のシステム音声で読み上げられるようになりました。オフラインで無料です。新規インストールではすぐに使われます。切り替えるには、設定 › AI モデルの「テキストから音声」で「macOS のシステム音声」を選んでください。",
+        "whatsNew.2.1.0.systemVoice.detail": "「発音」が macOS のシステム音声で読み上げられるようになりました。オフラインで無料です。新規インストールと、OpenAI キーを設定していない環境ではすぐに使われます。切り替えるには、設定 › AI モデルの「テキストから音声」で「macOS のシステム音声」を選んでください。",
         "welcome.shortcuts.writing": "Inklet を開く",
         "welcome.shortcuts.writing.detail": "どのアプリでも押すと文章作成ポップオーバーが開きます。欄をクリックしてから新しいキーを押してください。ポップオーバーで ⌘ を押し続けると、すべてのショートカットが表示されます。",
         "welcome.shortcuts.dictation": "長押しするキー",

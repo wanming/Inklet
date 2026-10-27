@@ -134,6 +134,14 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
         return template.replacingOccurrences(of: "{targetLanguage}", with: targetLanguageName)
     }
 
+    /// Configs saved before the system voice kept OpenAI pronunciation, which can't play without an
+    /// OpenAI key. Moves such a config to the system voice and returns whether it changed.
+    public mutating func adoptSystemVoiceIfOpenAIKeyMissing(hasOpenAIKey: Bool) -> Bool {
+        guard pronunciationEngine == .openAI, !hasOpenAIKey else { return false }
+        pronunciationEngine = .system
+        return true
+    }
+
     public static func clampedPronunciationSpeed(_ speed: Double) -> Double {
         min(max(speed, minimumPronunciationSpeed), maximumPronunciationSpeed)
     }

@@ -372,7 +372,7 @@ extension L10n {
         "whatsNew.2.0.0.dictation.title": "在本機聽寫",
         "whatsNew.2.0.0.dictation.detail": "即時聽寫現在可以在本機辨識語音，也支援中英混說。在即時聽寫設定中選擇「本機」，聲音就不會離開這台 Mac。",
         "whatsNew.2.1.0.systemVoice.title": "不需要 API 金鑰也能發音",
-        "whatsNew.2.1.0.systemVoice.detail": "「發音」現在可以用 macOS 系統語音朗讀，離線、免費。新安裝直接使用它；如需切換，請在設定 › AI 模型的「文字轉語音」中選擇「macOS 系統語音」。",
+        "whatsNew.2.1.0.systemVoice.detail": "「發音」現在可以用 macOS 系統語音朗讀，離線、免費。新安裝和沒填 OpenAI 金鑰的使用者直接使用它；如需切換，請在設定 › AI 模型的「文字轉語音」中選擇「macOS 系統語音」。",
         "welcome.shortcuts.writing": "開啟 Inklet",
         "welcome.shortcuts.writing.detail": "在任何 App 中按下就會開啟寫作浮窗。點一下輸入框，再按新的按鍵。在浮窗中按住 ⌘ 可以查看所有快捷鍵。",
         "welcome.shortcuts.dictation": "長按的按鍵",

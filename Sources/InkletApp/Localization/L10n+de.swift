@@ -372,7 +372,7 @@ extension L10n {
         "whatsNew.2.0.0.dictation.title": "Diktieren auf deinem Mac",
         "whatsNew.2.0.0.dictation.detail": "Das Echtzeitdiktat erkennt Sprache jetzt auf deinem Mac, auch Chinesisch gemischt mit Englisch. Wähle in den Einstellungen für das Echtzeitdiktat „Auf diesem Mac“, dann verlässt deine Stimme deinen Mac nie.",
         "whatsNew.2.1.0.systemVoice.title": "Aussprechen ohne API-Schlüssel",
-        "whatsNew.2.1.0.systemVoice.detail": "„Aussprechen“ kann Text jetzt mit der macOS-Systemstimme vorlesen, offline und kostenlos. Neue Installationen nutzen sie sofort. Zum Wechseln wähle unter Text zu Sprache in Einstellungen › KI-Modelle die macOS-Systemstimme.",
+        "whatsNew.2.1.0.systemVoice.detail": "„Aussprechen“ kann Text jetzt mit der macOS-Systemstimme vorlesen, offline und kostenlos. Neue Installationen und Setups ohne OpenAI-Schlüssel nutzen sie sofort. Zum Wechseln wähle unter Text zu Sprache in Einstellungen › KI-Modelle die macOS-Systemstimme.",
         "welcome.shortcuts.writing": "Inklet öffnen",
         "welcome.shortcuts.writing.detail": "Drücke es in jeder App, um das Schreibfenster zu öffnen. Klicke ins Feld und drücke dann die neuen Tasten. Halte im Fenster ⌘ gedrückt, um alle Kurzbefehle zu sehen.",
         "welcome.shortcuts.dictation": "Taste zum Halten",
