@@ -68,11 +68,14 @@ public enum PlainTextOutput {
     }
 
     /// A custom prompt may ask for Markdown on purpose ("format it as a Markdown table"); the built-in ones only forbid it.
+    /// Each sentence is judged on its own, so "Use a Markdown list. Do not explain." still asks for Markdown.
     static func promptRequestsMarkdown(_ systemPrompt: String) -> Bool {
-        systemPrompt.components(separatedBy: .newlines).contains { line in
-            line.range(of: "markdown", options: .caseInsensitive) != nil && !matches(Pattern.negation, line)
+        systemPrompt.components(separatedBy: sentenceEnds).contains { sentence in
+            sentence.range(of: "markdown", options: .caseInsensitive) != nil && !matches(Pattern.negation, sentence)
         }
     }
+
+    private static let sentenceEnds = CharacterSet.newlines.union(CharacterSet(charactersIn: ".!?;。！？；，"))
 
     private static func cleanLine(_ line: String, strips: Set<Syntax>) -> String {
         var line = line

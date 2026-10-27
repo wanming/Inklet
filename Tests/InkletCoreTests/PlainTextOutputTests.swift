@@ -102,6 +102,18 @@ final class PlainTextOutputTests: XCTestCase {
             PlainTextOutput.clean(output, sourceText: "notes", systemPrompt: "用 Markdown 列表整理"),
             output
         )
+        XCTAssertEqual(
+            PlainTextOutput.clean(
+                output,
+                sourceText: "notes",
+                systemPrompt: "Summarize this as a Markdown list. Do not add explanations."
+            ),
+            output
+        )
+        XCTAssertEqual(
+            PlainTextOutput.clean(output, sourceText: "notes", systemPrompt: "用 Markdown 表格整理，不要解释。"),
+            output
+        )
     }
 
     func testBuiltInPromptsDoNotCountAsAskingForMarkdown() {
