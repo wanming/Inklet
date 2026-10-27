@@ -137,6 +137,13 @@ public struct SelectionPanelDragRegions: Equatable, Sendable {
         self.resizeEdgeWidth = resizeEdgeWidth
     }
 
+    /// How far a press on the selection bar has to move before it drags the bar instead of clicking.
+    public static let pressDragThreshold = 4.0
+
+    public static func hasPassedPressDragThreshold(from start: SelectionPoint, to end: SelectionPoint) -> Bool {
+        hypot(end.x - start.x, end.y - start.y) >= pressDragThreshold
+    }
+
     public static func translationResultRegions(panelSize: SelectionPanelSize) -> SelectionPanelDragRegions {
         let padding = 4.0
         let toolbarHeight = 40.0

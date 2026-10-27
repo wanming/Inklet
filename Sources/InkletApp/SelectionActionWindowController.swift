@@ -8,10 +8,15 @@ private final class SelectionActionPanel: NSPanel {
     private struct SelectionActionPanelDragState {
         let initialMouseLocation: NSPoint
         let initialWindowOrigin: NSPoint
+        /// The press that started a selection bar drag, replayed as a click if the mouse never
+        /// moves past the drag threshold.
+        var pendingMouseDown: NSEvent?
     }
 
     var onEscape: (() -> Void)?
     var isBackgroundDraggingEnabled = false
+    /// Lets a press anywhere on the panel, buttons included, drag it once it moves a few points.
+    var isPressDraggingEnabled = false
     var backgroundDragExclusionRects: [NSRect] = []
 
     private var dragState: SelectionActionPanelDragState?
@@ -22,16 +27,36 @@ private final class SelectionActionPanel: NSPanel {
     override func sendEvent(_ event: NSEvent) {
         switch event.type {
         case .leftMouseDown:
+            if isPressDraggingEnabled {
+                dragState = SelectionActionPanelDragState(
+                    initialMouseLocation: NSEvent.mouseLocation,
+                    initialWindowOrigin: frame.origin,
+                    pendingMouseDown: event
+                )
+                return
+            }
             if isBackgroundDraggingEnabled, isBackgroundDragPoint(event.locationInWindow) {
                 dragState = SelectionActionPanelDragState(
                     initialMouseLocation: NSEvent.mouseLocation,
                     initialWindowOrigin: frame.origin
                 )
+                NSCursor.closedHand.set()
                 return
             }
         case .leftMouseDragged:
-            if let dragState {
+            if var dragState {
                 let mouseLocation = NSEvent.mouseLocation
+                if dragState.pendingMouseDown != nil {
+                    guard SelectionPanelDragRegions.hasPassedPressDragThreshold(
+                        from: SelectionPoint(x: dragState.initialMouseLocation.x, y: dragState.initialMouseLocation.y),
+                        to: SelectionPoint(x: mouseLocation.x, y: mouseLocation.y)
+                    ) else {
+                        return
+                    }
+                    dragState.pendingMouseDown = nil
+                    self.dragState = dragState
+                    NSCursor.closedHand.set()
+                }
                 let newOrigin = NSPoint(
                     x: dragState.initialWindowOrigin.x + mouseLocation.x - dragState.initialMouseLocation.x,
                     y: dragState.initialWindowOrigin.y + mouseLocation.y - dragState.initialMouseLocation.y
@@ -40,8 +65,14 @@ private final class SelectionActionPanel: NSPanel {
                 return
             }
         case .leftMouseUp:
-            if dragState != nil {
-                dragState = nil
+            if let dragState {
+                self.dragState = nil
+                if let pendingMouseDown = dragState.pendingMouseDown {
+                    super.sendEvent(pendingMouseDown)
+                    super.sendEvent(event)
+                } else {
+                    NSCursor.arrow.set()
+                }
                 return
             }
         default:
@@ -49,6 +80,13 @@ private final class SelectionActionPanel: NSPanel {
         }
 
         super.sendEvent(event)
+    }
+
+    /// Drops a press that has not become a drag yet, so a content swap never receives it as a click.
+    func discardPendingPress() {
+        if dragState?.pendingMouseDown != nil {
+            dragState = nil
+        }
     }
 
     override func cancelOperation(_ sender: Any?) {
@@ -112,8 +150,8 @@ final class SelectionActionWindowController: NSWindowController {
     private var resultKind = SelectionActionResultKind.translation
     private let panelWidth: CGFloat = 300
     private let minimumPanelHeight: CGFloat = 36
-    // Wide enough for four menu buttons with truncated prompt mode names.
-    private let maximumMenuPanelWidth: CGFloat = 600
+    // Wide enough for the drag handle and four menu buttons with truncated prompt mode names.
+    private let maximumMenuPanelWidth: CGFloat = 612
     private var hasUserResizedTranslationPanel = false
     private var isProgrammaticResize = false
     private var rememberedTranslationPanelSize: SelectionPanelSize?
@@ -280,6 +318,7 @@ final class SelectionActionWindowController: NSWindowController {
         // that is not a user resize.
         let wasProgrammaticResize = isProgrammaticResize
         isProgrammaticResize = true
+        (window as? SelectionActionPanel)?.discardPendingPress()
         window?.contentView = hostingView
         resizeToPreferredSize()
         isProgrammaticResize = wasProgrammaticResize
@@ -427,6 +466,7 @@ final class SelectionActionWindowController: NSWindowController {
         window.isMovableByWindowBackground = false
         switch state {
         case .translationResult:
+            panel.isPressDraggingEnabled = false
             panel.isBackgroundDraggingEnabled = true
             window.styleMask.insert(.resizable)
             window.minSize = NSSize(
@@ -438,6 +478,7 @@ final class SelectionActionWindowController: NSWindowController {
                 height: Self.translationPanelMaximumSize.height
             )
         default:
+            panel.isPressDraggingEnabled = true
             panel.isBackgroundDraggingEnabled = false
             panel.backgroundDragExclusionRects = []
             window.styleMask.remove(.resizable)

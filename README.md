@@ -66,6 +66,7 @@ The Dictation shortcut is source-local and hold-only. You can change its modifie
 - Opens from a global macOS hotkey. The default is `Option+Space`.
 - Streams realtime dictation into the active Writing Assistant source editor while a modifier-key shortcut is held. The default is Right Option.
 - Shows Selection Actions after you select text in another Mac app and pause briefly, with EasyDict-style selection reading, quick translation, a customizable Translate prompt, AI pronunciation, resizable translation results that remember their last size, and 7-day local caching for repeated translations.
+- Drag the selection bar or its result anywhere when it covers something; clicks still work, and the next selection places it near the text again.
 - Ignores selected text longer than 1,500 characters to avoid accidental long-page triggers.
 - Plays selected text directly, and can play both the original text and translated text from the translation result.
 - Lets you choose which buttons the selection menu shows and in what order, under Settings › Selection Assistant › Menu Buttons. Translate, Pronounce, and any prompt mode can be a button; up to four show at once and the rest go under **More**. A prompt mode button runs that mode on the selected text and shows the result in the panel with copy and playback controls.
