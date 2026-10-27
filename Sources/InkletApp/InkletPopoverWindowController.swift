@@ -245,6 +245,9 @@ final class InkletPopoverWindowController: NSWindowController, NSWindowDelegate 
         model.onHidePopover = { [weak self] in
             self?.hide()
         }
+        model.onConcealPopover = { [weak self] in
+            self?.concealPopover()
+        }
         model.onFocusPopover = { [weak self] in
             self?.focusPopover()
         }
@@ -532,7 +535,17 @@ final class InkletPopoverWindowController: NSWindowController, NSWindowDelegate 
         )
     }
 
+    /// Hides the popover without ordering it out. Ordering out the key window while Inklet is
+    /// still active makes another Inklet window, such as Settings, key and brings it forward, so
+    /// insertion orders the popover out only after the target app is active again.
+    private func concealPopover() {
+        window?.alphaValue = 0
+        window?.ignoresMouseEvents = true
+    }
+
     private func focusPopover() {
+        window?.alphaValue = 1
+        window?.ignoresMouseEvents = false
         window?.center()
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)

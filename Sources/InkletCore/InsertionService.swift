@@ -65,7 +65,14 @@ public final class InsertionService {
         accessibilityTrustProvider()
     }
 
-    public func insert(text: String, into targetApplication: NSRunningApplication) async throws {
+    /// `onTargetActivated` runs once the target app is frontmost, just before the paste. Close
+    /// Inklet's own panel there: closing it while Inklet is still active makes another Inklet
+    /// window, such as Settings, the key window and brings it forward for a moment.
+    public func insert(
+        text: String,
+        into targetApplication: NSRunningApplication,
+        onTargetActivated: @MainActor () -> Void = {}
+    ) async throws {
         guard isAccessibilityTrusted else {
             throw InsertionError.accessibilityPermissionMissing
         }
@@ -82,6 +89,7 @@ public final class InsertionService {
                 throw InsertionError.activationFailed
             }
 
+            onTargetActivated()
             try sendPasteShortcut()
 
             if restoreDelayNanoseconds > 0 {
@@ -134,9 +142,11 @@ public final class InsertionService {
     @usableFromInline
     static func activate(_ application: NSRunningApplication) -> Bool {
         if #available(macOS 14.0, *) {
-            application.activate()
+            // Cooperative activation: the active app yields to the target before it activates.
+            NSApplication.shared.yieldActivation(to: application)
+            return application.activate()
         } else {
-            application.activate(options: [.activateIgnoringOtherApps])
+            return application.activate(options: [.activateIgnoringOtherApps])
         }
     }
 

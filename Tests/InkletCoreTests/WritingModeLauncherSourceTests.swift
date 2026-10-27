@@ -949,6 +949,32 @@ final class WritingModeLauncherSourceTests: XCTestCase {
         XCTAssertFalse(actions.contains(.insertText(oldResult)))
     }
 
+    func testInsertionClosesThePopoverOnlyAfterTheTargetAppIsActive() throws {
+        let popover = try popoverSource()
+        let insertStart = try XCTUnwrap(popover.range(
+            of: "private func insert(text: String, fallbackState: PopoverStateMachine.State)"
+        ))
+        let insertBlock = popover[insertStart.lowerBound...]
+        let concealCall = try XCTUnwrap(insertBlock.range(of: "onConcealPopover?()"))
+        let insertCall = try XCTUnwrap(insertBlock.range(
+            of: "try await insertionService.insert(text: text, into: previousApplication) {"
+        ))
+        let hideCall = try XCTUnwrap(insertBlock.range(of: "onHidePopover?()"))
+        XCTAssertLessThan(concealCall.lowerBound, insertCall.lowerBound)
+        XCTAssertLessThan(insertCall.lowerBound, hideCall.lowerBound)
+
+        let controller = try windowControllerSource()
+        let concealStart = try XCTUnwrap(controller.range(of: "private func concealPopover()"))
+        let focusStart = try XCTUnwrap(controller.range(of: "private func focusPopover()"))
+        let concealBlock = controller[concealStart.lowerBound..<focusStart.lowerBound]
+        XCTAssertTrue(concealBlock.contains("window?.alphaValue = 0"))
+        XCTAssertTrue(concealBlock.contains("window?.ignoresMouseEvents = true"))
+        XCTAssertFalse(concealBlock.contains("orderOut"))
+        let focusBlock = controller[focusStart.lowerBound...].prefix(400)
+        XCTAssertTrue(focusBlock.contains("window?.alphaValue = 1"))
+        XCTAssertTrue(focusBlock.contains("window?.ignoresMouseEvents = false"))
+    }
+
     /// The writing popover sources in their original single-file order: view model, view, text view.
     private func popoverSource() throws -> String {
         let packageRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
