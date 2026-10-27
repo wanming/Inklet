@@ -82,6 +82,13 @@ private final class SelectionActionPanel: NSPanel {
         super.sendEvent(event)
     }
 
+    /// Drops a press that has not become a drag yet, so a content swap never receives it as a click.
+    func discardPendingPress() {
+        if dragState?.pendingMouseDown != nil {
+            dragState = nil
+        }
+    }
+
     override func cancelOperation(_ sender: Any?) {
         onEscape?()
     }
@@ -311,6 +318,7 @@ final class SelectionActionWindowController: NSWindowController {
         // that is not a user resize.
         let wasProgrammaticResize = isProgrammaticResize
         isProgrammaticResize = true
+        (window as? SelectionActionPanel)?.discardPendingPress()
         window?.contentView = hostingView
         resizeToPreferredSize()
         isProgrammaticResize = wasProgrammaticResize

@@ -46,5 +46,6 @@ final class SelectionActionWindowControllerSourceTests: XCTestCase {
         XCTAssertTrue(source.contains("panel.isPressDraggingEnabled = false"))
         XCTAssertTrue(source.contains("SelectionPanelDragRegions.hasPassedPressDragThreshold("))
         XCTAssertTrue(source.contains("super.sendEvent(pendingMouseDown)"))
+        XCTAssertTrue(source.contains("discardPendingPress()"))
     }
 }
