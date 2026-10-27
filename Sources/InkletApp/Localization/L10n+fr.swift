@@ -378,6 +378,8 @@ extension L10n {
         "whatsNew.2.1.0.systemVoice.detail": "Prononcer peut désormais lire le texte avec la voix du système macOS, hors ligne et gratuitement. Les nouvelles installations et celles sans clé OpenAI l’utilisent d’emblée. Pour changer, choisissez Voix du système macOS sous Texte en voix dans Réglages › Modèles d’IA.",
         "whatsNew.2.1.0.plainText.title": "Résultats en texte brut",
         "whatsNew.2.1.0.plainText.detail": "Les réécritures, traductions et résumés arrivent désormais en texte brut, sans symboles Markdown parasites comme ** ou #. Le Markdown déjà présent dans votre texte est conservé.",
+        "whatsNew.2.1.0.beta.title": "Essayez les bêtas en avant-première",
+        "whatsNew.2.1.0.beta.detail": "Envie des nouveautés en premier ? Activez Mises à jour bêta dans Réglages › Général. Désactivez-le à tout moment pour revenir aux versions stables.",
         "welcome.shortcuts.writing": "Ouvrir Inklet",
         "welcome.shortcuts.writing.detail": "Appuyez dessus dans n'importe quelle app pour ouvrir la fenêtre d'écriture. Cliquez sur le champ, puis appuyez sur les nouvelles touches. Dans la fenêtre, maintenez ⌘ enfoncée pour voir tous les raccourcis.",
         "welcome.shortcuts.dictation": "Touche à maintenir",

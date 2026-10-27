@@ -30,6 +30,11 @@ enum WhatsNewCatalog {
                 titleKey: "whatsNew.2.1.0.plainText.title",
                 detailKey: "whatsNew.2.1.0.plainText.detail"
             ),
+            WhatsNewFeature(
+                systemImage: "testtube.2",
+                titleKey: "whatsNew.2.1.0.beta.title",
+                detailKey: "whatsNew.2.1.0.beta.detail"
+            ),
         ]),
         WhatsNewRelease(version: "2.0.0", features: [
             WhatsNewFeature(
