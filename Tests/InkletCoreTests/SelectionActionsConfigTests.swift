@@ -7,10 +7,29 @@ final class SelectionActionsConfigTests: XCTestCase {
 
         XCTAssertTrue(config.isEnabled)
         XCTAssertEqual(config.translationLanguage, .followInterfaceLanguage)
+        XCTAssertEqual(config.pronunciationEngine, .system)
         XCTAssertEqual(config.pronunciationVoice, .alloy)
         XCTAssertEqual(config.pronunciationSpeed, 1.0)
         XCTAssertEqual(config.forceSelectionMode, .menuCopyOnly)
         XCTAssertFalse(config.allowsSimulatedCopyFallback)
+    }
+
+    func testConfigsSavedBeforeTheSystemVoiceKeepOpenAIPronunciation() throws {
+        let data = Data(#"{"pronunciationVoice":"cedar"}"#.utf8)
+
+        let config = try JSONDecoder().decode(SelectionActionsConfig.self, from: data)
+
+        XCTAssertEqual(config.pronunciationEngine, .openAI)
+        XCTAssertEqual(config.pronunciationVoice, .cedar)
+    }
+
+    func testPronunciationEngineRoundTrips() throws {
+        for engine in SelectionPronunciationEngine.allCases {
+            let data = try JSONEncoder().encode(SelectionActionsConfig(pronunciationEngine: engine))
+            let decoded = try JSONDecoder().decode(SelectionActionsConfig.self, from: data)
+
+            XCTAssertEqual(decoded.pronunciationEngine, engine)
+        }
     }
 
     func testForceSelectionModeKeepsLegacyCasesButExposesOnlySafeSettingsCases() {

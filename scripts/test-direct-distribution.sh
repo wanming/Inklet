@@ -628,9 +628,9 @@ require_documentation_prose "$contributing" \
 
 privacy_policy="${repo_root}/docs/privacy-policy.md"
 privacy_update_lines="$(grep -E '^Last updated:' "$privacy_policy" || true)"
-if [[ "$privacy_update_lines" != "Last updated: October 25, 2026" ]]; then
+if [[ "$privacy_update_lines" != "Last updated: October 27, 2026" ]]; then
   record_documentation_failure \
-    "privacy-policy.md must contain exactly one current policy date: Last updated: October 25, 2026."
+    "privacy-policy.md must contain exactly one current policy date: Last updated: October 27, 2026."
 fi
 for privacy_text in \
   "~/Library/Application Support/com.tomwan.inklet/" \

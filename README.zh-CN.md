@@ -33,7 +33,7 @@ Inklet 仅通过 GitHub Releases 检查更新。正式版大约每 24 小时从 
 1. 从 Applications 文件夹打开 Inklet。需要运行源码构建时，请在仓库根目录执行 `scripts/run-local-app.sh`，然后使用 `/Applications/Inklet Local.app`。
 2. 点击菜单栏里的 Inklet 图标，打开 Settings。
 3. 按 macOS 提示授予 Accessibility 权限。Inklet 用这一个通用权限读取选区、执行已配置的复制备用流程、回到上一个应用并粘贴确认后的结果。系统设置打开期间 Inklet 会留在后台；关闭系统设置后 Inklet 会返回 General 设置页。
-4. 新安装后，以及老用户升级到这个版本后的第一次启动，会打开欢迎引导，一步步设置界面语言（新安装默认跟随系统语言）、辅助功能、写作模型、实时听写用的麦克风，以及打开 Inklet 和听写的快捷键，最后介绍选中文字后出现的工具条。想再看一遍时，在菜单栏菜单中选择**新手引导**，每一步都从你当前的设置开始。在 Apple 芯片的 Mac 上，引导默认选择**内置**模型，确认后在后台下载推荐的模型；写作浮窗会显示下载进度，下载完成后离线也能用。如果想改用云端服务商，在设置 › AI 模型中选择服务商并填写它的 API key。Intel Mac 默认使用 OpenAI，一把 key 处理写作、实时听写、选区翻译和发音。选择其他服务商时，写作和选区翻译使用该服务商；发音，以及选择 OpenAI 识别时的听写，仍需要在同一页的 API Key 卡片中填写 OpenAI API key。如果想在本机运行写作和翻译、不填任何 key，可以选择**内置**并下载一个模型；如果你已经在用 Ollama 或 LM Studio，也可以直接选择它们（见[本地模型](#本地模型)）。
+4. 新安装后，以及老用户升级到这个版本后的第一次启动，会打开欢迎引导，一步步设置界面语言（新安装默认跟随系统语言）、辅助功能、写作模型、实时听写用的麦克风，以及打开 Inklet 和听写的快捷键，最后介绍选中文字后出现的工具条。想再看一遍时，在菜单栏菜单中选择**新手引导**，每一步都从你当前的设置开始。在 Apple 芯片的 Mac 上，引导默认选择**内置**模型，确认后在后台下载推荐的模型；写作浮窗会显示下载进度，下载完成后离线也能用。如果想改用云端服务商，在设置 › AI 模型中选择服务商并填写它的 API key。Intel Mac 默认使用 OpenAI，一把 key 处理写作、实时听写、选区翻译和发音。选择其他服务商时，写作和选区翻译使用该服务商；听写和发音选择 OpenAI 时，仍需要在同一页的 API Key 卡片中填写 OpenAI API key。如果想在本机运行写作和翻译、不填任何 key，可以选择**内置**并下载一个模型；如果你已经在用 Ollama 或 LM Studio，也可以直接选择它们（见[本地模型](#本地模型)）。
 5. 在 Writing Assistant 中配置模型、写作快捷键、生成参数和 Prompt 模式。实时听写有单独的设置页，可以开启或关闭，选择用**本机**还是 **OpenAI** 识别语音，并选择长按快捷键和麦克风。在 Apple 芯片的 Mac 上，新安装默认使用**本机**，在欢迎引导里开启听写时会下载语音模型；已有配置继续使用 OpenAI，直到你手动切换。使用 OpenAI 时，高级听写只提供恢复模型，不提供端点设置；恢复端点不可编辑。实时模型由 Inklet 固定。
 6. 可选：在 Selection Assistant 中配置翻译语言、强制取词模式、AI 发音声音和发音速度，并在设置中试听该声音。
 7. 第一次有效长按听写快捷键时授予 Microphone 权限。只打开 Inklet、查看 Settings，或在原文编辑器之外按快捷键都不会请求权限。
@@ -82,7 +82,7 @@ Inklet 仅通过 GitHub Releases 检查更新。正式版大约每 24 小时从 
 - 不包含浏览器专用的选区代码，也不会请求浏览器 Automation。Chrome、Safari、Edge 和原生 App 使用同一条通用流程。
 - 可以编辑 Prompt 模式、服务商、模型、自定义 OpenAI 兼容接口地址、timeout、写作快捷键、听写长按快捷键、麦克风、恢复模型、选区翻译语言、选区 Translate prompt、选区菜单按钮、强制取词模式、模拟复制权限、AI 发音声音和 AI 发音速度。
 - 在本地 History 中查看成功的写作和选区结果，连续重复项会自动合并，原文/结果文本可选择，可一键复制结果或清空全部历史；旧版 Voice History 仍可读取。
-- 写作和翻译可使用 OpenAI、Anthropic、Google Gemini、DeepSeek、阿里通义千问（Alibaba Qwen）、月之暗面 Kimi、智谱 GLM、MiniMax、硅基流动（SiliconFlow）、火山方舟（Volcengine Ark）、腾讯混元、百川、零一万物 Yi、xAI、Groq、Mistral、OpenRouter、Perplexity、Together AI、Cerebras，或任意自定义 OpenAI 兼容接口（例如本地模型服务）。发音始终使用 OpenAI；听写使用实时听写设置中选择的语音识别引擎。
+- 写作和翻译可使用 OpenAI、Anthropic、Google Gemini、DeepSeek、阿里通义千问（Alibaba Qwen）、月之暗面 Kimi、智谱 GLM、MiniMax、硅基流动（SiliconFlow）、火山方舟（Volcengine Ark）、腾讯混元、百川、零一万物 Yi、xAI、Groq、Mistral、OpenRouter、Perplexity、Together AI、Cerebras，或任意自定义 OpenAI 兼容接口（例如本地模型服务）。发音使用 AI 模型页“文字转语音”中选择的引擎：macOS 系统语音（新安装的默认选项，离线、免费）或 OpenAI。听写使用实时听写设置中选择的语音识别引擎。
 - 写作和翻译可以在本机运行：使用内置引擎（Qwen3.5 4B 或 Gemma 4 E4B，从 Hugging Face 下载一次），或连接本机的 Ollama、LM Studio。不需要 API key，文字不会离开你的 Mac。
 - 提供英文、简体中文、繁体中文、日文、韩文、西班牙文、法文、德文、葡萄牙文和意大利文应用界面。
 - 紧凑选区菜单以及设置、写作界面中的受限控件会根据译文调整布局；切换语言时刷新已打开的界面并保留写作内容。
@@ -104,7 +104,7 @@ Inklet 是早期 MVP。当前仓库包含：
 - 推荐安装完整 Xcode，以获得 XCTest 支持。
 - Accessibility 权限，用于通用选区读取、按设置启用的复制备用流程、回到上一个应用并粘贴生成结果。
 - Microphone 权限，仅在有效长按听写快捷键时用于实时听写。
-- OpenAI 或其他受支持服务商的 API key，或者使用本地模型。发音，以及使用 OpenAI 识别的听写，需要 OpenAI API key。
+- OpenAI 或其他受支持服务商的 API key，或者使用本地模型。发音和听写只有选择 OpenAI 时才需要 OpenAI API key。
 
 ## 本地模型
 
@@ -200,7 +200,7 @@ docs/                    手动测试说明和隐私政策
 
 ## 隐私
 
-- Inklet 会使用你在设置中选择的服务商及其 API key 处理写作和选区翻译。发音始终使用你的 OpenAI API key 调用 OpenAI。只有在把语音识别选为 OpenAI 时，听写才会使用 OpenAI。
+- Inklet 会使用你在设置中选择的服务商及其 API key 处理写作和选区翻译。使用 macOS 系统语音时，发音在本机朗读；只有把文字转语音选为 OpenAI 时，才会用你的 OpenAI API key 调用 OpenAI。只有在把语音识别选为 OpenAI 时，听写才会使用 OpenAI。
 - 使用**本机**语音识别时，听写音频和恢复录音都由本机上的服务处理，不会离开这台 Mac。
 - 使用 OpenAI 语音识别时，长按听写快捷键期间，活动麦克风音频会直接流式发送到 OpenAI Realtime 转写服务。Inklet 还会保存一份临时本地恢复录音；它在备用请求真正开始前始终只保存在本机，最多上传一次到 `https://api.openai.com/v1/audio/transcriptions`，使用实时听写所用的同一把现有 OpenAI API key，并在每个会话终止路径中删除。
 - API key 按服务商分别存储在你的 Mac 本地。
@@ -211,7 +211,7 @@ docs/                    手动测试说明和隐私政策
 - Inklet 会把成功的写作和选区原文/结果作为本地 History 保存，直到你在 Settings 中清空；连续重复项会自动跳过。未经处理的听写草稿不会创建 History；已有的旧版 Voice 条目仍可在本机读取。
 - 选区动作会捕获来源 App 和选区位置，在读取前和读取期间验证来源，然后通过 Accessibility 读取该 App 的当前选区。如果 Accessibility 没有返回选中文本，设置中的强制取词模式可以短暂调用菜单复制，并通过上面所述的受保护剪贴板事务读取复制出的文本。模拟 `Command+C` 默认关闭，只有显式开启高级选项后才会运行。你可以在设置中关闭强制取词。此流程不会发送针对浏览器的 Apple Events，也不会请求浏览器 Automation。选中文本后快速按两次 `Command+C`，会显式读取你已经完成的复制。Inklet 不会保存仅被选中的文本；只有成功完成的动作会进入本地 History。
 - Selection Assistant 会把成功的翻译结果用哈希缓存键在本地缓存 7 天，以加速重复翻译。
-- 当本地没有可用缓存时，Selection Assistant 翻译会把选中文本和自定义 Translate 指令发送到你选择的服务商；Prompt 模式按钮会把选中文本和该模式的 prompt 发送到你选择的服务商；AI 发音会把选中文本发送到 OpenAI。
+- 当本地没有可用缓存时，Selection Assistant 翻译会把选中文本和自定义 Translate 指令发送到你选择的服务商；Prompt 模式按钮会把选中文本和该模式的 prompt 发送到你选择的服务商；只有文字转语音引擎是 OpenAI 时，发音才会把选中文本发送到 OpenAI。
 - Inklet 最多每天从 `models.dev` 获取一次公开模型目录。该请求不包含你的文本、音频、API keys 或应用设置。
 - 除非你信任 OpenAI 或所选服务商的数据处理政策，否则不要发送私密文本或音频。
 

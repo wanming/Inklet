@@ -22,6 +22,8 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
 
     public var isEnabled: Bool
     public var translationLanguage: SelectionTranslationLanguage
+    public var pronunciationEngine: SelectionPronunciationEngine
+    /// The OpenAI voice; the system voice picks its own for the language of the text.
     public var pronunciationVoice: SelectionPronunciationVoice
     public var translationPrompt: String
     public var pronunciationSpeed: Double
@@ -50,6 +52,7 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
     public init(
         isEnabled: Bool = true,
         translationLanguage: SelectionTranslationLanguage = .followInterfaceLanguage,
+        pronunciationEngine: SelectionPronunciationEngine = .system,
         pronunciationVoice: SelectionPronunciationVoice = .alloy,
         translationPrompt: String = Self.defaultTranslationPrompt,
         pronunciationSpeed: Double = Self.defaultPronunciationSpeed,
@@ -59,6 +62,7 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
     ) {
         self.isEnabled = isEnabled
         self.translationLanguage = translationLanguage
+        self.pronunciationEngine = pronunciationEngine
         self.pronunciationVoice = pronunciationVoice
         self.translationPrompt = translationPrompt
         self.pronunciationSpeed = Self.clampedPronunciationSpeed(pronunciationSpeed)
@@ -70,6 +74,7 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case isEnabled
         case translationLanguage
+        case pronunciationEngine
         case pronunciationVoice
         case translationPrompt
         case pronunciationSpeed
@@ -86,6 +91,11 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
             SelectionTranslationLanguage.self,
             forKey: .translationLanguage
         ) ?? defaults.translationLanguage
+        // Configs saved before the system voice existed keep the OpenAI pronunciation they had.
+        pronunciationEngine = try container.decodeIfPresent(
+            SelectionPronunciationEngine.self,
+            forKey: .pronunciationEngine
+        ) ?? .openAI
         pronunciationVoice = try container.decodeIfPresent(
             SelectionPronunciationVoice.self,
             forKey: .pronunciationVoice
@@ -127,6 +137,16 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
     public static func clampedPronunciationSpeed(_ speed: Double) -> Double {
         min(max(speed, minimumPronunciationSpeed), maximumPronunciationSpeed)
     }
+}
+
+/// Where Pronounce turns text into speech.
+public enum SelectionPronunciationEngine: String, Codable, CaseIterable, Equatable, Identifiable, Sendable {
+    /// The macOS system voice, on this Mac, with no key.
+    case system
+    /// OpenAI text to speech, with the OpenAI API key.
+    case openAI
+
+    public var id: String { rawValue }
 }
 
 public enum SelectionPronunciationVoice: String, Codable, CaseIterable, Equatable, Identifiable, Sendable {

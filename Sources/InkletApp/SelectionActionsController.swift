@@ -669,6 +669,13 @@ final class SelectionActionsController {
                 }
             }
             do {
+                let config = (try? self.configStore.load()) ?? AppConfig.defaultConfig()
+                if config.selectionActions.pronunciationEngine == .system {
+                    guard !Task.isCancelled, !isStopping, !isMigrationMaintenanceActive else { return }
+                    self.speechPlaybackService.speak(sourceText, speed: config.selectionActions.pronunciationSpeed)
+                    self.showSelectionPronunciationPlaying(returnState: returnState, playingFeedback: playingFeedback)
+                    return
+                }
                 let provider = OpenAITTSProvider(apiKeyProvider: { [apiKeyStore] in
                     guard let apiKey = apiKeyStore.loadAPIKey(forProviderID: LLMProviderPreset.openAI.id),
                           !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -677,7 +684,6 @@ final class SelectionActionsController {
                     }
                     return apiKey
                 })
-                let config = (try? self.configStore.load()) ?? AppConfig.defaultConfig()
                 let audioData = try await provider.speechAudio(OpenAITTSRequest(
                     input: sourceText,
                     voice: config.selectionActions.pronunciationVoice.rawValue,
@@ -689,16 +695,7 @@ final class SelectionActionsController {
                     guard !self.isStopping else { return }
                     do {
                         try self.speechPlaybackService.play(audioData: audioData)
-                        self.isSelectionSpeechPlaying = true
-                        self.notifyWorkStateChange()
-                        if returnState == .menu {
-                            self.selectionActionWindowController.showPlayingPronunciation()
-                        } else if !self.currentTranslationText.isEmpty {
-                            self.selectionActionWindowController.showTranslation(
-                                self.currentTranslationText,
-                                feedback: playingFeedback
-                            )
-                        }
+                        self.showSelectionPronunciationPlaying(returnState: returnState, playingFeedback: playingFeedback)
                     } catch {
                         self.isSelectionSpeechPlaying = false
                         self.showSelectionPronunciationError(returnState: returnState)
@@ -714,6 +711,19 @@ final class SelectionActionsController {
         selectionTTSTask = task
         selectionTaskRegistry.register(task, id: taskID)
         notifyWorkStateChange()
+    }
+
+    private func showSelectionPronunciationPlaying(
+        returnState: SelectionPronunciationReturnState,
+        playingFeedback: SelectionActionFeedback?
+    ) {
+        isSelectionSpeechPlaying = true
+        notifyWorkStateChange()
+        if returnState == .menu {
+            selectionActionWindowController.showPlayingPronunciation()
+        } else if !currentTranslationText.isEmpty {
+            selectionActionWindowController.showTranslation(currentTranslationText, feedback: playingFeedback)
+        }
     }
 
     private func restoreSelectionPronunciationReturnState() {

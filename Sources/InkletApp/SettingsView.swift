@@ -102,6 +102,10 @@ struct SettingsView: View {
         L10n.format("settings.aiPronunciation.speedValue", model.config.selectionActions.pronunciationSpeed)
     }
 
+    private var usesOpenAIPronunciation: Bool {
+        model.config.selectionActions.pronunciationEngine == .openAI
+    }
+
     private var isPronunciationPreviewPlaying: Bool {
         if case .playing(let voice)? = model.pronunciationPreviewState {
             return voice == model.config.selectionActions.pronunciationVoice
@@ -347,12 +351,18 @@ struct SettingsView: View {
             }
 
             settingsGroup(L10n.text("settings.group.textToSpeech")) {
-                settingsRow(L10n.text("settings.row.engine"), help: L10n.text("settings.help.speechOutputEngine")) {
-                    // Not a choice yet, so no warning here; Pronounce shows it where it is used.
-                    Text(LLMProviderPreset.openAI.name)
-                        .font(InkletTheme.Typography.body)
-                        .foregroundStyle(InkletTheme.secondaryLabel)
-                        .fixedSize()
+                settingsRow(
+                    L10n.text("settings.row.engine"),
+                    help: L10n.text("settings.help.speechOutputEngine"),
+                    warning: openAIKeyWarning(isNeeded: usesOpenAIPronunciation)
+                ) {
+                    Picker("", selection: $model.config.selectionActions.pronunciationEngine) {
+                        ForEach(SelectionPronunciationEngine.allCases) { engine in
+                            Text(engine.localizedName).tag(engine)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
                 }
             }
 
@@ -1087,11 +1097,14 @@ struct SettingsView: View {
 
     private var selectionPronunciationGroup: some View {
         settingsGroup(L10n.text("settings.group.pronunciation")) {
-            engineNoteRow(LLMProviderPreset.openAI.name, warning: openAIKeyWarning(isNeeded: true))
+            engineNoteRow(
+                model.config.selectionActions.pronunciationEngine.localizedName,
+                warning: openAIKeyWarning(isNeeded: usesOpenAIPronunciation)
+            )
 
             settingsRow(
-                L10n.text("settings.row.aiPronunciation"),
-                help: L10n.text("settings.help.aiPronunciation")
+                L10n.text(usesOpenAIPronunciation ? "settings.row.aiPronunciation" : "settings.row.systemPronunciationVoice"),
+                help: L10n.text(usesOpenAIPronunciation ? "settings.help.aiPronunciation" : "settings.help.systemPronunciationVoice")
             ) {
                 HStack(spacing: InkletTheme.Spacing.xxs) {
                     Button {
@@ -1122,13 +1135,20 @@ struct SettingsView: View {
                     .accessibilityLabel(L10n.text("settings.aiPronunciation.preview"))
                     .disabled(model.pronunciationPreviewState?.matches(model.config.selectionActions.pronunciationVoice) == true)
 
-                    Picker("", selection: $model.config.selectionActions.pronunciationVoice) {
-                        ForEach(SelectionPronunciationVoice.allCases) { voice in
-                            Text(voice.displayName).tag(voice)
+                    if usesOpenAIPronunciation {
+                        Picker("", selection: $model.config.selectionActions.pronunciationVoice) {
+                            ForEach(SelectionPronunciationVoice.allCases) { voice in
+                                Text(voice.displayName).tag(voice)
+                            }
                         }
+                        .labelsHidden()
+                        .fixedSize()
+                    } else {
+                        Text(L10n.text("settings.systemPronunciationVoice.automatic"))
+                            .font(InkletTheme.Typography.body)
+                            .foregroundStyle(InkletTheme.secondaryLabel)
+                            .fixedSize()
                     }
-                    .labelsHidden()
-                    .fixedSize()
                 }
             }
 
