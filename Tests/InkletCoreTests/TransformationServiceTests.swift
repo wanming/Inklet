@@ -286,6 +286,25 @@ final class TransformationServiceTests: XCTestCase {
         XCTAssertEqual(partialOutputs.values, ["Hel", "Hello."])
     }
 
+    func testStreamingAndFinalOutputDropMarkdownTheSourceDoesNotUse() async throws {
+        let service = TransformationService(provider: StreamingLLMProvider(
+            partialOutputs: ["**Hel", "**Hello.** - *now*"],
+            outputText: "## Hello.\n- *now*"
+        ))
+        let partialOutputs = StreamedOutputRecorder()
+
+        let result = try await service.transform(
+            sourceText: "hello now",
+            mode: mode,
+            model: "test-model",
+            timeoutSeconds: 1,
+            onPartialOutput: { partialOutputs.append($0) }
+        )
+
+        XCTAssertEqual(result.outputText, "Hello.\n• now")
+        XCTAssertEqual(partialOutputs.values, ["**Hel", "Hello. - now"])
+    }
+
     func testStreamingRequestFallsBackToCompleteResultForProvidersWithoutStreaming() async throws {
         let service = TransformationService(provider: FakeLLMProvider(outputText: "  Hello.  "))
         let partialOutputs = StreamedOutputRecorder()
