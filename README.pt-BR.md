@@ -68,6 +68,7 @@ O atalho de Ditado só funciona no editor de origem e só ao ser mantido pressio
 - Abre com um atalho global do macOS. O padrão é `Option+Space`.
 - Transmite o ditado em tempo real para o editor de origem ativo do Assistente de escrita enquanto um atalho de tecla modificadora é mantido pressionado. O padrão é Option direita.
 - Mostra as ações de seleção depois que você seleciona texto em outro app do Mac e faz uma breve pausa, com leitura da seleção no estilo do EasyDict, tradução rápida, um prompt de **Traduzir** personalizável, pronúncia com IA, resultados de tradução redimensionáveis que lembram o último tamanho e um cache local de 7 dias para traduções repetidas.
+- Você pode arrastar a barra de seleção ou o resultado para qualquer lugar se estiverem cobrindo algo; os cliques continuam funcionando e, na próxima seleção, a barra volta a aparecer perto do texto.
 - Ignora textos selecionados com mais de 1.500 caracteres para evitar acionamentos acidentais ao selecionar uma página inteira.
 - Reproduz diretamente o texto selecionado e, no resultado da tradução, pode reproduzir tanto o texto original quanto o traduzido.
 - Permite escolher quais botões o menu de seleção mostra e em que ordem, em **Ajustes** › **Assistente de seleção** › **Botões do menu**. **Traduzir**, **Pronunciar** e qualquer modo de prompt podem ser um botão; até quatro aparecem ao mesmo tempo e o resto fica em **Mais**. Um botão de modo de prompt executa esse modo no texto selecionado e mostra o resultado no painel com controles de cópia e reprodução.

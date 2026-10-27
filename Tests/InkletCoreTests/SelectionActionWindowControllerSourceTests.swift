@@ -35,4 +35,16 @@ final class SelectionActionWindowControllerSourceTests: XCTestCase {
         XCTAssertTrue(source.contains("rememberedTranslationPanelSize"))
         XCTAssertTrue(source.contains("SelectionPanelDragRegions.translationResultRegions"))
     }
+
+    func testSelectionBarDragsFromAnyPressButStillClicksWhenNotMoved() throws {
+        let packageRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        let sourceURL = packageRoot.appendingPathComponent("Sources/InkletApp/SelectionActionWindowController.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(source.contains("var isPressDraggingEnabled = false"))
+        XCTAssertTrue(source.contains("panel.isPressDraggingEnabled = true"))
+        XCTAssertTrue(source.contains("panel.isPressDraggingEnabled = false"))
+        XCTAssertTrue(source.contains("SelectionPanelDragRegions.hasPassedPressDragThreshold("))
+        XCTAssertTrue(source.contains("super.sendEvent(pendingMouseDown)"))
+    }
 }

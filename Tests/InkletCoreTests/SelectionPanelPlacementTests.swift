@@ -95,4 +95,22 @@ final class SelectionPanelPlacementTests: XCTestCase {
         XCTAssertFalse(regions.isBackgroundDragPoint(SelectionPoint(x: 220, y: 200)))
         XCTAssertFalse(regions.isBackgroundDragPoint(SelectionPoint(x: 4, y: 24)))
     }
+
+    func testSelectionBarPressBecomesDragOnlyAfterThreshold() {
+        let start = SelectionPoint(x: 100, y: 100)
+
+        XCTAssertFalse(SelectionPanelDragRegions.hasPassedPressDragThreshold(from: start, to: start))
+        XCTAssertFalse(SelectionPanelDragRegions.hasPassedPressDragThreshold(
+            from: start,
+            to: SelectionPoint(x: 102, y: 102)
+        ))
+        XCTAssertTrue(SelectionPanelDragRegions.hasPassedPressDragThreshold(
+            from: start,
+            to: SelectionPoint(x: 104, y: 100)
+        ))
+        XCTAssertTrue(SelectionPanelDragRegions.hasPassedPressDragThreshold(
+            from: start,
+            to: SelectionPoint(x: 97, y: 96)
+        ))
+    }
 }
