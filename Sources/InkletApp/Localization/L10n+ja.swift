@@ -378,6 +378,8 @@ extension L10n {
         "whatsNew.2.1.0.systemVoice.detail": "「発音」が macOS のシステム音声で読み上げられるようになりました。オフラインで無料です。新規インストールと、OpenAI キーを設定していない環境ではすぐに使われます。切り替えるには、設定 › AI モデルの「テキストから音声」で「macOS のシステム音声」を選んでください。",
         "whatsNew.2.1.0.plainText.title": "結果はプレーンテキストに",
         "whatsNew.2.1.0.plainText.detail": "書き直し・翻訳・要約の結果は、** や # などの Markdown 記号を含まないプレーンテキストで返るようになりました。元のテキストで使われている Markdown はそのまま残ります。",
+        "whatsNew.2.1.0.beta.title": "ベータ版をいち早く",
+        "whatsNew.2.1.0.beta.detail": "新機能をいち早く試したい場合は、設定 › 一般で「ベータ版のアップデート」をオンにしてください。オフにすると、次の正式版が出たときに正式版に戻ります。",
         "welcome.shortcuts.writing": "Inklet を開く",
         "welcome.shortcuts.writing.detail": "どのアプリでも押すと文章作成ポップオーバーが開きます。欄をクリックしてから新しいキーを押してください。ポップオーバーで ⌘ を押し続けると、すべてのショートカットが表示されます。",
         "welcome.shortcuts.dictation": "長押しするキー",

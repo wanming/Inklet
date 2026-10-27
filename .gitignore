@@ -16,3 +16,4 @@ dist/
 *.provisionprofile
 docs/superpowers/
 .private/
+*.whl

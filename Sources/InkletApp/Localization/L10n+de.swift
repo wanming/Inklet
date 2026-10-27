@@ -378,6 +378,8 @@ extension L10n {
         "whatsNew.2.1.0.systemVoice.detail": "„Aussprechen“ kann Text jetzt mit der macOS-Systemstimme vorlesen, offline und kostenlos. Neue Installationen und Setups ohne OpenAI-Schlüssel nutzen sie sofort. Zum Wechseln wähle unter Text zu Sprache in Einstellungen › KI-Modelle die macOS-Systemstimme.",
         "whatsNew.2.1.0.plainText.title": "Ergebnisse als reiner Text",
         "whatsNew.2.1.0.plainText.detail": "Umformulierungen, Übersetzungen und Zusammenfassungen kommen jetzt als reiner Text, ohne verirrte Markdown-Zeichen wie ** oder #. Markdown, das dein eigener Text schon nutzt, bleibt erhalten.",
+        "whatsNew.2.1.0.beta.title": "Betas früher testen",
+        "whatsNew.2.1.0.beta.detail": "Neue Funktionen zuerst? Aktiviere Beta-Updates unter Einstellungen › Allgemein. Wenn du es ausschaltest, wechselt Inklet mit der nächsten stabilen Version zurück.",
         "welcome.shortcuts.writing": "Inklet öffnen",
         "welcome.shortcuts.writing.detail": "Drücke es in jeder App, um das Schreibfenster zu öffnen. Klicke ins Feld und drücke dann die neuen Tasten. Halte im Fenster ⌘ gedrückt, um alle Kurzbefehle zu sehen.",
         "welcome.shortcuts.dictation": "Taste zum Halten",
