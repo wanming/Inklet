@@ -47,5 +47,13 @@ final class SelectionActionWindowControllerSourceTests: XCTestCase {
         XCTAssertTrue(source.contains("SelectionPanelDragRegions.hasPassedPressDragThreshold("))
         XCTAssertTrue(source.contains("super.sendEvent(pendingMouseDown)"))
         XCTAssertTrue(source.contains("discardPendingPress()"))
+
+        let viewSource = try String(
+            contentsOf: packageRoot.appendingPathComponent("Sources/InkletApp/SelectionActionView.swift"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(viewSource.contains("private var dragHandle: some View"))
+        XCTAssertTrue(viewSource.contains("NSCursor.openHand.set()"))
+        XCTAssertTrue(viewSource.contains(".help(L10n.text(\"selection.action.dragToMove\"))"))
     }
 }

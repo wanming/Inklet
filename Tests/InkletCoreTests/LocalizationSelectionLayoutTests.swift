@@ -53,7 +53,7 @@ final class LocalizationSelectionLayoutTests: XCTestCase {
                     onPronounceTranslation: {}, onCopyTranslation: {}, onRetryTranslation: {}
                 )
                 let size = NSHostingView(rootView: view).fittingSize
-                XCTAssertLessThanOrEqual(size.width, 600, language.rawValue)
+                XCTAssertLessThanOrEqual(size.width, 612, language.rawValue)
                 XCTAssertEqual(size.height, 36, accuracy: 1, language.rawValue)
             }
         }

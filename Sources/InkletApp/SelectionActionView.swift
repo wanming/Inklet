@@ -131,7 +131,7 @@ struct SelectionActionView: View {
         }
     }
 
-    /// Matches the chrome in `compactButton` and `moreButton`, so an error message
+    /// Matches the drag handle and the chrome in `compactButton` and `moreButton`, so an error message
     /// below a wide menu does not squeeze the buttons.
     private var estimatedMenuRowWidth: CGFloat {
         let layout = SelectionMenuLayout.split(menuItems)
@@ -142,7 +142,8 @@ struct SelectionActionView: View {
         }
         let moreWidth: CGFloat = layout.overflow.isEmpty ? 0 : Self.menuButtonHeight
         let count = layout.inline.count + (layout.overflow.isEmpty ? 0 : 1)
-        return buttonWidths.reduce(0, +) + moreWidth + CGFloat(max(count - 1, 0)) * Self.menuButtonSpacing
+        return Self.dragHandleWidth + buttonWidths.reduce(0, +) + moreWidth
+            + CGFloat(count) * Self.menuButtonSpacing
     }
 
     private static let menuButtonHeight = InkletTheme.ControlHeight.regular
@@ -150,6 +151,9 @@ struct SelectionActionView: View {
     private static let menuButtonPadding: CGFloat = 10
     private static let menuIconSize = InkletTheme.IconSize.regular
     private static let menuIconSpacing: CGFloat = 6
+    private static let dragHandleWidth: CGFloat = 10
+    private static let dragHandleDotSize: CGFloat = 2
+    private static let dragHandleDotSpacing: CGFloat = 2
     /// Padding, icon and icon gap around a menu button's title.
     private static let menuButtonChromeWidth = menuButtonPadding * 2 + menuIconSize + menuIconSpacing
 
@@ -209,6 +213,7 @@ struct SelectionActionView: View {
     private func menuButtonRow(feedback: SelectionActionFeedback?) -> some View {
         let layout = SelectionMenuLayout.split(menuItems)
         return HStack(spacing: Self.menuButtonSpacing) {
+            dragHandle
             ForEach(layout.inline) { item in
                 compactButton(
                     title: item.title,
@@ -227,6 +232,31 @@ struct SelectionActionView: View {
                 )
             }
         }
+    }
+
+    /// Dots at the bar's leading edge that show it can be moved. The panel itself does the dragging,
+    /// from any press that moves, so the dots only need to be seen.
+    private var dragHandle: some View {
+        VStack(spacing: Self.dragHandleDotSpacing) {
+            ForEach(0..<3, id: \.self) { _ in
+                HStack(spacing: Self.dragHandleDotSpacing) {
+                    Circle().frame(width: Self.dragHandleDotSize, height: Self.dragHandleDotSize)
+                    Circle().frame(width: Self.dragHandleDotSize, height: Self.dragHandleDotSize)
+                }
+            }
+        }
+        .foregroundStyle(InkletTheme.tertiaryLabel)
+        .frame(width: Self.dragHandleWidth, height: Self.menuButtonHeight)
+        .contentShape(Rectangle())
+        .onHover { isHovering in
+            if isHovering {
+                NSCursor.openHand.set()
+            } else {
+                NSCursor.arrow.set()
+            }
+        }
+        .help(L10n.text("selection.action.dragToMove"))
+        .accessibilityHidden(true)
     }
 
     private func isLoading(_ action: SelectionMenuAction, feedback: SelectionActionFeedback?) -> Bool {
