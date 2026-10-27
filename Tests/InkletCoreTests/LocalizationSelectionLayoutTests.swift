@@ -15,9 +15,9 @@ final class LocalizationSelectionLayoutTests: XCTestCase {
                 let titleWidth = titles.reduce(CGFloat.zero) {
                     $0 + (L10n.text($1) as NSString).size(withAttributes: [.font: font]).width
                 }
-                // Two 14pt icons, 6pt icon gaps, 20pt button padding,
-                // a 2pt button gap, and 8pt panel padding.
-                XCTAssertEqual(size.width, titleWidth + 90, accuracy: 2, language.rawValue)
+                // A 10pt drag handle, two 14pt icons, 6pt icon gaps, 20pt button padding,
+                // two 2pt gaps, and 8pt panel padding.
+                XCTAssertEqual(size.width, titleWidth + 102, accuracy: 2, language.rawValue)
                 XCTAssertEqual(size.height, 36, accuracy: 1, language.rawValue)
                 XCTAssertLessThanOrEqual(size.width, 320, language.rawValue)
             }
