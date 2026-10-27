@@ -446,6 +446,16 @@ final class SettingsViewModel: ObservableObject {
             pronunciationPreviewTasks[pronunciationPreviewTaskID]?.cancel()
         }
         pronunciationPreviewPlaybackService.stop()
+        if config.selectionActions.pronunciationEngine == .system {
+            pronunciationPreviewTaskID = nil
+            pronunciationPreviewPlaybackService.speak(
+                SelectionPronunciationVoice.previewText(interfaceLanguageCode: L10n.resolvedLanguage.localeIdentifier),
+                speed: speed
+            )
+            pronunciationPreviewState = .playing(voice)
+            refreshMigrationWorkflowIdle()
+            return
+        }
         pronunciationPreviewState = .loading(voice)
         let taskID = UUID()
         pronunciationPreviewTaskID = taskID

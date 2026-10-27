@@ -1,6 +1,6 @@
 # Inklet Privacy Policy
 
-Last updated: October 25, 2026
+Last updated: October 27, 2026
 
 ## Overview
 
@@ -77,7 +77,7 @@ The double-copy trigger reads the copy you made by pressing `Command+C` twice qu
 
 Mere selection or copying does not persist text to disk. A selection result may remain in process memory as Inklet's current selection state until it is replaced or cleared, or until Inklet exits. Only successful Selection actions are saved in local History; successful translations may also be stored in the 7-day local translation cache.
 
-If you choose Translate, Inklet first checks for a local cached translation. When no cached translation is available, the selected text and your custom Translate instructions are sent to your configured LLM provider. If you choose Pronounce, the selected text is sent to OpenAI text-to-speech using your OpenAI API key. Some apps may still block Accessibility and Force Selection reads; in those apps the floating menu may not appear automatically.
+If you choose Translate, Inklet first checks for a local cached translation. When no cached translation is available, the selected text and your custom Translate instructions are sent to your configured LLM provider. If you choose Pronounce with the macOS system voice, the selected text is read aloud on your Mac and is not sent anywhere. If you choose OpenAI for text to speech in Settings › AI Models, the selected text is sent to OpenAI text-to-speech using your OpenAI API key. Some apps may still block Accessibility and Force Selection reads; in those apps the floating menu may not appear automatically.
 
 ## Local Storage
 

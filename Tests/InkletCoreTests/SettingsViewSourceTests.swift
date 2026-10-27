@@ -84,6 +84,7 @@ final class SettingsViewSourceTests: XCTestCase {
         }
         XCTAssertTrue(aiModels.contains("selectedProviderBinding"))
         XCTAssertTrue(aiModels.contains("$model.config.voiceInput.engine"))
+        XCTAssertTrue(aiModels.contains("$model.config.selectionActions.pronunciationEngine"))
         XCTAssertTrue(aiModels.contains("$model.openAIAPIKey"))
         XCTAssertTrue(aiModels.contains("$model.providerAPIKey"))
 
@@ -91,6 +92,7 @@ final class SettingsViewSourceTests: XCTestCase {
         XCTAssertFalse(general.contains("SecureField"))
         XCTAssertFalse(featurePages.contains("SecureField"))
         XCTAssertFalse(featurePages.contains("$model.config.voiceInput.engine"))
+        XCTAssertFalse(featurePages.contains("$model.config.selectionActions.pronunciationEngine"))
         XCTAssertFalse(featurePages.contains("selectedModelBinding"))
         XCTAssertEqual(featurePages.components(separatedBy: "engineNoteRow(").count - 1, 4)
     }

@@ -209,6 +209,17 @@ extension VoiceInputConfig.Shortcut {
     }
 }
 
+extension SelectionPronunciationEngine {
+    var localizedName: String {
+        switch self {
+        case .system:
+            L10n.text("settings.speechOutputEngine.system")
+        case .openAI:
+            LLMProviderPreset.openAI.name
+        }
+    }
+}
+
 extension HotkeyError {
     var userFacingMessage: String {
         switch self {
