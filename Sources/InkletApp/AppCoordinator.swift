@@ -71,6 +71,9 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     private var hotkeyRecordingObserver: NSObjectProtocol?
     private var languageObserver: NSObjectProtocol?
     private var activeApplicationObserver: NSObjectProtocol?
+    private var powerOffObserver: NSObjectProtocol?
+    /// Set when macOS logs out, restarts or shuts down, which may kill a staged update's install halfway.
+    private var isPoweringOff = false
     private var settingsShortcutMonitor: Any?
     private var lastTargetApplication: NSRunningApplication?
     private var isRecordingHotkey = false
@@ -248,6 +251,15 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         configureStatusItemMenu()
 
         rememberTargetApplication(NSWorkspace.shared.frontmostApplication)
+        powerOffObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.willPowerOffNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.isPoweringOff = true
+            }
+        }
         activeApplicationObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
@@ -342,7 +354,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         automaticUpdatePresentationGate.cancel()
         quietUpdateInstallTask?.cancel()
         quietUpdateInstallTask = nil
-        if !isMigrationMaintenanceActive {
+        if !isMigrationMaintenanceActive, !isPoweringOff {
             appUpdateInstaller.installReadyUpdateOnQuit()
         }
         appUpdateInstaller.stop()
@@ -371,6 +383,10 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         if let activeApplicationObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(activeApplicationObserver)
             self.activeApplicationObserver = nil
+        }
+        if let powerOffObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(powerOffObserver)
+            self.powerOffObserver = nil
         }
         if let settingsShortcutMonitor {
             NSEvent.removeMonitor(settingsShortcutMonitor)
