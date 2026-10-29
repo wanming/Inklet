@@ -5,6 +5,9 @@ import InkletCore
 final class UpdateCheckAlertPresenter: UpdateCheckPresenting {
     private(set) var isPresentingAlert = false
     var onPresentationStateChange: (@MainActor (Bool) -> Void)?
+    /// Whether the update notice offers Install and Relaunch for a release.
+    var canInstall: @MainActor (InkletRelease) -> Bool = { _ in false }
+    var onInstall: (@MainActor (InkletRelease) -> Void)?
 
     enum AlertStyle: Equatable {
         case informational
@@ -18,6 +21,7 @@ final class UpdateCheckAlertPresenter: UpdateCheckPresenting {
         var releaseNotes: String? = nil
         let primaryButtonTitle: String
         let secondaryButtonTitle: String?
+        var tertiaryButtonTitle: String? = nil
         let alertStyle: AlertStyle
     }
 
@@ -63,13 +67,35 @@ final class UpdateCheckAlertPresenter: UpdateCheckPresenting {
             components.append(L10n.text("update.available.noNotes"))
         }
 
+        let installs = onInstall != nil && canInstall(release)
         let content = AlertContent(
             messageText: L10n.text("update.available.title"),
             informativeText: components.joined(separator: "\n\n"),
             releaseNotes: releaseNotes,
-            primaryButtonTitle: L10n.text("update.action.viewOnGitHub"),
+            primaryButtonTitle: L10n.text(installs ? "update.action.installAndRelaunch" : "update.action.viewOnGitHub"),
             secondaryButtonTitle: L10n.text("update.action.later"),
+            tertiaryButtonTitle: installs ? L10n.text("update.action.viewOnGitHub") : nil,
             alertStyle: .informational
+        )
+        let response = runAlert(content)
+        if response == .alertFirstButtonReturn {
+            if installs {
+                onInstall?(release)
+            } else {
+                urlOpener(release.pageURL)
+            }
+        } else if installs, response == .alertThirdButtonReturn {
+            urlOpener(release.pageURL)
+        }
+    }
+
+    func presentInstallFailure(_ release: InkletRelease) {
+        let content = AlertContent(
+            messageText: L10n.text("update.installFailed.title"),
+            informativeText: L10n.text("update.installFailed.message"),
+            primaryButtonTitle: L10n.text("update.action.viewOnGitHub"),
+            secondaryButtonTitle: L10n.text("update.action.cancel"),
+            alertStyle: .warning
         )
         let response = runAlert(content)
         if response == .alertFirstButtonReturn {
@@ -116,6 +142,9 @@ final class UpdateCheckAlertPresenter: UpdateCheckPresenting {
         alert.addButton(withTitle: content.primaryButtonTitle)
         if let secondaryButtonTitle = content.secondaryButtonTitle {
             alert.addButton(withTitle: secondaryButtonTitle)
+        }
+        if let tertiaryButtonTitle = content.tertiaryButtonTitle {
+            alert.addButton(withTitle: tertiaryButtonTitle)
         }
         return alert.runModal()
     }

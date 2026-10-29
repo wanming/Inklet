@@ -143,7 +143,7 @@ final class DirectDistributionContractTests: XCTestCase {
             $0.hasPrefix("Last updated:")
         }
 
-        XCTAssertEqual(updateLines, ["Last updated: October 27, 2026"])
+        XCTAssertEqual(updateLines, ["Last updated: October 29, 2026"])
         for required in [
             "Active microphone audio is streamed to OpenAI's Realtime transcription service as it is captured.",
             "Dictation audio is sent only to OpenAI, and only when you choose OpenAI for speech recognition; with On this Mac, dictation audio never leaves your Mac.",
@@ -165,7 +165,8 @@ final class DirectDistributionContractTests: XCTestCase {
         }
 
         let distributionContract = try text(at: "scripts/test-direct-distribution.sh")
-        XCTAssertTrue(distributionContract.contains("Last updated: October 27, 2026"))
+        XCTAssertTrue(distributionContract.contains("Last updated: October 29, 2026"))
+        XCTAssertFalse(distributionContract.contains("Last updated: October 27, 2026"))
         XCTAssertFalse(distributionContract.contains("Last updated: September 5, 2026"))
         XCTAssertFalse(distributionContract.contains("Last updated: August 30, 2026"))
         XCTAssertFalse(distributionContract.contains("Last updated: August 12, 2026"))

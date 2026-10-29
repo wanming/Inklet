@@ -87,6 +87,9 @@ final class UpdateCheckCoordinator {
     private(set) var isChecking = false
     var onCheckingStateChange: (@MainActor (Bool) -> Void)?
     var onPendingAutomaticUpdate: (@MainActor () -> Void)?
+    /// Sees an update the automatic check found before it is announced.
+    /// Returning true means it will be installed automatically, so no notice is queued.
+    var automaticUpdateHandler: (@MainActor (InkletRelease) -> Bool)?
 
     private let automaticChecksEnabled: Bool
     private let currentVersion: String
@@ -165,6 +168,13 @@ final class UpdateCheckCoordinator {
 
         pendingAutomaticUpdate = nil
         presenter.presentUpdate(pendingUpdate.release, currentVersion: currentVersion)
+    }
+
+    /// Announces an update after all, e.g. when its automatic install couldn't be prepared.
+    func offerUpdate(_ release: InkletRelease) {
+        guard isStarted else { return }
+        pendingAutomaticUpdate = PendingAutomaticUpdate(release: release)
+        onPendingAutomaticUpdate?()
     }
 
     private func scheduleAutomaticIntent(after delay: TimeInterval) {
@@ -258,6 +268,10 @@ final class UpdateCheckCoordinator {
     private func presentAutomaticOutcome(_ outcome: Outcome) {
         switch outcome {
         case let .success(.updateAvailable(release)):
+            if automaticUpdateHandler?(release) == true {
+                pendingAutomaticUpdate = nil
+                return
+            }
             pendingAutomaticUpdate = PendingAutomaticUpdate(release: release)
             onPendingAutomaticUpdate?()
         case .success(.upToDate):

@@ -142,7 +142,7 @@ final class UpdateCheckLocalizationTests: XCTestCase {
         let source = try localizationSource()
         for tableID in approvedTableIDs {
             let entries = normalizedDictionaryEntries(in: try localizationTableSource(tableID, in: source))
-            for key in ["app.menu.checkForUpdates", "app.menu.checkingForUpdates"] {
+            for key in ["app.menu.checkForUpdates", "app.menu.checkingForUpdates", "app.menu.downloadingUpdate"] {
                 let entry = try XCTUnwrap(entries.first(where: { $0.hasPrefix(#""\#(key)":"#) }))
                 XCTAssertTrue(entry.contains("…"), "Expected Unicode ellipsis in \(key) for \(tableID)")
                 XCTAssertFalse(entry.contains("..."), "Expected no ASCII ellipsis in \(key) for \(tableID)")

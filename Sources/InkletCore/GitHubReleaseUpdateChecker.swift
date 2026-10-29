@@ -553,6 +553,11 @@ public struct InkletRelease: Equatable, Sendable {
         self.pageURL = pageURL
         self.isPrerelease = isPrerelease
     }
+
+    /// The release's `Inklet.dmg`; a release is only offered once that asset is uploaded.
+    public var downloadURL: URL {
+        URL(string: "https://github.com/wanming/Inklet/releases/download/\(tagName)/Inklet.dmg")!
+    }
 }
 
 enum GitHubReleaseParser {

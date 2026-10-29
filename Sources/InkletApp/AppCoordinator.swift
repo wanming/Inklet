@@ -92,6 +92,12 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     )
     private lazy var updateCheckAlertPresenter: UpdateCheckAlertPresenter = {
         let presenter = UpdateCheckAlertPresenter()
+        presenter.canInstall = { [weak self] release in
+            self?.appUpdateInstaller.canInstall(release) ?? false
+        }
+        presenter.onInstall = { [weak self] release in
+            self?.appUpdateInstaller.installOnRequest(release)
+        }
         presenter.onPresentationStateChange = { [weak self] isPresenting in
             self?.refreshUpdateCheckMenuItems()
             guard !isPresenting else { return }
@@ -102,6 +108,8 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         return presenter
     }()
     private lazy var updateCheckCoordinator = makeUpdateCheckCoordinator()
+    private lazy var appUpdateInstaller = makeAppUpdateInstaller()
+    private var quietUpdateInstallTask: Task<Void, Never>?
 
     init(
         migrationOutcome: LegacySandboxMigrationOutcome,
@@ -188,6 +196,25 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         }
     }
 
+    private func makeAppUpdateInstaller() -> AppUpdateInstaller {
+        let installer = AppUpdateInstaller(
+            isProductionBuild: storagePaths.bundleIdentifier == InkletStoragePaths.productionBundleIdentifier
+        )
+        installer.onStateChange = { [weak self] in
+            self?.refreshUpdateCheckMenuItems()
+        }
+        installer.onReadyToInstall = { [weak self] in
+            self?.scheduleQuietUpdateInstall()
+        }
+        installer.onAutomaticPreparationFailure = { [weak self] release in
+            self?.updateCheckCoordinator.offerUpdate(release)
+        }
+        installer.onRequestedInstallFailure = { [weak self] release in
+            self?.updateCheckAlertPresenter.presentInstallFailure(release)
+        }
+        return installer
+    }
+
     private func makeUpdateCheckCoordinator() -> UpdateCheckCoordinator {
         let checker = GitHubReleaseUpdateChecker()
         let currentBuildNumber = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
@@ -208,6 +235,9 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         }
         coordinator.onPendingAutomaticUpdate = { [weak self] in
             self?.automaticUpdatePresentationGate.schedule()
+        }
+        coordinator.automaticUpdateHandler = { [weak self] release in
+            self?.appUpdateInstaller.prepareAutomatically(release) ?? false
         }
         return coordinator
     }
@@ -302,6 +332,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         installSettingsShortcutMonitor()
         refreshMigrationImportEligibility()
         settingsController.showMigrationNotice()
+        appUpdateInstaller.start()
         updateCheckCoordinator.start()
     }
 
@@ -309,6 +340,12 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         isStopping = true
         updateCheckCoordinator.stop()
         automaticUpdatePresentationGate.cancel()
+        quietUpdateInstallTask?.cancel()
+        quietUpdateInstallTask = nil
+        if !isMigrationMaintenanceActive {
+            appUpdateInstaller.installReadyUpdateOnQuit()
+        }
+        appUpdateInstaller.stop()
         whatsNewTask?.cancel()
         whatsNewTask = nil
         if let configObserver {
@@ -451,6 +488,41 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
             isUpdateAlertPresenting: updateCheckAlertPresenter.isPresentingAlert,
             isStopping: isStopping
         ).canPresent
+    }
+
+    /// Restarting for an update also waits until no Inklet window is open, such as Settings or the writing popover.
+    private var canInstallUpdateQuietly: Bool {
+        canPresentAutomaticUpdate
+            && !isWelcomeGuidePending
+            && ![
+                windowController.window,
+                settingsController.window,
+                aboutController.window,
+                welcomeGuideController?.window,
+                whatsNewController?.window,
+            ].contains(where: { $0?.isVisible == true })
+    }
+
+    /// Installs a staged update as soon as Inklet is idle, checking again every 30 seconds until then.
+    private func scheduleQuietUpdateInstall() {
+        guard quietUpdateInstallTask == nil, !isStopping else { return }
+        quietUpdateInstallTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                guard self.appUpdateInstaller.hasReadyUpdate,
+                      self.appUpdateInstaller.isAutomaticInstallEnabled
+                else {
+                    self.quietUpdateInstallTask = nil
+                    return
+                }
+                if self.canInstallUpdateQuietly {
+                    self.quietUpdateInstallTask = nil
+                    self.appUpdateInstaller.installReadyUpdate()
+                    return
+                }
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
     }
 
     private func refreshMigrationImportEligibility() {
@@ -889,6 +961,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     private var isUpdateCheckAvailable: Bool {
         !updateCheckCoordinator.isChecking
             && !updateCheckAlertPresenter.isPresentingAlert
+            && !appUpdateInstaller.isInstallingOnRequest
             && !isWelcomeGuidePending
     }
 
@@ -905,9 +978,11 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
 
     private func refreshUpdateCheckMenuItems() {
         let isChecking = updateCheckCoordinator.isChecking
-        let title = L10n.text(
-            isChecking ? "app.menu.checkingForUpdates" : "app.menu.checkForUpdates"
-        )
+        let title = if appUpdateInstaller.isInstallingOnRequest {
+            L10n.text("app.menu.downloadingUpdate")
+        } else {
+            L10n.text(isChecking ? "app.menu.checkingForUpdates" : "app.menu.checkForUpdates")
+        }
         for item in [mainUpdateCheckMenuItem, statusUpdateCheckMenuItem].compactMap({ $0 }) {
             item.title = title
             item.isEnabled = isUpdateCheckAvailable

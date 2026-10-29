@@ -1,6 +1,6 @@
 # Inklet Privacy Policy
 
-Last updated: October 27, 2026
+Last updated: October 29, 2026
 
 ## Overview
 
@@ -51,7 +51,7 @@ Production builds check GitHub Releases for public metadata about the latest sta
 
 If you turn on **Beta updates** in Settings, the same check reads the list of recent public releases, including prereleases, instead of only the latest stable release. It sends nothing more.
 
-Inklet announces only a release with an uploaded `Inklet.dmg`; it never downloads or installs an update automatically.
+Inklet offers only a release with an uploaded `Inklet.dmg`. When **Install updates automatically** is on in Settings, which is the default, or when you choose **Install and Relaunch**, Inklet downloads that `Inklet.dmg` from GitHub. GitHub and its download servers receive ordinary connection metadata for that download, and nothing else is sent. Inklet checks the disk image and the app inside on your Mac before installing it. Turn the switch off to only get a notice.
 
 ## Realtime Dictation
 
