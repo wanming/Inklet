@@ -24,7 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 
 ## Actualizaciones
 
-Inklet usa GitHub Releases como única fuente de actualizaciones. Las versiones de producción consultan en GitHub los metadatos públicos de la última versión estable aproximadamente una vez cada 24 horas. Solo se anuncia una actualización cuando esa versión ya tiene un `Inklet.dmg` subido; **Ver en GitHub** abre la página exacta de esa versión. Inklet nunca descarga ni instala actualizaciones automáticamente.
+Inklet usa GitHub Releases como única fuente de actualizaciones. Las versiones de producción consultan en GitHub los metadatos públicos de la última versión estable aproximadamente una vez cada 24 horas. Solo se anuncia una actualización cuando esa versión ya tiene un `Inklet.dmg` subido; **Ver en GitHub** abre la página exacta de esa versión. Inklet nunca descarga ni instala actualizaciones automáticamente. El aviso muestra las notas de esa versión en tu idioma de la interfaz, o en inglés si no están traducidas.
 
 Usa **Buscar actualizaciones…** en el menú de la app para comprobarlo manualmente, tanto en la app de producción como en Inklet Local. Inklet Local nunca programa comprobaciones automáticas. Los fallos de las comprobaciones automáticas no se muestran, mientras que una comprobación manual ofrece **Reintentar**. Si Inklet está ocupado con la escritura, el dictado, las acciones de selección, una migración, una ventana modal o un menú abierto, el aviso automático de actualización espera a que la app esté inactiva.
 

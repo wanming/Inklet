@@ -505,11 +505,12 @@ public struct InkletReleaseVersion: Equatable, Sendable {
 }
 
 public enum InkletReleaseNotes {
-    private static let maximumCharacterCount = 800
-    private static let maximumUnicodeScalarCount = 3_200
-    private static let maximumUTF8ByteCount = 12_800
+    // Room for every language section; the update alert shows only one of them, in a scroll view.
+    private static let maximumCharacterCount = 12_000
+    private static let maximumUnicodeScalarCount = 48_000
+    private static let maximumUTF8ByteCount = 192_000
 
-    public static func excerpt(_ body: String?, limit: Int = 800) -> String {
+    public static func excerpt(_ body: String?, limit: Int = 12_000) -> String {
         guard limit > 0, let body else {
             return ""
         }

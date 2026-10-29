@@ -22,7 +22,7 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 
 ## Updates
 
-Inklet uses GitHub Releases as its only update source. Production builds check GitHub for public metadata for the latest stable release about once every 24 hours. An update is announced only after that release has an uploaded `Inklet.dmg`; **View on GitHub** opens that exact release page. Inklet never downloads or installs updates automatically.
+Inklet uses GitHub Releases as its only update source. Production builds check GitHub for public metadata for the latest stable release about once every 24 hours. An update is announced only after that release has an uploaded `Inklet.dmg`; **View on GitHub** opens that exact release page. Inklet never downloads or installs updates automatically. The notice shows that release's notes in your interface language, or in English when they aren't translated.
 
 Use **Check for Updates…** from the app menu to check manually in either the production app or Inklet Local. Inklet Local never schedules automatic checks. Automatic check failures are silent, while a manual check offers **Retry**. If writing, dictation, Selection Actions, migration, a modal, or an open menu makes Inklet busy, an automatic update notice waits until the app is idle.
 

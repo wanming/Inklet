@@ -60,22 +60,29 @@ final class GitHubReleaseUpdateCheckerTests: XCTestCase {
     }
 
     func testReleaseNotesKeepsEllipsisWithinLimit() {
-        let notes799 = String(repeating: "a", count: 799)
-        let notes800 = String(repeating: "a", count: 800)
-        let notes801 = String(repeating: "a", count: 801)
+        let notesAtLimitMinusOne = String(repeating: "a", count: 11_999)
+        let notesAtLimit = String(repeating: "a", count: 12_000)
+        let notesOverLimit = String(repeating: "a", count: 12_001)
 
-        XCTAssertEqual(InkletReleaseNotes.excerpt(notes799).count, 799)
-        XCTAssertEqual(InkletReleaseNotes.excerpt(notes800).count, 800)
+        XCTAssertEqual(InkletReleaseNotes.excerpt(notesAtLimitMinusOne).count, 11_999)
+        XCTAssertEqual(InkletReleaseNotes.excerpt(notesAtLimit).count, 12_000)
         XCTAssertEqual(
-            InkletReleaseNotes.excerpt(notes801),
-            String(repeating: "a", count: 799) + "…"
+            InkletReleaseNotes.excerpt(notesOverLimit),
+            String(repeating: "a", count: 11_999) + "…"
         )
-        XCTAssertEqual(InkletReleaseNotes.excerpt(notes801, limit: 0), "")
+        XCTAssertEqual(InkletReleaseNotes.excerpt(notesOverLimit, limit: 0), "")
         XCTAssertEqual(InkletReleaseNotes.excerpt("ab", limit: 1), "…")
         XCTAssertEqual(
-            InkletReleaseNotes.excerpt(String(repeating: "a", count: 900), limit: 900).count,
-            800
+            InkletReleaseNotes.excerpt(String(repeating: "a", count: 13_000), limit: 13_000).count,
+            12_000
         )
+    }
+
+    func testReleaseNotesKeepEveryLanguageOfAFullRelease() {
+        let section = "## Français\n" + String(repeating: "- **Point** : une phrase assez longue.\n", count: 8)
+        let notes = String(repeating: section, count: 10) + "---\nmacOS 14 or newer."
+
+        XCTAssertEqual(InkletReleaseNotes.excerpt(notes), notes)
     }
 
     func testReleaseNotesCountsExtendedGraphemeClusters() {
@@ -85,13 +92,13 @@ final class GitHubReleaseUpdateCheckerTests: XCTestCase {
     }
 
     func testReleaseNotesBoundsOneHugeCombiningGraphemeByScalarsAndBytes() {
-        let hugeGrapheme = "a" + String(repeating: "\u{0301}", count: 20_000)
+        let hugeGrapheme = "a" + String(repeating: "\u{0301}", count: 100_000)
 
         let excerpt = InkletReleaseNotes.excerpt(hugeGrapheme)
 
-        XCTAssertLessThanOrEqual(excerpt.count, 800)
-        XCTAssertLessThanOrEqual(excerpt.unicodeScalars.count, 3_200)
-        XCTAssertLessThanOrEqual(excerpt.utf8.count, 12_800)
+        XCTAssertLessThanOrEqual(excerpt.count, 12_000)
+        XCTAssertLessThanOrEqual(excerpt.unicodeScalars.count, 48_000)
+        XCTAssertLessThanOrEqual(excerpt.utf8.count, 192_000)
         XCTAssertEqual(excerpt, "…")
     }
 

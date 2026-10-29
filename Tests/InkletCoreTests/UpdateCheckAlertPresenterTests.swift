@@ -36,7 +36,8 @@ final class UpdateCheckAlertPresenterTests: XCTestCase {
             XCTAssertEqual(recorder.contents, [
                 .init(
                     messageText: "An Inklet update is available",
-                    informativeText: "Latest: 2.0.0 (build 200)\n\nCurrent: 1.2.3 (45)\n\n\(releaseName)\n\nDictation is now noticeably faster.",
+                    informativeText: "Latest: 2.0.0 (build 200)\n\nCurrent: 1.2.3 (45)\n\n\(releaseName)",
+                    releaseNotes: "Dictation is now noticeably faster.",
                     primaryButtonTitle: "View on GitHub",
                     secondaryButtonTitle: "Later",
                     alertStyle: .informational
@@ -77,6 +78,7 @@ final class UpdateCheckAlertPresenterTests: XCTestCase {
             recorder.contents.first?.informativeText,
             "Latest: 2.0.0 (build 200)\n\nCurrent: 1.2.3\n\nView the release on GitHub for details."
         )
+        XCTAssertNil(recorder.contents.first?.releaseNotes)
 
         let whitespaceRecorder = AlertRecorder(response: .alertSecondButtonReturn)
         makePresenter(recorder: whitespaceRecorder).presentUpdate(
@@ -100,7 +102,7 @@ final class UpdateCheckAlertPresenterTests: XCTestCase {
             "Ínklet 2.0.0 (BuIlD 200)",
             "Inklet 2.0.0 Beta (200)",
         ]
-        let expectedInformativeText = "Latest: 2.0.0 (build 200)\n\nCurrent: 1.2.3\n\nRelease notes"
+        let expectedInformativeText = "Latest: 2.0.0 (build 200)\n\nCurrent: 1.2.3"
 
         for name in versionOnlyNames {
             let recorder = AlertRecorder(response: .alertSecondButtonReturn)
@@ -110,6 +112,7 @@ final class UpdateCheckAlertPresenterTests: XCTestCase {
             )
 
             XCTAssertEqual(recorder.contents.first?.informativeText, expectedInformativeText, name)
+            XCTAssertEqual(recorder.contents.first?.releaseNotes, "Release notes", name)
             XCTAssertFalse(
                 recorder.contents.first?.informativeText
                     .components(separatedBy: "\n\n")
@@ -135,8 +138,71 @@ final class UpdateCheckAlertPresenterTests: XCTestCase {
 
         XCTAssertEqual(
             recorder.contents.first?.informativeText,
-            "Latest: 2.0.0 Beta (build 200)\n\nCurrent: 1.2.3 (199)\n\nRelease notes"
+            "Latest: 2.0.0 Beta (build 200)\n\nCurrent: 1.2.3 (199)"
         )
+        XCTAssertEqual(recorder.contents.first?.releaseNotes, "Release notes")
+    }
+
+    func testPresentUpdateShowsOnlyTheInterfaceLanguageSectionOfTheNotes() {
+        let notes = """
+        ## English
+        - **Plain text results:** no stray Markdown.
+
+        ## 简体中文
+        - **结果不再带 Markdown 符号**：不会再出现 ** 这类符号。
+
+        ## Deutsch
+        - **Klartext:** keine Markdown-Zeichen.
+
+        ---
+        macOS 14 or newer.
+        """
+
+        let english = AlertRecorder(response: .alertSecondButtonReturn)
+        makePresenter(recorder: english).presentUpdate(release(notes: notes), currentVersion: "1.2.3")
+        XCTAssertEqual(
+            english.contents.first?.releaseNotes,
+            "- **Plain text results:** no stray Markdown.\n\nmacOS 14 or newer."
+        )
+
+        setInterfaceLanguage(.simplifiedChinese)
+        let chinese = AlertRecorder(response: .alertSecondButtonReturn)
+        makePresenter(recorder: chinese).presentUpdate(release(notes: notes), currentVersion: "1.2.3")
+        XCTAssertEqual(
+            chinese.contents.first?.releaseNotes,
+            "- **结果不再带 Markdown 符号**：不会再出现 ** 这类符号。\n\nmacOS 14 or newer."
+        )
+
+        // A language without its own section falls back to English.
+        setInterfaceLanguage(.japanese)
+        let japanese = AlertRecorder(response: .alertSecondButtonReturn)
+        makePresenter(recorder: japanese).presentUpdate(release(notes: notes), currentVersion: "1.2.3")
+        XCTAssertEqual(
+            japanese.contents.first?.releaseNotes,
+            "- **Plain text results:** no stray Markdown.\n\nmacOS 14 or newer."
+        )
+    }
+
+    func testReleaseNotesAccessoryStopsGrowingAtMaximumHeight() {
+        let short = UpdateReleaseNotesView.accessoryView(for: "- One point")
+        XCTAssertEqual(short.frame.width, UpdateReleaseNotesView.width)
+        XCTAssertGreaterThan(short.frame.height, 0)
+        XCTAssertLessThan(short.frame.height, UpdateReleaseNotesView.maximumHeight)
+
+        let long = UpdateReleaseNotesView.accessoryView(
+            for: (1...40).map { "- Point \($0) with **bold** text" }.joined(separator: "\n")
+        )
+        XCTAssertEqual(long.frame.height, UpdateReleaseNotesView.maximumHeight)
+    }
+
+    func testReleaseNotesInlineMarkdownKeepsOnlyHTTPSLinks() {
+        let rendered = UpdateReleaseNotesView.inline(
+            "**Bold** [site](https://getinklet.app) [file](file:///etc/hosts)"
+        )
+        XCTAssertEqual(String(rendered.characters), "Bold site file")
+        let links = rendered.runs.compactMap { $0.link }
+        XCTAssertEqual(links, [URL(string: "https://getinklet.app")!])
+        XCTAssertTrue(rendered.runs.contains { $0.inlinePresentationIntent == .stronglyEmphasized })
     }
 
     func testPresentUpdateOpensOnlyItsExactPageURLForFirstResponse() {
@@ -309,6 +375,13 @@ final class UpdateCheckAlertPresenterTests: XCTestCase {
         XCTAssertTrue(openedURLs.isEmpty)
         XCTAssertEqual(retryCount, 0)
         XCTAssertFalse(presenter.isPresentingAlert)
+    }
+
+    private func setInterfaceLanguage(_ language: InterfaceLanguage) {
+        var argumentDomain = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+        argumentDomain[InkletPreferenceKeys.interfaceLanguage] = language.rawValue
+        UserDefaults.standard.setVolatileDomain(argumentDomain, forName: UserDefaults.argumentDomain)
+        NotificationCenter.default.post(name: .inkletLanguageDidChange, object: nil)
     }
 
     private func makePresenter(recorder: AlertRecorder) -> UpdateCheckAlertPresenter {
