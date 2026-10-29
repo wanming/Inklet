@@ -14,6 +14,8 @@ final class UpdateCheckAlertPresenter: UpdateCheckPresenting {
     struct AlertContent: Equatable {
         let messageText: String
         let informativeText: String
+        /// Markdown release notes in the interface language, shown rendered in a scroll view.
+        var releaseNotes: String? = nil
         let primaryButtonTitle: String
         let secondaryButtonTitle: String?
         let alertStyle: AlertStyle
@@ -52,14 +54,19 @@ final class UpdateCheckAlertPresenter: UpdateCheckPresenting {
         if let releaseName = usefulReleaseName(for: release) {
             components.append(releaseName)
         }
-        components.append(
-            release.notes.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
-                ?? L10n.text("update.available.noNotes")
-        )
+        let releaseNotes = InkletReleaseNotes.section(
+            of: release.notes,
+            preferring: [L10n.resolvedLanguage.displayName, InterfaceLanguage.english.displayName],
+            languageHeadings: InterfaceLanguage.allCases.filter { $0 != .system }.map(\.displayName)
+        ).trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
+        if releaseNotes == nil {
+            components.append(L10n.text("update.available.noNotes"))
+        }
 
         let content = AlertContent(
             messageText: L10n.text("update.available.title"),
             informativeText: components.joined(separator: "\n\n"),
+            releaseNotes: releaseNotes,
             primaryButtonTitle: L10n.text("update.action.viewOnGitHub"),
             secondaryButtonTitle: L10n.text("update.action.later"),
             alertStyle: .informational
@@ -99,6 +106,9 @@ final class UpdateCheckAlertPresenter: UpdateCheckPresenting {
         let alert = NSAlert()
         alert.messageText = content.messageText
         alert.informativeText = content.informativeText
+        if let releaseNotes = content.releaseNotes {
+            alert.accessoryView = UpdateReleaseNotesView.accessoryView(for: releaseNotes)
+        }
         alert.alertStyle = switch content.alertStyle {
         case .informational: .informational
         case .warning: .warning

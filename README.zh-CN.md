@@ -22,7 +22,7 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 
 ## 更新
 
-Inklet 仅通过 GitHub Releases 检查更新。正式版大约每 24 小时从 GitHub 获取一次最新稳定版的公开元数据。只有该 release 已上传 `Inklet.dmg` 时才会提示更新；选择**在 GitHub 上查看**会打开这个 release 的准确页面。Inklet 不会自动下载或安装更新。
+Inklet 仅通过 GitHub Releases 检查更新。正式版大约每 24 小时从 GitHub 获取一次最新稳定版的公开元数据。只有该 release 已上传 `Inklet.dmg` 时才会提示更新；选择**在 GitHub 上查看**会打开这个 release 的准确页面。Inklet 不会自动下载或安装更新。提示框会用你的界面语言显示这个版本的更新说明，没有对应翻译时显示英文。
 
 正式版和 Inklet Local 都可以从 App 菜单选择**检查更新…**手动检查；Inklet Local 不会安排自动检查。自动检查失败时保持静默，手动检查失败时可选择**重试**。写作、听写、选区动作、迁移、模态窗口或已打开的菜单使 Inklet 忙碌时，自动更新提示会等到 App 空闲后再显示。
 
