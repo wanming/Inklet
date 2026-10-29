@@ -384,6 +384,82 @@ final class UpdateCheckCoordinatorTests: XCTestCase {
         XCTAssertEqual(fixture.presenter.events, [.update(2, "1.0.0")])
     }
 
+    func testAutomaticUpdateHandledByInstallerQueuesNoNotice() async {
+        let fixture = makeFixture(automaticChecksEnabled: true)
+        defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+        var handled: [Int] = []
+        fixture.coordinator.automaticUpdateHandler = { release in
+            handled.append(release.version.buildNumber)
+            return true
+        }
+
+        await completeAutomaticCheck(
+            fixture,
+            result: .success(.updateAvailable(makeRelease(buildNumber: 2))),
+            callIndex: 0,
+            startCoordinator: true
+        )
+
+        XCTAssertEqual(handled, [2])
+        XCTAssertEqual(fixture.pendingCallback.count, 0)
+        fixture.coordinator.presentPendingAutomaticUpdateIfPossible()
+        XCTAssertTrue(fixture.presenter.events.isEmpty)
+
+        fixture.coordinator.offerUpdate(makeRelease(buildNumber: 2))
+        XCTAssertEqual(fixture.pendingCallback.count, 1)
+        fixture.coordinator.presentPendingAutomaticUpdateIfPossible()
+        XCTAssertEqual(fixture.presenter.events, [.update(2, "1.0.0")])
+    }
+
+    func testAutomaticUpdateDeclinedByInstallerIsAnnouncedAsUsual() async {
+        let fixture = makeFixture(automaticChecksEnabled: true)
+        defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+        fixture.coordinator.automaticUpdateHandler = { _ in false }
+
+        await completeAutomaticCheck(
+            fixture,
+            result: .success(.updateAvailable(makeRelease(buildNumber: 2))),
+            callIndex: 0,
+            startCoordinator: true
+        )
+
+        XCTAssertEqual(fixture.pendingCallback.count, 1)
+        fixture.coordinator.presentPendingAutomaticUpdateIfPossible()
+        XCTAssertEqual(fixture.presenter.events, [.update(2, "1.0.0")])
+    }
+
+    func testManualUpdateIsPresentedWithoutAskingTheInstaller() async {
+        let fixture = makeFixture(automaticChecksEnabled: false)
+        defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+        var handled: [Int] = []
+        fixture.coordinator.automaticUpdateHandler = { release in
+            handled.append(release.version.buildNumber)
+            return true
+        }
+        let started = fixture.checker.expectStart(description: "manual check starts")
+        let finished = expectation(description: "manual check finishes")
+        fixture.coordinator.onCheckingStateChange = { if !$0 { finished.fulfill() } }
+        fixture.coordinator.start()
+        fixture.coordinator.checkManually()
+        await fulfillment(of: [started], timeout: 1)
+        fixture.checker.succeed(.updateAvailable(makeRelease(buildNumber: 2)), at: 0)
+        await fulfillment(of: [finished], timeout: 1)
+
+        XCTAssertTrue(handled.isEmpty)
+        XCTAssertEqual(fixture.presenter.events, [.update(2, "1.0.0")])
+    }
+
+    func testOfferUpdateIsIgnoredWhileStopped() {
+        let fixture = makeFixture(automaticChecksEnabled: true)
+        defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }
+
+        fixture.coordinator.offerUpdate(makeRelease(buildNumber: 2))
+        fixture.coordinator.presentPendingAutomaticUpdateIfPossible()
+
+        XCTAssertEqual(fixture.pendingCallback.count, 0)
+        XCTAssertTrue(fixture.presenter.events.isEmpty)
+    }
+
     func testCallbackStoppingCoordinatorDropsPendingUpdate() async {
         let fixture = makeFixture(automaticChecksEnabled: true)
         defer { fixture.defaults.removePersistentDomain(forName: fixture.suiteName) }

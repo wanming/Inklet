@@ -219,6 +219,65 @@ final class UpdateCheckAlertPresenterTests: XCTestCase {
         XCTAssertTrue(otherRecorder.openedURLs.isEmpty)
     }
 
+    func testPresentUpdateOffersInstallAndRelaunchWhenTheReleaseCanBeInstalled() {
+        var installed: [Int] = []
+        let installRecorder = AlertRecorder(response: .alertFirstButtonReturn)
+        let installPresenter = makePresenter(recorder: installRecorder)
+        installPresenter.canInstall = { _ in true }
+        installPresenter.onInstall = { installed.append($0.version.buildNumber) }
+
+        installPresenter.presentUpdate(release(), currentVersion: "1.2.3")
+
+        XCTAssertEqual(installRecorder.contents.map(\.primaryButtonTitle), ["Install and Relaunch"])
+        XCTAssertEqual(installRecorder.contents.map(\.secondaryButtonTitle), ["Later"])
+        XCTAssertEqual(installRecorder.contents.map(\.tertiaryButtonTitle), ["View on GitHub"])
+        XCTAssertEqual(installed, [200])
+        XCTAssertTrue(installRecorder.openedURLs.isEmpty)
+
+        let gitHubRecorder = AlertRecorder(response: .alertThirdButtonReturn)
+        let gitHubPresenter = makePresenter(recorder: gitHubRecorder)
+        gitHubPresenter.canInstall = { _ in true }
+        gitHubPresenter.onInstall = { installed.append($0.version.buildNumber) }
+        gitHubPresenter.presentUpdate(release(), currentVersion: "1.2.3")
+        XCTAssertEqual(gitHubRecorder.openedURLs, [release().pageURL])
+        XCTAssertEqual(installed, [200])
+    }
+
+    func testPresentUpdateKeepsViewOnGitHubWhenTheReleaseCannotBeInstalled() {
+        var installed: [Int] = []
+        let recorder = AlertRecorder(response: .alertFirstButtonReturn)
+        let presenter = makePresenter(recorder: recorder)
+        presenter.canInstall = { _ in false }
+        presenter.onInstall = { installed.append($0.version.buildNumber) }
+
+        presenter.presentUpdate(release(), currentVersion: "1.2.3")
+
+        XCTAssertEqual(recorder.contents.map(\.primaryButtonTitle), ["View on GitHub"])
+        XCTAssertEqual(recorder.contents.map(\.tertiaryButtonTitle), [nil])
+        XCTAssertEqual(recorder.openedURLs, [release().pageURL])
+        XCTAssertTrue(installed.isEmpty)
+    }
+
+    func testPresentInstallFailureOffersTheReleasePage() {
+        let recorder = AlertRecorder(response: .alertFirstButtonReturn)
+        makePresenter(recorder: recorder).presentInstallFailure(release())
+
+        XCTAssertEqual(recorder.contents, [
+            .init(
+                messageText: "Couldn’t install the update",
+                informativeText: "Download it from GitHub and install it yourself.",
+                primaryButtonTitle: "View on GitHub",
+                secondaryButtonTitle: "Cancel",
+                alertStyle: .warning
+            ),
+        ])
+        XCTAssertEqual(recorder.openedURLs, [release().pageURL])
+
+        let cancelRecorder = AlertRecorder(response: .alertSecondButtonReturn)
+        makePresenter(recorder: cancelRecorder).presentInstallFailure(release())
+        XCTAssertTrue(cancelRecorder.openedURLs.isEmpty)
+    }
+
     func testPresentUpToDateShowsCurrentVersionWithoutOpeningURL() {
         let recorder = AlertRecorder(response: .alertFirstButtonReturn)
         makePresenter(recorder: recorder).presentUpToDate(currentVersion: "1.2.3 (45)")

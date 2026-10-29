@@ -91,6 +91,11 @@ final class SettingsViewSourceTests: XCTestCase {
         XCTAssertTrue(general.contains("settings.group.updates"))
         XCTAssertTrue(general.contains("$receivesBetaUpdates"))
         XCTAssertTrue(source.contains("@AppStorage(InkletPreferenceKeys.receivesBetaUpdates)"))
+        XCTAssertTrue(general.contains("settings.row.automaticUpdates"))
+        XCTAssertTrue(general.contains("$automaticallyInstallsUpdates"))
+        XCTAssertTrue(source.contains(
+            "@AppStorage(InkletPreferenceKeys.automaticallyInstallsUpdates) private var automaticallyInstallsUpdates = true"
+        ))
         XCTAssertFalse(general.contains("selectedProviderBinding"))
         XCTAssertFalse(general.contains("SecureField"))
         XCTAssertFalse(featurePages.contains("SecureField"))

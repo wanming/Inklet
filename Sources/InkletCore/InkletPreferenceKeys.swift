@@ -10,6 +10,10 @@ public enum InkletPreferenceKeys {
     public static let lastWritingPromptModeID = "lastWritingPromptModeID"
     public static let lastAutomaticUpdateCheckDate = "lastAutomaticUpdateCheckDate"
     public static let receivesBetaUpdates = "receivesBetaUpdates"
+    /// On unless turned off: new versions are downloaded and installed when Inklet is idle.
+    public static let automaticallyInstallsUpdates = "automaticallyInstallsUpdates"
+    /// The build an update install last tried to put in place; kept only while that install hasn't taken.
+    public static let attemptedUpdateInstallBuild = "attemptedUpdateInstallBuild"
     /// Set once the first launch with the system voice has checked the saved pronunciation engine.
     public static let didReviewPronunciationEngine = "didReviewPronunciationEngine"
     public static let providerAPIKeyPrefix = "providerAPIKey."

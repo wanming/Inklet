@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 
 final class UpdateCheckDocumentationTests: XCTestCase {
-    func testReadmesDescribeCheckOnlyGitHubUpdateBehavior() throws {
+    func testReadmesDescribeGitHubUpdateAndAutomaticInstallBehavior() throws {
         let english = try markdownSection(
             heading: "## Updates",
             in: try document(named: "README.md")
@@ -14,10 +14,18 @@ final class UpdateCheckDocumentationTests: XCTestCase {
                 "24 hours",
                 "Inklet.dmg",
                 "View on GitHub",
-                "never downloads or installs updates automatically",
+                "Install and Relaunch",
+                "Install updates automatically",
+                "which is the default",
+                "Gatekeeper",
+                "signed by the same developer",
+                "restarts once you aren't using Inklet",
+                "If you quit Inklet first",
+                "without write access",
+                "never retried on its own",
                 "Check for Updates",
                 "Inklet Local",
-                "never schedules automatic checks",
+                "never schedules automatic checks or installs updates",
                 "Automatic check failures are silent",
                 "Retry",
                 "writing",
@@ -40,10 +48,18 @@ final class UpdateCheckDocumentationTests: XCTestCase {
                 "24 小时",
                 "Inklet.dmg",
                 "在 GitHub 上查看",
-                "不会自动下载或安装更新",
+                "安装并重启",
+                "自动安装更新",
+                "默认打开",
+                "Gatekeeper",
+                "同一开发者签名",
+                "等你没在用 Inklet 时替换 App 并重启",
+                "如果你先退出了 Inklet",
+                "写入权限",
+                "不会自动重试",
                 "检查更新",
                 "Inklet Local",
-                "不会安排自动检查",
+                "不会安排自动检查，也不会安装更新",
                 "自动检查失败时保持静默",
                 "重试",
                 "写作",
@@ -107,7 +123,7 @@ final class UpdateCheckDocumentationTests: XCTestCase {
         }
         XCTAssertEqual(
             updateLines,
-            ["Last updated: October 27, 2026"],
+            ["Last updated: October 29, 2026"],
             "Privacy policy must carry the update-check disclosure date"
         )
 
@@ -132,7 +148,11 @@ final class UpdateCheckDocumentationTests: XCTestCase {
                 "provider configuration",
                 "settings",
                 "Inklet.dmg",
-                "never downloads or installs an update automatically"
+                "Install updates automatically",
+                "the default",
+                "Install and Relaunch",
+                "nothing else is sent",
+                "Turn the switch off to only get a notice"
             ],
             in: updateChecks,
             documentName: "privacy policy Update Checks"
@@ -169,6 +189,13 @@ final class UpdateCheckDocumentationTests: XCTestCase {
                 "non-uploaded",
                 "uploaded `Inklet.dmg`",
                 "exact GitHub Release URL",
+                "Install updates automatically",
+                "Install and Relaunch",
+                "replaced by the new build",
+                "permissions still work",
+                "install waits",
+                "staged",
+                "install-failure alert",
                 "Later",
                 "no DMG",
                 "offline",
@@ -197,64 +224,6 @@ final class UpdateCheckDocumentationTests: XCTestCase {
             in: updateChecks,
             documentName: "manual checklist Update Checks"
         )
-    }
-
-    func testPublicDocumentationRejectsAutomaticDownloadOrInstallationClaims() throws {
-        for relativePath in [
-            "README.md",
-            "README.zh-CN.md",
-            "docs/privacy-policy.md",
-            "docs/manual-test-checklist.md"
-        ] {
-            assertDoesNotContainAutomaticDownloadOrInstallationClaim(
-                try document(named: relativePath),
-                documentName: relativePath
-            )
-        }
-    }
-
-    func testAutomaticUpdateClaimMatcherDistinguishesAffirmativeAndNegativeCopy() {
-        let forbiddenClaims = [
-            "Inklet automatically downloads and installs updates.",
-            "Inklet will automatically install an update.",
-            "Inklet downloads updates automatically.",
-            "Inklet will download and install updates automatically.",
-            "New Inklet versions are downloaded and installed automatically.",
-            "Updates download automatically in Inklet.",
-            "Updates are downloaded automatically.",
-            "Inklet updates are automatically installed.",
-            "Inklet 会自动下载并安装更新。",
-            "Inklet 将自动安装更新。",
-            "Inklet自动下载更新。",
-            "本应用会自动下载并安装 Inklet 更新。",
-            "更新会自动下载并安装。"
-        ]
-        for claim in forbiddenClaims {
-            XCTAssertNotNil(
-                automaticDownloadOrInstallationClaim(in: claim),
-                "Matcher did not reject affirmative claim: \(claim)"
-            )
-        }
-
-        let allowedClaims = [
-            "Inklet never downloads or installs updates automatically.",
-            "Inklet does not automatically download or install updates.",
-            "Inklet will not automatically install an update.",
-            "Updates are not downloaded automatically.",
-            "Inklet automatically downloads public release metadata.",
-            "Inklet automatically downloads update metadata.",
-            "Inklet automatically checks public release metadata.",
-            "Inklet 不会自动下载或安装更新。",
-            "Inklet 从不自动下载或安装更新。",
-            "Inklet 会自动下载公开的 release 元数据。",
-            "Inklet 会自动检查公开的 release 元数据。"
-        ]
-        for claim in allowedClaims {
-            XCTAssertNil(
-                automaticDownloadOrInstallationClaim(in: claim),
-                "Matcher rejected negative claim: \(claim)"
-            )
-        }
     }
 
     private var repositoryRoot: URL {
@@ -300,51 +269,5 @@ final class UpdateCheckDocumentationTests: XCTestCase {
                 line: line
             )
         }
-    }
-
-    private func assertDoesNotContainAutomaticDownloadOrInstallationClaim(
-        _ text: String,
-        documentName: String,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) {
-        guard let claim = automaticDownloadOrInstallationClaim(in: text) else {
-            return
-        }
-        XCTFail(
-            "\(documentName) contains a forbidden automatic-update claim: \(claim)",
-            file: file,
-            line: line
-        )
-    }
-
-    private func automaticDownloadOrInstallationClaim(in text: String) -> String? {
-        let englishPackage = #"(?:updates?(?!\s+metadata\b)|(?:(?:new|latest)\s+)?(?:Inklet\s+)?versions?(?!\s+metadata\b)|(?:Inklet\s+)?DMGs?|(?:Inklet\s+)?(?:update\s+)?packages?|(?:Inklet\s+)?installers?)"#
-        let englishPackageWithArticle = #"(?:an?\s+|the\s+)?\#(englishPackage)"#
-        let englishAppSubject = #"(?:Inklet|the\s+app|this\s+app)"#
-        let englishVerb = #"(?:downloads?|installs?)"#
-        let englishPastParticiple = #"(?:downloaded|installed)"#
-        let chinesePackage = #"(?:Inklet\s*)?(?:(?:(?:新|最新)\s*)?版本(?!\s*(?:的\s*)?元数据)|更新(?!\s*元数据)|DMG|安装包|更新包|应用安装包)"#
-        let chineseAppSubject = #"(?:Inklet|本应用|该应用|此应用)"#
-        let chineseVerb = #"(?:下载|安装)"#
-        let forbiddenClaimPatterns = [
-            #"\b\#(englishAppSubject)\s+(?:(?:will|does|can)\s+)?automatically\s+\#(englishVerb)(?:\s+(?:and|or)\s+\#(englishVerb))?\s+\#(englishPackageWithArticle)\b"#,
-            #"\b\#(englishAppSubject)\s+(?:(?:will|does|can)\s+)?\#(englishVerb)(?:\s+(?:and|or)\s+\#(englishVerb))?\s+\#(englishPackageWithArticle)\s+automatically\b"#,
-            #"\b(?:an?\s+|the\s+)?\#(englishPackage)\s+(?:(?:(?:will|can)\s+)?\#(englishVerb)\s+automatically|(?:is|are|will\s+be|can\s+be)\s+(?:automatically\s+\#(englishPastParticiple)(?:\s+(?:and|or)\s+\#(englishPastParticiple))?|\#(englishPastParticiple)(?:\s+(?:and|or)\s+\#(englishPastParticiple))?\s+automatically))\b"#,
-            #"(?im)(?:^|\n)\s*(?:[-*]\s*)?automatically\s+\#(englishVerb)(?:\s+(?:and|or)\s+\#(englishVerb))?\s+\#(englishPackageWithArticle)\b"#,
-            #"\b\#(chineseAppSubject)\s*(?:(?:将会|会|将|可以)\s*)?自动\s*\#(chineseVerb)(?:\s*(?:并|和|或)\s*\#(chineseVerb))?\s*\#(chinesePackage)"#,
-            #"\#(chinesePackage)\s*(?:(?:(?:将会|会|将|可以)\s*)?自动\s*\#(chineseVerb)(?:\s*(?:并|和|或)\s*\#(chineseVerb))?|(?:(?:将会|会|将|可以)\s*)?被\s*自动\s*\#(chineseVerb)(?:\s*(?:并|和|或)\s*\#(chineseVerb))?)"#,
-            #"(?m)(?:^|\n)\s*(?:[-*]\s*)?自动\s*\#(chineseVerb)(?:\s*(?:并|和|或)\s*\#(chineseVerb))?\s*\#(chinesePackage)"#
-        ]
-
-        for pattern in forbiddenClaimPatterns {
-            if let range = text.range(
-                of: pattern,
-                options: [.caseInsensitive, .regularExpression]
-            ) {
-                return String(text[range])
-            }
-        }
-        return nil
     }
 }

@@ -22,9 +22,9 @@ curl -fsSL https://raw.githubusercontent.com/wanming/Inklet/main/scripts/install
 
 ## 更新
 
-Inklet 仅通过 GitHub Releases 检查更新。正式版大约每 24 小时从 GitHub 获取一次最新稳定版的公开元数据。只有该 release 已上传 `Inklet.dmg` 时才会提示更新；选择**在 GitHub 上查看**会打开这个 release 的准确页面。Inklet 不会自动下载或安装更新。提示框会用你的界面语言显示这个版本的更新说明，没有对应翻译时显示英文。
+Inklet 仅通过 GitHub Releases 检查更新。正式版大约每 24 小时从 GitHub 获取一次最新稳定版的公开元数据。只有该 release 已上传 `Inklet.dmg` 时才会提示更新；选择**在 GitHub 上查看**会打开这个 release 的准确页面。提示框里的**安装并重启**会立即下载并安装这个版本。设置 › 通用里的**自动安装更新**默认打开，打开时 Inklet 会自己完成这一步：在后台下载 `Inklet.dmg`，确认磁盘映像通过 Gatekeeper 检查、里面的 App 与正在运行的 App 由同一开发者签名，然后等你没在用 Inklet 时替换 App 并重启。如果你先退出了 Inklet，更新会直接装好，不会重新打开。Inklet 无法替换自己时（例如没有所在文件夹的写入权限），或下载、校验失败时，会改为显示提示；没有装上的更新不会自动重试。提示框会用你的界面语言显示这个版本的更新说明，没有对应翻译时显示英文。
 
-正式版和 Inklet Local 都可以从 App 菜单选择**检查更新…**手动检查；Inklet Local 不会安排自动检查。自动检查失败时保持静默，手动检查失败时可选择**重试**。写作、听写、选区动作、迁移、模态窗口或已打开的菜单使 Inklet 忙碌时，自动更新提示会等到 App 空闲后再显示。
+正式版和 Inklet Local 都可以从 App 菜单选择**检查更新…**手动检查；Inklet Local 不会安排自动检查，也不会安装更新。自动检查失败时保持静默，手动检查失败时可选择**重试**。写作、听写、选区动作、迁移、模态窗口或已打开的菜单使 Inklet 忙碌时，自动更新提示或安装会等到 App 空闲后再进行。
 
 想抢先试用新功能，可以在设置 › 通用里打开 **Beta 版更新**。打开后，Inklet 会读取最近的公开 release 列表，而不只是最新稳定版，因此也会提示以 GitHub 预发布版本发布的 Beta 版。Beta 版会在版本号旁显示 **Beta**。关闭开关不会退回旧版本：Inklet 会留在当前 Beta 版，直到有更新的正式版发布。
 
