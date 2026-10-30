@@ -19,6 +19,18 @@ enum WhatsNewCatalog {
     static let releaseNotesURL = URL(string: "https://github.com/wanming/Inklet/releases")!
 
     static let releases: [WhatsNewRelease] = [
+        WhatsNewRelease(version: "2.2.0", features: [
+            WhatsNewFeature(
+                systemImage: "arrow.down.circle",
+                titleKey: "whatsNew.2.2.0.autoUpdate.title",
+                detailKey: "whatsNew.2.2.0.autoUpdate.detail"
+            ),
+            WhatsNewFeature(
+                systemImage: "power",
+                titleKey: "whatsNew.2.2.0.launchAtLogin.title",
+                detailKey: "whatsNew.2.2.0.launchAtLogin.detail"
+            ),
+        ]),
         WhatsNewRelease(version: "2.1.0", features: [
             WhatsNewFeature(
                 systemImage: "speaker.wave.2",
