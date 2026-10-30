@@ -318,6 +318,7 @@ final class WelcomeGuideViewModel: ObservableObject {
 struct WelcomeGuideView: View {
     @ObservedObject var model: WelcomeGuideViewModel
     @ObservedObject var settings: SettingsViewModel
+    @StateObject private var launchAtLogin = LaunchAtLoginController()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -549,6 +550,19 @@ struct WelcomeGuideView: View {
                 .foregroundStyle(InkletTheme.textSecondary)
             }
             Spacer()
+            if model.step == .ready {
+                // Off until chosen here or in Settings › General; the change applies right away.
+                Toggle(L10n.text("welcome.ready.launchAtLogin"), isOn: Binding(
+                    get: { launchAtLogin.isEnabled },
+                    set: { launchAtLogin.setEnabled($0) }
+                ))
+                .toggleStyle(.checkbox)
+                .font(InkletTheme.Typography.control)
+                .foregroundStyle(InkletTheme.label)
+                .help(launchAtLogin.warning ?? L10n.text("settings.help.launchAtLogin"))
+                .padding(.trailing, InkletTheme.Spacing.md)
+                .onAppear { launchAtLogin.refresh() }
+            }
             Button(model.primaryActionTitle) {
                 model.performPrimaryAction()
             }

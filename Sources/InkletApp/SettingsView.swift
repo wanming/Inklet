@@ -65,6 +65,7 @@ struct SettingsView: View {
     /// Read by each update check, so a change applies to the next automatic or manual check.
     @AppStorage(InkletPreferenceKeys.automaticallyInstallsUpdates) private var automaticallyInstallsUpdates = true
     @AppStorage(InkletPreferenceKeys.receivesBetaUpdates) private var receivesBetaUpdates = false
+    @StateObject private var launchAtLogin = LaunchAtLoginController()
     private let onAppearanceChange: (AppAppearance) -> Void
     private let onRequestMigrationImport: () -> Void
     private let onRetryMigrationRelaunch: () -> Void
@@ -131,12 +132,14 @@ struct SettingsView: View {
         .onAppear {
             model.refreshPermissions()
             model.refreshMicrophoneOptions()
+            launchAtLogin.refresh()
         }
         .onChange(of: model.config.appearance) {
             onAppearanceChange(model.config.appearance)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             model.refreshPermissions()
+            launchAtLogin.refresh()
         }
         .onReceive(NotificationCenter.default.publisher(for: .inkletLanguageDidChange).receive(on: RunLoop.main)) { _ in
             localeIdentifier = L10n.resolvedLanguage.localeIdentifier
@@ -332,6 +335,30 @@ struct SettingsView: View {
                         }
                         .labelsHidden()
                         .fixedSize()
+                    }
+                }
+
+                settingsGroup(L10n.text("settings.group.startup")) {
+                    settingsRow(
+                        L10n.text("settings.row.launchAtLogin"),
+                        help: L10n.text("settings.help.launchAtLogin"),
+                        warning: launchAtLogin.warning
+                    ) {
+                        if launchAtLogin.needsApproval {
+                            Button {
+                                launchAtLogin.openLoginItemsSettings()
+                            } label: {
+                                Label(L10n.text("settings.permission.openShort"), systemImage: "arrow.up.forward.app")
+                            }
+                            .buttonStyle(InkletButtonStyle(kind: .secondary, size: .small))
+                            .fixedSize()
+                        }
+                        Toggle("", isOn: Binding(
+                            get: { launchAtLogin.isEnabled },
+                            set: { launchAtLogin.setEnabled($0) }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
                     }
                 }
 
