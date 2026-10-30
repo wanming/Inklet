@@ -328,10 +328,17 @@ struct WelcomeGuideView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .padding(.horizontal, 44)
                 .padding(.top, 26)
+            if model.step == .ready, let warning = launchAtLogin.warning {
+                launchAtLoginNote(warning)
+            }
             actionBar
         }
         .frame(width: 560, height: 520)
         .background(InkletTheme.surface)
+        // Picks up an approval given in System Settings › Login Items on the way back.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            launchAtLogin.refresh()
+        }
     }
 
     private var stepIndicator: some View {
@@ -559,7 +566,7 @@ struct WelcomeGuideView: View {
                 .toggleStyle(.checkbox)
                 .font(InkletTheme.Typography.control)
                 .foregroundStyle(InkletTheme.label)
-                .help(launchAtLogin.warning ?? L10n.text("settings.help.launchAtLogin"))
+                .help(L10n.text("settings.help.launchAtLogin"))
                 .padding(.trailing, InkletTheme.Spacing.md)
                 .onAppear { launchAtLogin.refresh() }
             }
@@ -573,6 +580,29 @@ struct WelcomeGuideView: View {
         .padding(.horizontal, InkletTheme.Spacing.xl)
         .frame(height: 64)
         .background(InkletTheme.surfaceSunken)
+    }
+
+    /// Shown above the action bar while macOS waits for approval in Login Items, or after a change failed,
+    /// so a checked box that has not taken effect yet says so without hovering.
+    private func launchAtLoginNote(_ warning: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: InkletTheme.Spacing.xs) {
+            Label(warning, systemImage: "exclamationmark.triangle")
+                .font(InkletTheme.Typography.help)
+                .foregroundStyle(InkletTheme.statusWarning)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if launchAtLogin.needsApproval {
+                Button {
+                    launchAtLogin.openLoginItemsSettings()
+                } label: {
+                    Label(L10n.text("settings.permission.openShort"), systemImage: "arrow.up.forward.app")
+                }
+                .buttonStyle(InkletButtonStyle(kind: .secondary, size: .small))
+                .fixedSize()
+            }
+        }
+        .padding(.horizontal, InkletTheme.Spacing.xl)
+        .padding(.vertical, InkletTheme.Spacing.xs)
     }
 
     private func stepHeader(systemImage: String? = nil, title: String, message: String) -> some View {
