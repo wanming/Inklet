@@ -6,6 +6,16 @@
 
 **Turn rough thoughts into clear text.**
 
+<p align="center"><img src="Assets/readme/writing-popover.png" width="600" alt="Inklet 글쓰기 팝오버가 대충 쓴 메모를 명확한 영어로 다듬는 모습"></p>
+
+<p align="center"><a href="https://github.com/wanming/Inklet/releases/latest/download/Inklet.dmg"><b>macOS용 다운로드</b></a> · 무료 오픈 소스 · macOS 14 이상</p>
+
+- **어떤 앱에서든.** 글을 쓰는 곳에서 `Option+Space`를 누르고, 결과를 바로 그 자리에 삽입하세요.
+- **API 키가 필요 없습니다.** Apple 실리콘 Mac에서는 글쓰기, 번역, 받아쓰기가 내장 모델로 Mac에서 실행되며, 모델을 내려받은 뒤에는 오프라인에서도 동작합니다.
+- **원하는 모델도 사용 가능.** OpenAI, Anthropic, Gemini, DeepSeek, Qwen 등의 키를 쓰거나 Ollama, LM Studio에 연결하세요.
+- **개인정보 보호 중심.** 계정도, 분석도, Inklet 서버도 없습니다. 텍스트는 선택한 모델에만 전송됩니다.
+- **내 언어로.** 앱과 기본 프롬프트가 10개 언어로 제공됩니다.
+
 **Inklet**은 입력하거나 붙여 넣거나 말로 한 생각을, 지금 쓰고 있는 앱을 떠나지 않고 명확한 글로 바꿔 주는 macOS 글쓰기 도우미입니다.
 
 전역 단축키로 글쓰기 팝오버를 열고, 하나의 편집 가능한 원문 초안에 입력하거나 붙여 넣거나 받아쓰면 됩니다. 실시간 받아쓰기는 글쓰기 도우미 안에서만 이루어지므로, 변환하거나 삽입하기 전에 받아쓴 내용을 검토할 수 있습니다. Apple 실리콘 Mac에서는 새로 설치하면 음성을 이 Mac에서 인식하므로, 목소리가 Mac 밖으로 나가지 않습니다.

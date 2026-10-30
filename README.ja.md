@@ -6,6 +6,16 @@
 
 **Turn rough thoughts into clear text.**
 
+<p align="center"><img src="Assets/readme/writing-popover.png" width="600" alt="Inklet の文章作成ポップオーバーが走り書きを分かりやすい英語に整えている様子"></p>
+
+<p align="center"><a href="https://github.com/wanming/Inklet/releases/latest/download/Inklet.dmg"><b>macOS 版をダウンロード</b></a> · 無料・オープンソース · macOS 14 以降</p>
+
+- **どのアプリでも使える。** 入力中の場所で `Option+Space` を押し、結果をその場に挿入できます。
+- **API キーは不要。** Apple シリコン搭載の Mac では、文章作成・翻訳・音声入力を内蔵モデルで Mac 上で実行し、ダウンロード後はオフラインでも使えます。
+- **好きなモデルも使える。** OpenAI、Anthropic、Gemini、DeepSeek、Qwen などのキーを使うことも、Ollama や LM Studio に接続することもできます。
+- **プライバシー重視。** アカウント不要、分析なし、Inklet のサーバーもありません。テキストは選んだモデルにだけ送られます。
+- **あなたの言語で。** アプリと既定のプロンプトは 10 言語に対応しています。
+
 **Inklet** は、入力・ペースト・音声で伝えた考えを、今使っているアプリから離れずに分かりやすい文章へ整える macOS の文章作成アシスタントです。
 
 グローバルショートカットで文章作成ポップオーバーを開き、同じ編集可能な原文の下書きに入力・ペースト・音声入力できます。リアルタイム音声入力は文章作成アシスタントの中で完結するので、変換や挿入の前に書き起こしを確認できます。Apple シリコン搭載の Mac では、新規インストール時は音声をこの Mac 上で認識するため、声が Mac の外に出ることはありません。

@@ -6,6 +6,16 @@ Website: [getinklet.app](https://getinklet.app)
 
 **Turn rough thoughts into clear text.**
 
+<p align="center"><img src="Assets/readme/writing-popover.png" width="600" alt="Das Inklet-Schreib-Popover macht aus einer groben Notiz klares Englisch"></p>
+
+<p align="center"><a href="https://github.com/wanming/Inklet/releases/latest/download/Inklet.dmg"><b>Für macOS laden</b></a> · Kostenlos und Open Source · macOS 14 oder neuer</p>
+
+- **Funktioniert in jeder App.** Drücken Sie `Option+Space`, wo immer Sie schreiben, und fügen Sie das Ergebnis direkt an Ort und Stelle ein.
+- **Kein API-Schlüssel nötig.** Auf Macs mit Apple Chip laufen Schreiben, Übersetzen und Diktieren mit einem integrierten Modell auf Ihrem Mac, nach dem Download auch offline.
+- **Oder Ihr Lieblingsmodell.** Nutzen Sie einen Schlüssel von OpenAI, Anthropic, Gemini, DeepSeek, Qwen und weiteren Anbietern, oder verbinden Sie Ollama oder LM Studio.
+- **Privat aus Prinzip.** Kein Konto, keine Analysen, kein Inklet-Server. Ihr Text geht nur an das Modell, das Sie wählen.
+- **Spricht Ihre Sprache.** Die App und ihre Standard-Prompts gibt es in 10 Sprachen.
+
 **Inklet** ist ein Schreibassistent für macOS, der getippte, eingefügte oder gesprochene Gedanken in klaren Text verwandelt, ohne dass Sie die App verlassen, in der Sie gerade arbeiten.
 
 Öffnen Sie das Schreib-Popover mit dem globalen Kurzbefehl und tippen, fügen Sie ein oder diktieren Sie in denselben bearbeitbaren Quellentwurf. Das Echtzeitdiktat bleibt im Schreibassistenten, sodass Sie das Transkript prüfen können, bevor Sie entscheiden, ob Sie es umwandeln oder einfügen. Auf Macs mit Apple Chip erkennen Neuinstallationen die Sprache auf Ihrem Mac, sodass Ihre Stimme ihn nie verlässt.

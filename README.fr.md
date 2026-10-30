@@ -6,6 +6,16 @@ Site web : [getinklet.app](https://getinklet.app)
 
 **Turn rough thoughts into clear text.**
 
+<p align="center"><img src="Assets/readme/writing-popover.png" width="600" alt="Le popover d’écriture d’Inklet transforme une note brute en anglais clair"></p>
+
+<p align="center"><a href="https://github.com/wanming/Inklet/releases/latest/download/Inklet.dmg"><b>Télécharger pour macOS</b></a> · Gratuit et open source · macOS 14 ou ultérieur</p>
+
+- **Fonctionne dans toutes les apps.** Appuyez sur `Option+Space` là où vous écrivez, puis insérez le résultat directement à sa place.
+- **Aucune clé API nécessaire.** Sur les Mac avec puce Apple, la rédaction, la traduction et la dictée s’exécutent sur votre Mac avec un modèle intégré, hors ligne une fois téléchargé.
+- **Ou le modèle de votre choix.** Utilisez une clé OpenAI, Anthropic, Gemini, DeepSeek, Qwen et bien d’autres, ou connectez Ollama ou LM Studio.
+- **Privé par conception.** Pas de compte, pas d’analytique, pas de serveur Inklet. Votre texte n’est envoyé qu’au modèle que vous choisissez.
+- **Parle votre langue.** L’app et ses prompts par défaut existent en 10 langues.
+
 **Inklet** est un assistant d’écriture pour macOS qui transforme ce que vous tapez, collez ou dites en un texte clair, sans quitter l’app que vous utilisez déjà.
 
 Ouvrez le popover d’écriture avec le raccourci global, puis tapez, collez ou dictez dans le même brouillon source modifiable. La dictée en temps réel reste dans l’Assistant de rédaction : vous pouvez relire la transcription avant de décider de la transformer ou de l’insérer. Sur les Mac avec puce Apple, les nouvelles installations reconnaissent la parole sur votre Mac, si bien que votre voix ne le quitte jamais.
