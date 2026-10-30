@@ -138,6 +138,8 @@ Interaction states follow `AGENTS.md` § Interaction Details: loading replaces t
 
 **About** (380 wide, native window). The pen nib on a 76 pt `accentSoft` tile, "Inklet" in `pageTitle`, version in `caption`, tagline in `body` `secondaryLabel`, links in `control` `accentText`, copyright in `caption`.
 
+**Welcome guide** (560 × 520). A step indicator, the step's content and a 64 pt action bar on `surfaceSunken` with Back on the left and the primary button on the right. The last step adds a native checkbox for Open at login, in `control` text just before the primary button, so the one optional choice sits beside the button that finishes the guide without growing the step; it is off by default and mirrors the switch in Settings › General.
+
 ## Do and don't
 
 - Do let the user's text carry the screen. Don't add cards, gradients, glows or colored backgrounds for emphasis.
