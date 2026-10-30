@@ -6,6 +6,16 @@ Homepage: [getinklet.app](https://getinklet.app)
 
 **Turn rough thoughts into clear text.**
 
+<p align="center"><img src="Assets/readme/writing-popover.png" width="600" alt="The Inklet writing popover turning a rough note into clear English"></p>
+
+<p align="center"><a href="https://github.com/wanming/Inklet/releases/latest/download/Inklet.dmg"><b>Download for macOS</b></a> · Free and open source · macOS 14 or later</p>
+
+- **Works in any app.** Press `Option+Space` wherever you type, and insert the result right back in place.
+- **No API key needed.** On Apple silicon, writing, translation, and dictation run on your Mac with a built-in model, offline once it is downloaded.
+- **Or use the model you like.** Bring a key from OpenAI, Anthropic, Gemini, DeepSeek, Qwen, and more, or connect Ollama or LM Studio.
+- **Private by design.** No account, no analytics, no Inklet server. Your text goes only to the model you choose.
+- **Speaks your language.** The app and its default prompts come in 10 languages.
+
 **Inklet** is a macOS writing assistant that helps you turn typed, pasted, or spoken thoughts into clear text without leaving the app you are already using.
 
 Use the global shortcut to open the writing popover, then type, paste, or dictate into the same editable source draft. Realtime dictation stays inside Writing Assistant so you can review the transcript before deciding whether to transform or insert it. On Apple silicon, new installs recognize speech on your Mac, so your voice never leaves it.

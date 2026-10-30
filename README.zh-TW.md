@@ -6,6 +6,16 @@
 
 **Turn rough thoughts into clear text.**
 
+<p align="center"><img src="Assets/readme/writing-popover.png" width="600" alt="Inklet 寫作浮窗把隨手寫的句子改成通順的英文"></p>
+
+<p align="center"><a href="https://github.com/wanming/Inklet/releases/latest/download/Inklet.dmg"><b>下載 macOS 版</b></a> · 免費開源 · 需要 macOS 14 或更新版本</p>
+
+- **任何 App 都能用。** 在任何輸入框按 `Option+Space`，結果直接插回原處。
+- **不需要 API 金鑰。** 在 Apple 晶片的 Mac 上，寫作、翻譯和聽寫都用內建模型在本機執行，模型下載後即可離線使用。
+- **也能用你喜歡的模型。** 填入 OpenAI、Anthropic、Gemini、DeepSeek、通義千問等服務的金鑰，或連接 Ollama、LM Studio。
+- **重視隱私。** 不需要帳號，沒有分析追蹤，也沒有 Inklet 伺服器。文字只會傳給你選擇的模型。
+- **說你的語言。** 介面和預設提示詞提供 10 種語言。
+
 **Inklet** 是一款 macOS 寫作助手，可以把你輸入、貼上或說出的想法整理成清楚自然的文字，並直接插回正在使用的 App。
 
 你可以用全域快速鍵打開寫作浮窗，然後在同一份可編輯的原文草稿中輸入、貼上或聽寫。即時聽寫已整合進寫作助手，轉寫完成後會留在草稿裡，等你檢查和編輯後再決定要轉換或插入。在 Apple 晶片的 Mac 上，新安裝預設在本機辨識語音，聲音不會離開這台 Mac。
