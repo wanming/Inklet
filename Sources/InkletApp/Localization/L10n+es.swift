@@ -477,7 +477,7 @@ extension L10n {
         "setup.shortcut.title": "Usa el atajo",
         "setup.subtitle": "Inklet está en la barra de menús. Concede permiso de Accesibilidad para que pueda insertar texto en la app que estés usando.",
         "setup.title": "Inklet está listo",
-        "setup.window.title": "Te damos la bienvenida a Inklet"
+        "setup.window.title": "Te damos la bienvenida a Inklet",
         "app.menu.clipboardHistory": "Historial del portapapeles",
         "clipboard.search.placeholder": "Buscar en el historial del portapapeles",
         "clipboard.openSettings": "Ajustes del portapapeles",

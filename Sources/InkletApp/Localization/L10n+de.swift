@@ -477,7 +477,7 @@ extension L10n {
         "setup.shortcut.title": "Kurzbefehl verwenden",
         "setup.subtitle": "Inklet läuft in der Menüleiste. Erlauben Sie den Zugriff auf Bedienungshilfen, damit Inklet Text in die verwendete App einfügen kann.",
         "setup.title": "Inklet ist bereit",
-        "setup.window.title": "Willkommen bei Inklet"
+        "setup.window.title": "Willkommen bei Inklet",
         "app.menu.clipboardHistory": "Zwischenablage-Verlauf",
         "clipboard.search.placeholder": "Zwischenablage-Verlauf durchsuchen",
         "clipboard.openSettings": "Einstellungen der Zwischenablage",

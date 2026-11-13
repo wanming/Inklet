@@ -477,7 +477,7 @@ extension L10n {
         "setup.shortcut.title": "Utilisez le raccourci",
         "setup.subtitle": "Inklet s’exécute dans la barre des menus. Autorisez l’accessibilité pour qu’il puisse insérer du texte dans l’app que vous utilisez.",
         "setup.title": "Inklet est prêt",
-        "setup.window.title": "Bienvenue dans Inklet"
+        "setup.window.title": "Bienvenue dans Inklet",
         "app.menu.clipboardHistory": "Historique du presse-papiers",
         "clipboard.search.placeholder": "Rechercher dans l’historique du presse-papiers",
         "clipboard.openSettings": "Réglages du presse-papiers",

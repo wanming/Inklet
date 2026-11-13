@@ -477,7 +477,7 @@ extension L10n {
         "setup.shortcut.title": "ショートカットを使う",
         "setup.subtitle": "Inklet はメニューバーで動作しています。使用中のアプリにテキストを挿入できるよう、アクセシビリティ権限を許可してください。",
         "setup.title": "Inklet の準備ができました",
-        "setup.window.title": "Inklet へようこそ"
+        "setup.window.title": "Inklet へようこそ",
         "app.menu.clipboardHistory": "クリップボード履歴",
         "clipboard.search.placeholder": "クリップボード履歴を検索",
         "clipboard.openSettings": "クリップボードの設定",

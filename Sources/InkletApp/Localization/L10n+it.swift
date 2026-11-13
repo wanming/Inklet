@@ -477,7 +477,7 @@ extension L10n {
         "setup.shortcut.title": "Usa la scorciatoia",
         "setup.subtitle": "Inklet è nella barra dei menu. Concedi il permesso di Accessibilità per inserire testo nell’app che stai usando.",
         "setup.title": "Inklet è pronto",
-        "setup.window.title": "Benvenuto in Inklet"
+        "setup.window.title": "Benvenuto in Inklet",
         "app.menu.clipboardHistory": "Cronologia degli appunti",
         "clipboard.search.placeholder": "Cerca nella cronologia degli appunti",
         "clipboard.openSettings": "Impostazioni degli appunti",

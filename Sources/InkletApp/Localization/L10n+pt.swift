@@ -477,7 +477,7 @@ extension L10n {
         "setup.shortcut.title": "Use o atalho",
         "setup.subtitle": "O Inklet está na barra de menus. Conceda a permissão de Acessibilidade para que ele possa inserir texto no app em uso.",
         "setup.title": "O Inklet está pronto",
-        "setup.window.title": "Boas-vindas ao Inklet"
+        "setup.window.title": "Boas-vindas ao Inklet",
         "app.menu.clipboardHistory": "Histórico da área de transferência",
         "clipboard.search.placeholder": "Buscar no histórico da área de transferência",
         "clipboard.openSettings": "Ajustes da área de transferência",

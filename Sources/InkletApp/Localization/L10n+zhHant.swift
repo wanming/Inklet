@@ -477,7 +477,7 @@ extension L10n {
         "setup.shortcut.title": "使用快捷鍵",
         "setup.subtitle": "Inklet 正在選單列中執行。授予輔助使用權限，讓 Inklet 將文字插回目前使用的應用程式。",
         "setup.title": "Inklet 已就緒",
-        "setup.window.title": "歡迎使用 Inklet"
+        "setup.window.title": "歡迎使用 Inklet",
         "app.menu.clipboardHistory": "剪貼簿歷史",
         "clipboard.search.placeholder": "搜尋剪貼簿歷史",
         "clipboard.openSettings": "剪貼簿設定",
