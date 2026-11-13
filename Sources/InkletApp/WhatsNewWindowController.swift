@@ -26,6 +26,11 @@ enum WhatsNewCatalog {
                 detailKey: "whatsNew.2.2.0.clipboard.detail"
             ),
             WhatsNewFeature(
+                systemImage: "text.quote",
+                titleKey: "whatsNew.2.2.0.snippets.title",
+                detailKey: "whatsNew.2.2.0.snippets.detail"
+            ),
+            WhatsNewFeature(
                 systemImage: "arrow.down.circle",
                 titleKey: "whatsNew.2.2.0.autoUpdate.title",
                 detailKey: "whatsNew.2.2.0.autoUpdate.detail"

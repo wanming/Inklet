@@ -100,6 +100,7 @@ The Dictation shortcut is source-local and hold-only. You can change its modifie
 - Provides English, Simplified Chinese, Traditional Chinese, Japanese, Korean, Spanish, French, German, Portuguese, and Italian app UI localization.
 - Adapts compact selection menus and constrained settings/writing controls to translated labels; language changes refresh open UI while preserving writing content.
 - Keeps a clipboard history of the text and images you copy, on your Mac only. Press `Option+Shift+V` to search it, then press `Return` to paste an item into the app you were using. Pin items you use often; they stay until you unpin them. Copies that password managers mark as private, copied files, and Inklet's own temporary clipboard use are skipped. Turn it off, change the shortcut, choose how long to keep it (1 day to 3 months; 1 month by default), or clear it in Settings › Clipboard.
+- Saves snippets: pieces of text you paste often, such as an address or a reply. Press `Option+Shift+V`, then `Tab` to switch to Snippets, search, and press `Return` to paste one. Add and edit them in Settings › Snippets. Give a snippet a keyword such as `;addr` and turn on keyword expansion there, and typing the keyword in any app replaces it with the snippet (off by default; needs Accessibility; it pauses while an input method such as Pinyin is in use and never sees password fields).
 
 ## Current Status
 
@@ -174,6 +175,7 @@ Check all UI languages with `scripts/check-localization.sh`. Add `--snapshots` t
 - `Escape`: move back one level per press, from the result to the source editor, then to the mode launcher, then close the popover. While transforming, it stops generation, discards the partial result, and stays in the editor.
 - `Command+,`: open Settings while Inklet is active.
 - `Option+Shift+V`: open clipboard history. Type to search, `Up` / `Down` to choose, `Return` to paste, `Command+C` to copy without pasting, `Command+P` to pin or unpin, `Command+Delete` to delete, `Escape` to close.
+- `Tab` in the clipboard history panel: switch between Clipboard and Snippets.
 
 Search is case- and diacritic-insensitive and supports ordered-character matching. Exact and prefix matches receive the strongest boosts; consecutive, word-start, earlier, and tighter matches generally rank higher.
 
@@ -229,6 +231,7 @@ If macOS blocks automatic access to the matching legacy container, Settings keep
 - Selection Assistant translation sends selected text and your custom Translate instructions to your selected provider when no local cached translation is available; a prompt mode button sends selected text and that mode's prompt to your selected provider; pronunciation sends selected text to OpenAI only when OpenAI is the text to speech engine.
 - Inklet fetches the public model catalog from `models.dev` at most once per day. This request does not include your text, audio, API keys, or app settings.
 - Clipboard history saves the text and images you copy in `clipboard-history.json` and the `clipboard-images` folder in Inklet's Application Support folder and never sends them anywhere. It skips copies that password managers mark as private. Unpinned items are removed after the period you choose; turn it off or clear it in Settings › Clipboard.
+- Snippets are saved in `snippets.json` in Inklet's Application Support folder and never sent anywhere. Keyword expansion, when you turn it on, watches only for your keywords as you type; it keeps the last few characters in memory, saves nothing, and puts your clipboard back after pasting a snippet.
 - Do not send private text or audio to OpenAI or your selected provider unless you trust their data handling policies.
 
 ## Feedback

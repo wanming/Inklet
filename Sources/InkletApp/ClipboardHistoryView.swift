@@ -2,9 +2,39 @@ import AppKit
 import SwiftUI
 import InkletCore
 
-/// State of the clipboard history panel: the search, the visible items and the selection.
+/// The two lists the ⌥⇧V panel shows; Tab switches between them.
+enum ClipboardPanelTab: String, CaseIterable, Identifiable {
+    case clipboard
+    case snippets
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .clipboard: L10n.text("clipboard.tab.clipboard")
+        case .snippets: L10n.text("clipboard.tab.snippets")
+        }
+    }
+
+    var other: ClipboardPanelTab {
+        self == .clipboard ? .snippets : .clipboard
+    }
+}
+
+/// State of the ⌥⇧V panel: the tab, the search, the visible items and the selection.
 @MainActor
 final class ClipboardHistoryPanelModel: ObservableObject {
+    @Published var tab: ClipboardPanelTab = .clipboard {
+        didSet {
+            guard tab != oldValue else { return }
+            if query.isEmpty {
+                refilter(resetSelection: true)
+            } else {
+                query = ""
+            }
+            focusRevision += 1
+        }
+    }
     @Published var query = "" {
         didSet {
             guard query != oldValue else { return }
@@ -13,23 +43,40 @@ final class ClipboardHistoryPanelModel: ObservableObject {
     }
     @Published private(set) var visibleItems: [ClipboardHistoryItem] = []
     @Published var selectedID: UUID?
+    @Published private(set) var visibleSnippets: [Snippet] = []
+    @Published var selectedSnippetID: UUID?
     @Published private(set) var isEnabled = true
     @Published private(set) var canPaste = true
     @Published private(set) var focusRevision = 0
     @Published private(set) var hasAnyItems = false
+    @Published private(set) var hasAnySnippets = false
 
     var onPaste: ((ClipboardHistoryItem) -> Void)?
     var onCopy: ((ClipboardHistoryItem) -> Void)?
+    var onPasteText: ((String) -> Void)?
+    var onCopyText: ((String) -> Void)?
     var onClose: (() -> Void)?
-    var onOpenSettings: (() -> Void)?
+    var onOpenSettings: ((ClipboardPanelTab) -> Void)?
 
     private let store: ClipboardHistoryStore
+    private let snippets: SnippetLibrary
+    private var snippetObserver: NSObjectProtocol?
     private var imageCache: [UUID: NSImage] = [:]
 
-    init(store: ClipboardHistoryStore) {
+    init(store: ClipboardHistoryStore, snippets: SnippetLibrary) {
         self.store = store
+        self.snippets = snippets
         store.onChange = { [weak self] in
-            self?.refilter(resetSelection: false)
+            self?.refilterItems(resetSelection: false)
+        }
+        snippetObserver = NotificationCenter.default.addObserver(
+            forName: .inkletSnippetsDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.refilterSnippets(resetSelection: false)
+            }
         }
     }
 
@@ -38,15 +85,30 @@ final class ClipboardHistoryPanelModel: ObservableObject {
         return visibleItems.first { $0.id == selectedID }
     }
 
+    var selectedSnippet: Snippet? {
+        guard let selectedSnippetID else { return nil }
+        return visibleSnippets.first { $0.id == selectedSnippetID }
+    }
+
     var hasPinnedItems: Bool {
         visibleItems.contains { $0.isPinned }
+    }
+
+    /// Clipboard history can be turned off; snippets always work.
+    var isCurrentTabEnabled: Bool {
+        tab == .snippets || isEnabled
     }
 
     func prepareForPresentation(isEnabled: Bool, canPaste: Bool) {
         self.isEnabled = isEnabled
         self.canPaste = canPaste
-        query = ""
-        refilter(resetSelection: true)
+        if query.isEmpty {
+            refilter(resetSelection: true)
+        } else {
+            query = ""
+        }
+        refilterItems(resetSelection: tab != .clipboard)
+        refilterSnippets(resetSelection: tab != .snippets)
         focusRevision += 1
     }
 
@@ -54,34 +116,57 @@ final class ClipboardHistoryPanelModel: ObservableObject {
         imageCache.removeAll()
     }
 
+    func switchTab() {
+        tab = tab.other
+    }
+
     func select(_ item: ClipboardHistoryItem) {
         selectedID = item.id
     }
 
+    func select(_ snippet: Snippet) {
+        selectedSnippetID = snippet.id
+    }
+
     func moveSelection(by offset: Int) {
-        guard !visibleItems.isEmpty else { return }
-        let currentIndex = selectedID.flatMap { id in visibleItems.firstIndex { $0.id == id } } ?? -1
-        let nextIndex = min(max(currentIndex + offset, 0), visibleItems.count - 1)
-        selectedID = visibleItems[nextIndex].id
+        switch tab {
+        case .clipboard:
+            selectedID = Self.moved(selectedID, in: visibleItems.map(\.id), by: offset)
+        case .snippets:
+            selectedSnippetID = Self.moved(selectedSnippetID, in: visibleSnippets.map(\.id), by: offset)
+        }
     }
 
     func pasteSelected() {
-        guard let selectedItem else { return }
-        onPaste?(selectedItem)
+        switch tab {
+        case .clipboard:
+            guard let selectedItem else { return }
+            onPaste?(selectedItem)
+        case .snippets:
+            guard let selectedSnippet else { return }
+            onPasteText?(selectedSnippet.text)
+        }
     }
 
     func copySelected() {
-        guard let selectedItem else { return }
-        onCopy?(selectedItem)
+        switch tab {
+        case .clipboard:
+            guard let selectedItem else { return }
+            onCopy?(selectedItem)
+        case .snippets:
+            guard let selectedSnippet else { return }
+            onCopyText?(selectedSnippet.text)
+        }
     }
 
     func togglePinSelected() {
-        guard let selectedItem else { return }
+        guard tab == .clipboard, let selectedItem else { return }
         store.setPinned(!selectedItem.isPinned, itemID: selectedItem.id)
     }
 
     func deleteSelected() {
-        guard let selectedItem,
+        guard tab == .clipboard,
+              let selectedItem,
               let index = visibleItems.firstIndex(where: { $0.id == selectedItem.id })
         else {
             return
@@ -99,7 +184,7 @@ final class ClipboardHistoryPanelModel: ObservableObject {
     }
 
     func openSettings() {
-        onOpenSettings?()
+        onOpenSettings?(tab)
     }
 
     func image(for item: ClipboardHistoryItem) -> NSImage? {
@@ -116,11 +201,34 @@ final class ClipboardHistoryPanelModel: ObservableObject {
     }
 
     private func refilter(resetSelection: Bool) {
+        switch tab {
+        case .clipboard: refilterItems(resetSelection: resetSelection)
+        case .snippets: refilterSnippets(resetSelection: resetSelection)
+        }
+    }
+
+    private func refilterItems(resetSelection: Bool) {
         hasAnyItems = !store.items.isEmpty
-        visibleItems = ClipboardHistoryStore.filter(store.items, query: query)
+        visibleItems = ClipboardHistoryStore.filter(store.items, query: tab == .clipboard ? query : "")
         if resetSelection || !visibleItems.contains(where: { $0.id == selectedID }) {
             selectedID = visibleItems.first?.id
         }
+    }
+
+    private func refilterSnippets(resetSelection: Bool) {
+        // A snippet just added in Settings has no text yet; there is nothing to paste.
+        let pastable = snippets.snippets.filter { !$0.text.isEmpty }
+        hasAnySnippets = !pastable.isEmpty
+        visibleSnippets = SnippetStore.filter(pastable, query: tab == .snippets ? query : "")
+        if resetSelection || !visibleSnippets.contains(where: { $0.id == selectedSnippetID }) {
+            selectedSnippetID = visibleSnippets.first?.id
+        }
+    }
+
+    private static func moved(_ selected: UUID?, in ids: [UUID], by offset: Int) -> UUID? {
+        guard !ids.isEmpty else { return nil }
+        let currentIndex = selected.flatMap { ids.firstIndex(of: $0) } ?? -1
+        return ids[min(max(currentIndex + offset, 0), ids.count - 1)]
     }
 }
 
@@ -163,12 +271,24 @@ struct ClipboardHistoryView: View {
                 .foregroundStyle(InkletTheme.secondaryLabel)
             ClipboardHistorySearchField(
                 text: $model.query,
-                placeholder: L10n.text("clipboard.search.placeholder"),
+                placeholder: L10n.text(
+                    model.tab == .clipboard ? "clipboard.search.placeholder" : "snippets.search.placeholder"
+                ),
                 focusRevision: model.focusRevision,
                 onCommand: handleSearchCommand
             )
             .frame(maxWidth: .infinity, minHeight: InkletTheme.ControlHeight.regular)
-            .disabled(!model.isEnabled)
+            .disabled(!model.isCurrentTabEnabled)
+
+            Picker("", selection: $model.tab) {
+                ForEach(ClipboardPanelTab.allCases) { tab in
+                    Text(tab.title).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .help(L10n.text("clipboard.hint.switchTab"))
 
             Button {
                 model.openSettings()
@@ -190,6 +310,7 @@ struct ClipboardHistoryView: View {
         case .moveDown: model.moveSelection(by: 1)
         case .submit: model.pasteSelected()
         case .cancel: model.close()
+        case .switchTab: model.switchTab()
         }
     }
 
@@ -197,6 +318,113 @@ struct ClipboardHistoryView: View {
 
     @ViewBuilder
     private var content: some View {
+        switch model.tab {
+        case .clipboard: clipboardContent
+        case .snippets: snippetsContent
+        }
+    }
+
+    @ViewBuilder
+    private var snippetsContent: some View {
+        if model.visibleSnippets.isEmpty {
+            if model.hasAnySnippets {
+                emptyState(
+                    systemImage: "magnifyingglass",
+                    title: L10n.text("clipboard.noMatches"),
+                    message: "",
+                    showsSettingsButton: false
+                )
+            } else {
+                emptyState(
+                    systemImage: "text.quote",
+                    title: L10n.text("snippets.empty.title"),
+                    message: L10n.text("snippets.empty.message"),
+                    showsSettingsButton: true,
+                    settingsButtonTitle: L10n.text("snippets.new")
+                )
+            }
+        } else {
+            HStack(spacing: 0) {
+                snippetList
+                    .frame(width: Self.listWidth)
+                InkletTheme.hairline.frame(width: 1)
+                snippetPreview
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+
+    private var snippetList: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.vertical, showsIndicators: true) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(model.visibleSnippets) { snippet in
+                        SnippetPanelRow(
+                            snippet: snippet,
+                            isSelected: model.selectedSnippetID == snippet.id,
+                            onSelect: { model.select(snippet) },
+                            onPaste: {
+                                model.select(snippet)
+                                model.pasteSelected()
+                            }
+                        )
+                        .id(snippet.id)
+                        .contextMenu {
+                            Button(L10n.text(model.canPaste ? "clipboard.action.paste" : "clipboard.action.copy")) {
+                                model.select(snippet)
+                                model.pasteSelected()
+                            }
+                            Button(L10n.text("clipboard.action.copy")) {
+                                model.select(snippet)
+                                model.copySelected()
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, InkletTheme.Spacing.xxs)
+            }
+            .onChange(of: model.selectedSnippetID) { _, selectedID in
+                guard let selectedID else { return }
+                proxy.scrollTo(selectedID)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var snippetPreview: some View {
+        if let snippet = model.selectedSnippet {
+            VStack(spacing: 0) {
+                ScrollView {
+                    Text(snippet.text)
+                        .font(InkletTheme.Typography.editor)
+                        .lineSpacing(InkletTheme.Typography.editorLineSpacing)
+                        .foregroundStyle(InkletTheme.label)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .padding(InkletTheme.Spacing.md)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                InkletTheme.hairline.frame(height: 1)
+                Grid(alignment: .leading, horizontalSpacing: InkletTheme.Spacing.sm, verticalSpacing: InkletTheme.Spacing.xxs) {
+                    if !snippet.keyword.isEmpty {
+                        detailRow(L10n.text("snippets.detail.keyword"), value: snippet.keyword)
+                    }
+                    detailRow(L10n.text("snippets.detail.updated"), value: absoluteTime(snippet.updatedAt))
+                    detailRow(
+                        L10n.text("clipboard.detail.content"),
+                        value: L10n.format("clipboard.detail.characters", snippet.text.count)
+                    )
+                }
+                .padding(.horizontal, InkletTheme.Spacing.md)
+                .padding(.vertical, InkletTheme.Spacing.sm)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var clipboardContent: some View {
         if !model.isEnabled {
             emptyState(
                 systemImage: "clipboard",
@@ -235,7 +463,8 @@ struct ClipboardHistoryView: View {
         systemImage: String,
         title: String,
         message: String,
-        showsSettingsButton: Bool
+        showsSettingsButton: Bool,
+        settingsButtonTitle: String = L10n.text("clipboard.openSettings")
     ) -> some View {
         VStack(spacing: InkletTheme.Spacing.xs) {
             Image(systemName: systemImage)
@@ -253,7 +482,7 @@ struct ClipboardHistoryView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             if showsSettingsButton {
-                Button(L10n.text("clipboard.openSettings")) {
+                Button(settingsButtonTitle) {
                     model.openSettings()
                 }
                 .buttonStyle(InkletButtonStyle(kind: .primary))
@@ -442,18 +671,22 @@ struct ClipboardHistoryView: View {
                 keys: ["↵"],
                 label: L10n.text(model.canPaste ? "clipboard.action.paste" : "clipboard.action.copy")
             )
-            footerHint(
-                keys: ["⌘", "P"],
-                label: L10n.text(model.selectedItem?.isPinned == true ? "clipboard.action.unpin" : "clipboard.action.pin")
-            )
-            footerHint(keys: ["⌘", "⌫"], label: L10n.text("clipboard.action.delete"))
+            if model.tab == .clipboard {
+                footerHint(
+                    keys: ["⌘", "P"],
+                    label: L10n.text(model.selectedItem?.isPinned == true ? "clipboard.action.unpin" : "clipboard.action.pin")
+                )
+                footerHint(keys: ["⌘", "⌫"], label: L10n.text("clipboard.action.delete"))
+            } else {
+                footerHint(keys: ["⌘", "C"], label: L10n.text("clipboard.action.copy"))
+            }
+            footerHint(keys: ["tab"], label: model.tab.other.title)
             Spacer(minLength: InkletTheme.Spacing.xs)
             footerHint(keys: ["esc"], label: L10n.text("popover.hint.close"))
         }
         .padding(.horizontal, InkletTheme.Spacing.md)
         .frame(height: 36)
         .background(InkletTheme.surfaceSunken)
-        .opacity(model.isEnabled ? 1 : 0.45)
     }
 
     private func footerHint(keys: [String], label: String) -> some View {
@@ -552,13 +785,61 @@ private struct ClipboardHistoryRow: View {
     }
 }
 
-/// The panel's search field. Arrow keys, Return and Esc drive the list while typing.
+private struct SnippetPanelRow: View {
+    let snippet: Snippet
+    let isSelected: Bool
+    let onSelect: () -> Void
+    let onPaste: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: InkletTheme.Spacing.xs) {
+                Image(systemName: "text.quote")
+                    .font(.system(size: InkletTheme.IconSize.small, weight: .semibold))
+                    .foregroundStyle(isSelected ? InkletTheme.accentText : InkletTheme.secondaryLabel)
+                    .frame(width: 24, height: 24)
+                    .background(InkletTheme.fill, in: RoundedRectangle(cornerRadius: InkletTheme.Radius.small))
+                    .padding(.leading, 6)
+                Text(snippet.displayName)
+                    .font(isSelected ? InkletTheme.Typography.control : InkletTheme.Typography.body)
+                    .foregroundStyle(InkletTheme.label)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: InkletTheme.Spacing.xxs)
+                if !snippet.keyword.isEmpty {
+                    Text(snippet.keyword)
+                        .font(InkletTheme.Typography.keycap)
+                        .foregroundStyle(InkletTheme.tertiaryLabel)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+            }
+            .padding(.horizontal, InkletTheme.Spacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: ClipboardHistoryView.rowHeight)
+            .background {
+                InkletRowBackground(isSelected: isSelected, isHovered: isHovered)
+                    .padding(.horizontal, 6)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(TapGesture(count: 2).onEnded { onPaste() })
+        .onHover { isHovered = $0 }
+        .accessibilityLabel(snippet.displayName)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// The panel's search field. Arrow keys, Return, Tab and Esc drive the list while typing.
 struct ClipboardHistorySearchField: NSViewRepresentable {
     enum Command {
         case moveUp
         case moveDown
         case submit
         case cancel
+        case switchTab
     }
 
     @Binding var text: String
@@ -629,6 +910,8 @@ struct ClipboardHistorySearchField: NSViewRepresentable {
                 onCommand(.submit)
             case #selector(NSResponder.cancelOperation(_:)):
                 onCommand(.cancel)
+            case #selector(NSResponder.insertTab(_:)), #selector(NSResponder.insertBacktab(_:)):
+                onCommand(.switchTab)
             default:
                 return false
             }

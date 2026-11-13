@@ -20,6 +20,8 @@ public enum InkletPreferenceKeys {
     public static let clipboardHistoryEnabled = "clipboardHistoryEnabled"
     public static let clipboardHistoryHotkey = "clipboardHistoryHotkey"
     public static let clipboardHistoryRetention = "clipboardHistoryRetention"
+    /// Off unless turned on: typing a snippet's keyword replaces it with the snippet.
+    public static let snippetKeywordExpansionEnabled = "snippetKeywordExpansionEnabled"
     public static let providerAPIKeyPrefix = "providerAPIKey."
 
     public static let recognizedLegacyKeys = [

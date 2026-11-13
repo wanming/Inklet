@@ -102,6 +102,7 @@ Der Diktat-Kurzbefehl wirkt nur im Quelleditor und nur durch Halten. Unter **Ein
 - Bietet die App-Oberfläche auf Englisch, vereinfachtem Chinesisch, traditionellem Chinesisch, Japanisch, Koreanisch, Spanisch, Französisch, Deutsch, Portugiesisch und Italienisch.
 - Passt kompakte Auswahlmenüs und platzbeschränkte Steuerelemente in Einstellungen und Schreibansicht an übersetzte Beschriftungen an; ein Sprachwechsel aktualisiert die geöffnete Oberfläche und behält den Schreibinhalt bei.
 - Behält einen Zwischenablage-Verlauf mit den Texten und Bildern, die du kopierst, nur auf deinem Mac. Mit `Option+Shift+V` durchsuchst du ihn, mit `Return` setzt du einen Eintrag in die App ein, die du gerade benutzt hast. Häufig Genutztes kannst du anheften; es bleibt, bis du es löst. Was Passwortmanager als privat markieren, kopierte Dateien und Inklets eigene kurzzeitige Nutzung der Zwischenablage werden nicht gespeichert. Unter Einstellungen › Zwischenablage kannst du ihn ausschalten, den Kurzbefehl ändern, die Aufbewahrungsdauer wählen (1 Tag bis 3 Monate, standardmäßig 1 Monat) oder ihn löschen.
+- Speichert Snippets: Texte, die du oft einsetzt, etwa eine Adresse oder eine Antwort. Drücke `Option+Shift+V`, dann `Tab`, um zu Snippets zu wechseln, suche und drücke `Return`, um eines einzusetzen. Hinzufügen und bearbeiten kannst du sie unter Einstellungen › Snippets. Gib einem Snippet ein Kürzel wie `;adr` und schalte dort die Kürzel-Erweiterung ein: Tippst du das Kürzel in einer beliebigen App, wird es durch das Snippet ersetzt (standardmäßig aus; braucht Bedienungshilfen; pausiert, solange eine Eingabemethode wie Pinyin aktiv ist, und sieht nie Passwortfelder).
 
 ## Aktueller Stand
 
@@ -176,6 +177,7 @@ Prüfen Sie alle Oberflächensprachen mit `scripts/check-localization.sh`. Mit `
 - `Escape`: geht pro Tastendruck eine Ebene zurück – vom Ergebnis zum Quelleditor, dann zum Modusstarter, dann schließt es das Popover. Während einer Umwandlung stoppt es die Generierung, verwirft das Teilergebnis und bleibt im Editor.
 - `Command+,`: öffnet die Einstellungen, während Inklet aktiv ist.
 - `Option+Shift+V`: öffnet den Zwischenablage-Verlauf. Tippen zum Suchen, `Up` / `Down` zum Auswählen, `Return` zum Einsetzen, `Command+C` zum Kopieren ohne Einsetzen, `Command+P` zum Anheften oder Lösen, `Command+Delete` zum Löschen, `Escape` zum Schließen.
+- `Tab` im Zwischenablage-Verlauf: wechselt zwischen Zwischenablage und Snippets.
 
 Die Suche ignoriert Groß- und Kleinschreibung sowie diakritische Zeichen und unterstützt Übereinstimmungen von Zeichen in Reihenfolge. Exakte und Präfix-Treffer werden am stärksten gewichtet; aufeinanderfolgende, am Wortanfang liegende, frühere und dichtere Treffer stehen in der Regel weiter oben.
 
@@ -231,6 +233,7 @@ Blockiert macOS den automatischen Zugriff auf den passenden alten Container, bie
 - Ist keine lokal zwischengespeicherte Übersetzung vorhanden, sendet die Übersetzung des Auswahlassistenten den ausgewählten Text und Ihre eigenen **Übersetzen**-Anweisungen an den gewählten Anbieter; eine Prompt-Modus-Taste sendet den ausgewählten Text und den Prompt dieses Modus an den gewählten Anbieter; die Aussprache sendet den ausgewählten Text nur dann an OpenAI, wenn OpenAI die Engine für Text zu Sprache ist.
 - Inklet ruft den öffentlichen Modellkatalog höchstens einmal pro Tag von `models.dev` ab. Diese Anfrage enthält weder Ihren Text noch Audio, API-Schlüssel oder App-Einstellungen.
 - Der Zwischenablage-Verlauf speichert kopierte Texte und Bilder in `clipboard-history.json` und im Ordner `clipboard-images` in Inklets Application-Support-Ordner und sendet sie nirgendwohin. Was Passwortmanager als privat markieren, wird nicht gespeichert. Nicht angeheftete Einträge werden nach der gewählten Dauer entfernt; ausschalten oder löschen kannst du ihn unter Einstellungen › Zwischenablage.
+- Snippets werden in `snippets.json` in Inklets Application-Support-Ordner gespeichert und nirgendwohin gesendet. Die Kürzel-Erweiterung achtet, wenn du sie einschaltest, beim Tippen nur auf deine Kürzel; sie behält die letzten paar Zeichen im Speicher, speichert nichts und stellt deine Zwischenablage nach dem Einsetzen wieder her.
 - Senden Sie keine privaten Texte oder Aufnahmen an OpenAI oder den gewählten Anbieter, wenn Sie deren Datenschutzrichtlinien nicht vertrauen.
 
 ## Feedback

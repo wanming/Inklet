@@ -102,6 +102,7 @@ Le raccourci de dictée ne fonctionne que dans l’éditeur source et uniquement
 - Propose l’interface de l’app en anglais, chinois simplifié, chinois traditionnel, japonais, coréen, espagnol, français, allemand, portugais et italien.
 - Adapte les menus de sélection compacts et les commandes à l’espace restreint des réglages et de l’écriture aux libellés traduits ; changer de langue rafraîchit l’interface ouverte tout en conservant le texte en cours.
 - Conserve un historique du presse-papiers avec le texte et les images que vous copiez, uniquement sur votre Mac. Appuyez sur `Option+Shift+V` pour y chercher, puis sur `Return` pour coller un élément dans l’app que vous utilisiez. Épinglez ce que vous utilisez souvent ; ces éléments restent jusqu’à ce que vous les désépingliez. Les copies que les gestionnaires de mots de passe marquent comme privées, les fichiers copiés et l’usage temporaire du presse-papiers par Inklet ne sont pas enregistrés. Désactivez-le, changez le raccourci, choisissez la durée de conservation (de 1 jour à 3 mois ; 1 mois par défaut) ou effacez-le dans Réglages › Presse-papiers.
+- Enregistre des extraits : les textes que vous collez souvent, comme une adresse ou une réponse. Appuyez sur `Option+Shift+V`, puis sur `Tab` pour passer aux Extraits, cherchez et appuyez sur `Return` pour en coller un. Ajoutez-les et modifiez-les dans Réglages › Extraits. Donnez à un extrait un mot-clé comme `;adr` et activez-y l’expansion des mots-clés : taper le mot-clé dans n’importe quelle app le remplace par l’extrait (désactivée par défaut ; nécessite l’Accessibilité ; mise en pause pendant l’usage d’une méthode de saisie comme Pinyin, et ne voit jamais les champs de mot de passe).
 
 ## État actuel
 
@@ -176,6 +177,7 @@ Vérifiez toutes les langues de l’interface avec `scripts/check-localization.s
 - `Escape` : recule d’un niveau à chaque appui, du résultat à l’éditeur source, puis au lanceur de modes, puis ferme le popover. Pendant une transformation, arrête la génération, abandonne le résultat partiel et reste dans l’éditeur.
 - `Command+,` : ouvre les réglages lorsque Inklet est actif.
 - `Option+Shift+V` : ouvre l’historique du presse-papiers. Tapez pour chercher, `Up` / `Down` pour choisir, `Return` pour coller, `Command+C` pour copier sans coller, `Command+P` pour épingler ou désépingler, `Command+Delete` pour supprimer, `Escape` pour fermer.
+- `Tab` dans le panneau de l’historique du presse-papiers : passe de Presse-papiers à Extraits et inversement.
 
 La recherche ignore la casse et les accents et prend en charge la correspondance de caractères dans l’ordre. Les correspondances exactes et de préfixe sont les plus favorisées ; les correspondances consécutives, en début de mot, plus précoces et plus serrées se classent généralement plus haut.
 
@@ -231,6 +233,7 @@ Si macOS bloque l’accès automatique à l’ancien conteneur correspondant, le
 - Lorsqu’aucune traduction n’est disponible dans le cache local, la traduction de l’Assistant de sélection envoie le texte sélectionné et vos instructions **Traduire** personnalisées au fournisseur choisi ; un bouton de mode de prompt envoie le texte sélectionné et le prompt de ce mode au fournisseur choisi ; la prononciation n’envoie le texte sélectionné à OpenAI que lorsque OpenAI est le moteur de texte en voix.
 - Inklet récupère le catalogue public de modèles sur `models.dev` au plus une fois par jour. Cette requête ne contient ni votre texte, ni votre audio, ni vos clés d’API, ni les réglages de l’app.
 - L’historique du presse-papiers enregistre le texte et les images que vous copiez dans `clipboard-history.json` et le dossier `clipboard-images`, dans le dossier Application Support d’Inklet, et ne les envoie nulle part. Il ignore les copies que les gestionnaires de mots de passe marquent comme privées. Les éléments non épinglés sont supprimés après la durée choisie ; désactivez-le ou effacez-le dans Réglages › Presse-papiers.
+- Les extraits sont enregistrés dans `snippets.json`, dans le dossier Application Support d’Inklet, et ne sont envoyés nulle part. L’expansion des mots-clés, quand vous l’activez, ne guette que vos mots-clés pendant la frappe ; elle garde en mémoire les derniers caractères, n’enregistre rien et remet votre presse-papiers en place après avoir collé l’extrait.
 - N’envoyez pas de texte ou d’audio privés à OpenAI ou au fournisseur choisi si vous ne faites pas confiance à leurs politiques de traitement des données.
 
 ## Commentaires

@@ -40,6 +40,7 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
     private let pasteboard: NSPasteboard = .general
     private let hotkeyManager: GlobalHotkeyManager
     private let model: ClipboardHistoryPanelModel
+    private let snippetExpander: SnippetKeywordExpander
     private var panel: ClipboardHistoryPanel?
     private var pollTimer: Timer?
     private var lastChangeCount: Int
@@ -50,25 +51,29 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
     private var isRecordingHotkey = false
     private var pasteTask: Task<Void, Never>?
 
-    var onOpenSettings: (() -> Void)?
+    /// Opens Settings at Clipboard or Snippets, matching the panel's tab.
+    var onOpenSettings: ((ClipboardPanelTab) -> Void)?
 
-    init(storagePaths: InkletStoragePaths) {
+    init(storagePaths: InkletStoragePaths, snippets: SnippetLibrary) {
         let store = ClipboardHistoryStore(
             fileURL: storagePaths.clipboardHistoryFileURL,
             imagesDirectoryURL: storagePaths.clipboardImagesDirectoryURL
         )
         self.store = store
         self.hotkeyManager = GlobalHotkeyManager()
-        self.model = ClipboardHistoryPanelModel(store: store)
+        self.model = ClipboardHistoryPanelModel(store: store, snippets: snippets)
+        self.snippetExpander = SnippetKeywordExpander(library: snippets)
         self.lastChangeCount = NSPasteboard.general.changeCount
         super.init()
 
         model.onPaste = { [weak self] item in self?.paste(item) }
         model.onCopy = { [weak self] item in self?.copy(item) }
+        model.onPasteText = { [weak self] text in self?.pasteText(text) }
+        model.onCopyText = { [weak self] text in self?.copyText(text) }
         model.onClose = { [weak self] in self?.hide() }
-        model.onOpenSettings = { [weak self] in
+        model.onOpenSettings = { [weak self] tab in
             self?.hide()
-            self?.onOpenSettings?()
+            self?.onOpenSettings?(tab)
         }
     }
 
@@ -105,6 +110,13 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
                 self?.store.clearUnpinned()
             }
         })
+        for name in [Notification.Name.inkletSnippetSettingsDidChange, .inkletAccessibilityDidBecomeTrusted] {
+            observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.snippetExpander.refresh()
+                }
+            })
+        }
         observers.append(center.addObserver(
             forName: .hotkeyRecordingDidChange,
             object: nil,
@@ -118,6 +130,7 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
         })
 
         applySettings()
+        snippetExpander.setActive(true)
     }
 
     func stop() {
@@ -133,6 +146,7 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
         }
         observers.removeAll()
         PasteboardOwnership.shared.willClaim = nil
+        snippetExpander.setActive(false)
         hide()
     }
 
@@ -144,6 +158,7 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
             hide()
         }
         applySettings()
+        snippetExpander.setActive(isStarted && !isSuspended)
     }
 
     var isVisible: Bool {
@@ -273,10 +288,32 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
         return true
     }
 
-    /// Puts the item on the clipboard and pastes it into the app that was in front. Without
-    /// Accessibility permission Inklet can't press ⌘V, so the item is only copied.
     private func paste(_ item: ClipboardHistoryItem) {
         guard write(item) else { return }
+        pasteIntoTarget()
+    }
+
+    private func copyText(_ text: String) {
+        writeText(text)
+        hide()
+    }
+
+    private func pasteText(_ text: String) {
+        writeText(text)
+        pasteIntoTarget()
+    }
+
+    /// Puts a snippet on the clipboard; like any copy, it then shows up in clipboard history.
+    private func writeText(_ text: String) {
+        // Record a copy the person just made before it's replaced.
+        pollPasteboard()
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+    }
+
+    /// Pastes what is now on the clipboard into the app that was in front. Without Accessibility
+    /// permission Inklet can't press ⌘V, so the item stays copied for the person to paste.
+    private func pasteIntoTarget() {
         let target = targetApplication
         hide()
         guard AXIsProcessTrusted() else { return }

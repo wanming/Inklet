@@ -102,6 +102,7 @@ El atajo de Dictado solo funciona en el editor de origen y solo se mantiene puls
 - Ofrece la interfaz de la app en inglés, chino simplificado, chino tradicional, japonés, coreano, español, francés, alemán, portugués e italiano.
 - Adapta los menús de selección compactos y los controles con poco espacio de los ajustes y la escritura a las etiquetas traducidas; al cambiar de idioma se actualiza la interfaz abierta y se conserva el contenido que estás escribiendo.
 - Guarda un historial del portapapeles con el texto y las imágenes que copias, solo en tu Mac. Pulsa `Option+Shift+V` para buscar y `Return` para pegar un elemento en la app que estabas usando. Fija los elementos que más uses; se conservan hasta que los dejes de fijar. No se guardan las copias que los gestores de contraseñas marcan como privadas, los archivos copiados ni el uso temporal del portapapeles que hace Inklet. Desactívalo, cambia el atajo, elige cuánto tiempo conservarlo (de 1 día a 3 meses; 1 mes por omisión) o bórralo en Ajustes › Portapapeles.
+- Guarda fragmentos: textos que pegas a menudo, como una dirección o una respuesta. Pulsa `Option+Shift+V`, luego `Tab` para pasar a Fragmentos, busca y pulsa `Return` para pegar uno. Añádelos y edítalos en Ajustes › Fragmentos. Dale a un fragmento una palabra clave como `;dir` y activa ahí la expansión de palabras clave: al escribir la palabra clave en cualquier app se sustituye por el fragmento (desactivada por omisión; necesita Accesibilidad; se pausa mientras usas un método de entrada como Pinyin y nunca ve los campos de contraseña).
 
 ## Estado actual
 
@@ -176,6 +177,7 @@ Comprueba todos los idiomas de la interfaz con `scripts/check-localization.sh`. 
 - `Escape`: retrocede un nivel con cada pulsación, del resultado al editor de origen, luego al lanzador de modos y después cierra el popover. Durante la transformación, detiene la generación, descarta el resultado parcial y se queda en el editor.
 - `Command+,`: abre Ajustes mientras Inklet está activo.
 - `Option+Shift+V`: abre el historial del portapapeles. Escribe para buscar, `Up` / `Down` para elegir, `Return` para pegar, `Command+C` para copiar sin pegar, `Command+P` para fijar o dejar de fijar, `Command+Delete` para eliminar, `Escape` para cerrar.
+- `Tab` en el panel del historial del portapapeles: cambia entre Portapapeles y Fragmentos.
 
 La búsqueda no distingue mayúsculas ni diacríticos y admite coincidencias de caracteres en orden. Las coincidencias exactas y de prefijo reciben el mayor impulso; las coincidencias consecutivas, al inicio de palabra, más tempranas y más compactas suelen quedar más arriba.
 
@@ -231,6 +233,7 @@ Si macOS bloquea el acceso automático al contenedor antiguo correspondiente, Aj
 - La traducción del Asistente de selección envía el texto seleccionado y tus instrucciones personalizadas de **Traducir** al proveedor elegido cuando no hay una traducción en la caché local; un botón de modo de prompt envía el texto seleccionado y el prompt de ese modo al proveedor elegido; la pronunciación envía el texto seleccionado a OpenAI solo cuando OpenAI es el motor de texto a voz.
 - Inklet obtiene el catálogo público de modelos de `models.dev` como máximo una vez al día. Esta solicitud no incluye tu texto, audio, claves de API ni ajustes de la app.
 - El historial del portapapeles guarda el texto y las imágenes que copias en `clipboard-history.json` y en la carpeta `clipboard-images` dentro de la carpeta Application Support de Inklet, y nunca los envía a ningún sitio. No guarda las copias que los gestores de contraseñas marcan como privadas. Los elementos no fijados se eliminan tras el periodo que elijas; desactívalo o bórralo en Ajustes › Portapapeles.
+- Los fragmentos se guardan en `snippets.json`, en la carpeta Application Support de Inklet, y nunca se envían a ningún sitio. La expansión de palabras clave, cuando la activas, solo vigila tus palabras clave mientras escribes; guarda en memoria los últimos caracteres, no guarda nada en disco y restaura tu portapapeles después de pegar el fragmento.
 - No envíes texto ni audio privados a OpenAI ni al proveedor elegido a menos que confíes en sus políticas de tratamiento de datos.
 
 ## Comentarios

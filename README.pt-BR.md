@@ -102,6 +102,7 @@ O atalho de Ditado só funciona no editor de origem e só ao ser mantido pressio
 - Oferece a interface do app em inglês, chinês simplificado, chinês tradicional, japonês, coreano, espanhol, francês, alemão, português e italiano.
 - Adapta os menus de seleção compactos e os controles com pouco espaço dos ajustes e da escrita aos rótulos traduzidos; trocar o idioma atualiza a interface aberta e preserva o conteúdo da escrita.
 - Mantém um histórico da área de transferência com os textos e imagens que você copia, apenas no seu Mac. Pressione `Option+Shift+V` para buscar e `Return` para colar um item no app que você estava usando. Fixe o que você usa com frequência; os itens fixados ficam até você desafixá-los. Cópias que gerenciadores de senhas marcam como privadas, arquivos copiados e o uso temporário da área de transferência pelo próprio Inklet não são salvos. Desative, mude o atalho, escolha por quanto tempo manter (de 1 dia a 3 meses; 1 mês por padrão) ou limpe em Ajustes › Área de transferência.
+- Salva trechos: textos que você cola com frequência, como um endereço ou uma resposta. Pressione `Option+Shift+V`, depois `Tab` para ir a Trechos, busque e pressione `Return` para colar um. Adicione e edite em Ajustes › Trechos. Dê a um trecho uma palavra-chave como `;end` e ative ali a expansão de palavras-chave: ao digitar a palavra-chave em qualquer app, ela é trocada pelo trecho (desativada por padrão; precisa de Acessibilidade; pausa enquanto você usa um método de entrada como Pinyin e nunca vê campos de senha).
 
 ## Status atual
 
@@ -176,6 +177,7 @@ Verifique todos os idiomas da interface com `scripts/check-localization.sh`. Adi
 - `Escape`: volta um nível a cada toque, do resultado para o editor de origem, depois para o lançador de modos e então fecha o popover. Durante a transformação, para a geração, descarta o resultado parcial e permanece no editor.
 - `Command+,`: abre os Ajustes enquanto o Inklet está ativo.
 - `Option+Shift+V`: abre o histórico da área de transferência. Digite para buscar, `Up` / `Down` para escolher, `Return` para colar, `Command+C` para copiar sem colar, `Command+P` para fixar ou desafixar, `Command+Delete` para apagar, `Escape` para fechar.
+- `Tab` no painel do histórico da área de transferência: alterna entre Área de transferência e Trechos.
 
 A busca não diferencia maiúsculas, minúsculas nem acentos e aceita correspondência de caracteres em ordem. Correspondências exatas e de prefixo recebem o maior peso; correspondências consecutivas, no início de palavras, mais cedo e mais próximas geralmente ficam mais acima.
 
@@ -231,6 +233,7 @@ Se o macOS bloquear o acesso automático ao contêiner antigo correspondente, os
 - Quando não há tradução no cache local, a tradução do Assistente de seleção envia o texto selecionado e suas instruções personalizadas de **Traduzir** para o provedor escolhido; um botão de modo de prompt envia o texto selecionado e o prompt desse modo para o provedor escolhido; a pronúncia só envia o texto selecionado para a OpenAI quando a OpenAI é o mecanismo de texto para voz.
 - O Inklet busca o catálogo público de modelos em `models.dev` no máximo uma vez por dia. Essa solicitação não inclui seu texto, áudio, chaves de API nem ajustes do app.
 - O histórico da área de transferência salva os textos e imagens que você copia em `clipboard-history.json` e na pasta `clipboard-images`, dentro da pasta Application Support do Inklet, e nunca os envia a lugar nenhum. Cópias que gerenciadores de senhas marcam como privadas não são salvas. Itens não fixados são removidos após o período escolhido; desative ou limpe em Ajustes › Área de transferência.
+- Os trechos são salvos em `snippets.json`, na pasta Application Support do Inklet, e nunca são enviados a lugar nenhum. A expansão de palavras-chave, quando ativada, só observa suas palavras-chave enquanto você digita; guarda os últimos caracteres na memória, não salva nada e devolve sua área de transferência depois de colar o trecho.
 - Não envie texto ou áudio privados para a OpenAI ou para o provedor escolhido a menos que você confie nas políticas de tratamento de dados deles.
 
 ## Feedback

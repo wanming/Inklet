@@ -157,7 +157,10 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         self.configStore = configStore
         self.accessibilityPermissionService = accessibilityPermissionService
         self.apiKeyStore = apiKeyStore
-        self.clipboardHistory = ClipboardHistoryController(storagePaths: storagePaths)
+        self.clipboardHistory = ClipboardHistoryController(
+            storagePaths: storagePaths,
+            snippets: SnippetLibrary.shared
+        )
         self.selectionActions = SelectionActionsController(
             configStore: configStore,
             apiKeyStore: apiKeyStore,
@@ -172,9 +175,9 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         self.windowController.onOpenSettings = { [weak self] in
             self?.openSettings()
         }
-        self.clipboardHistory.onOpenSettings = { [weak self] in
+        self.clipboardHistory.onOpenSettings = { [weak self] tab in
             guard let self, !self.isStopping else { return }
-            self.showSettings(section: .clipboard)
+            self.showSettings(section: tab == .snippets ? .snippets : .clipboard)
         }
         self.windowController.onBusyChange = { [weak self] _ in
             guard let self, !self.isStopping else { return }

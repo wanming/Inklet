@@ -137,6 +137,17 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - [ ] Without Accessibility permission, the footer says Copy instead of Paste and Return only copies.
 - [ ] Check the panel in light and dark appearance, and in Chinese and German.
 
+## Snippets
+
+- [ ] Settings › Snippets: add a few snippets (one with no name, one with multi-line text), rename one and confirm the list stays sorted by name and keeps the selection; delete one (it asks first) and the next one is selected.
+- [ ] Keyword field: a space, a 1-character keyword and a keyword another snippet already uses each show a warning; typing past 32 characters stops there.
+- [ ] Press `Option+Shift+V`, then `Tab`: the Snippets tab opens with the search cleared. Search by name, keyword and text; Return pastes the snippet into the app in front, `Command+C` copies it, Tab returns to Clipboard. With no snippets, New Snippet opens Settings › Snippets.
+- [ ] Keyword expansion is off on a new install. Turn it on without Accessibility: the warning shows and nothing expands. Grant Accessibility: typing `;addr` (a saved keyword) in TextEdit, Notes, Safari and Slack replaces it with the snippet, and the clipboard still holds what it held before (clipboard history shows no new item).
+- [ ] Typing a keyword, then Backspace, arrows, a click or `Command+Z` in between does not expand it; the longer of two keywords that end the same way wins.
+- [ ] With Pinyin or Japanese input active, typing a keyword never expands; in a password field it never expands.
+- [ ] Turn keyword expansion off: typing the keyword does nothing. Quit and reopen Inklet: snippets and the switch are kept.
+- [ ] Check the Snippets tab and settings page in light and dark appearance, and in Chinese and German.
+
 ## Update Checks
 
 - Online, use both app-menu locations in a production build and choose **Check for Updates…** against the current release. Confirm both menu items change to the same disabled checking state, then a manual result says Inklet is up to date.
