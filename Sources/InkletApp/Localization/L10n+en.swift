@@ -517,7 +517,7 @@ extension L10n {
         "settings.clipboard.clear": "Clear",
         "settings.clipboard.clearConfirmTitle": "Clear clipboard history?",
         "settings.clipboard.clearConfirmMessage": "Every item except pinned ones will be removed from this Mac. This can't be undone.",
-        "whatsNew.2.2.0.clipboard.title": "Clipboard history",
-        "whatsNew.2.2.0.clipboard.detail": "Press ⌥⇧V to find anything you copied, text or images, and paste it again. Pin what you use often. It stays on your Mac; change the shortcut in Settings › Clipboard.",
+        "whatsNew.2.2.0.clipboard.title": "Clipboard History",
+        "whatsNew.2.2.0.clipboard.detail": "Press ⌥⇧V to find anything you copied, text or images, and paste it again. Pin what you use often. It stays on your Mac; turn it off or change the shortcut in Settings › Clipboard.",
     ]
 }

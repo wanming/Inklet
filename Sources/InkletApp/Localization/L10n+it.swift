@@ -518,6 +518,6 @@ extension L10n {
         "settings.clipboard.clearConfirmTitle": "Cancellare la cronologia degli appunti?",
         "settings.clipboard.clearConfirmMessage": "Tutti gli elementi tranne quelli fissati verranno rimossi da questo Mac. L’operazione non può essere annullata.",
         "whatsNew.2.2.0.clipboard.title": "Cronologia degli appunti",
-        "whatsNew.2.2.0.clipboard.detail": "Premi ⌥⇧V per ritrovare qualsiasi testo o immagine copiato e incollarlo di nuovo. Fissa ciò che usi spesso. Tutto resta sul tuo Mac; cambia la scorciatoia in Impostazioni › Appunti.",
+        "whatsNew.2.2.0.clipboard.detail": "Premi ⌥⇧V per ritrovare qualsiasi testo o immagine copiato e incollarlo di nuovo. Fissa ciò che usi spesso. Tutto resta sul tuo Mac; disattivala o cambia la scorciatoia in Impostazioni › Appunti.",
     ]
 }

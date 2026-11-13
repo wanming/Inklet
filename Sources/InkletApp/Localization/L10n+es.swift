@@ -518,6 +518,6 @@ extension L10n {
         "settings.clipboard.clearConfirmTitle": "¿Borrar el historial del portapapeles?",
         "settings.clipboard.clearConfirmMessage": "Se eliminarán de este Mac todos los elementos excepto los fijados. Esta acción no se puede deshacer.",
         "whatsNew.2.2.0.clipboard.title": "Historial del portapapeles",
-        "whatsNew.2.2.0.clipboard.detail": "Pulsa ⌥⇧V para encontrar cualquier texto o imagen que hayas copiado y pegarlo de nuevo. Fija lo que más uses. Todo se queda en tu Mac; cambia el atajo en Ajustes › Portapapeles.",
+        "whatsNew.2.2.0.clipboard.detail": "Pulsa ⌥⇧V para encontrar cualquier texto o imagen que hayas copiado y pegarlo de nuevo. Fija lo que más uses. Todo se queda en tu Mac; desactívalo o cambia el atajo en Ajustes › Portapapeles.",
     ]
 }

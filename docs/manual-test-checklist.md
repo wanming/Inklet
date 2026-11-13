@@ -133,7 +133,7 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - [ ] `Command+P` pins and unpins (Pinned / Recent headers appear only with pinned items); `Command+Delete` deletes only while the search is empty; `Command+C` copies without pasting; the right-click menu offers the same actions.
 - [ ] Copy a password from a password manager (1Password, Bitwarden, Apple Passwords) and copy a file in Finder: neither appears.
 - [ ] Use Selection Actions with Force Selection and insert a writing result: Inklet's temporary clipboard use never appears in the history, but a copy you make during a selection read does.
-- [ ] Settings › Clipboard: turn history off (the panel shows the turned-off state and nothing new is recorded), change the shortcut (the new one opens the panel, the old one doesn't; choosing the writing shortcut shows a warning), shorten the retention (older unpinned items disappear), and clear (pinned items stay).
+- [ ] Settings › Clipboard: turn history off (nothing new is recorded, `Option+Shift+V` is free for other apps again, and the menu bar item opens the turned-off state), change the shortcut (the new one opens the panel, the old one doesn't; choosing the writing shortcut shows a warning), shorten the retention (older unpinned items disappear), and clear (pinned items stay).
 - [ ] Without Accessibility permission, the footer says Copy instead of Paste and Return only copies.
 - [ ] Check the panel in light and dark appearance, and in Chinese and German.
 

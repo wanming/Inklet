@@ -518,6 +518,6 @@ extension L10n {
         "settings.clipboard.clearConfirmTitle": "Zwischenablage-Verlauf löschen?",
         "settings.clipboard.clearConfirmMessage": "Alle Einträge außer den angehefteten werden von diesem Mac entfernt. Das lässt sich nicht widerrufen.",
         "whatsNew.2.2.0.clipboard.title": "Zwischenablage-Verlauf",
-        "whatsNew.2.2.0.clipboard.detail": "Mit ⌥⇧V findest du kopierte Texte und Bilder wieder und setzt sie erneut ein. Häufig Genutztes kannst du anheften. Alles bleibt auf deinem Mac; den Kurzbefehl änderst du unter Einstellungen › Zwischenablage.",
+        "whatsNew.2.2.0.clipboard.detail": "Mit ⌥⇧V findest du kopierte Texte und Bilder wieder und setzt sie erneut ein. Häufig Genutztes kannst du anheften. Alles bleibt auf deinem Mac; ausschalten oder den Kurzbefehl ändern kannst du unter Einstellungen › Zwischenablage.",
     ]
 }

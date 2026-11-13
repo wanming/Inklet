@@ -518,6 +518,6 @@ extension L10n {
         "settings.clipboard.clearConfirmTitle": "クリップボード履歴を消去しますか？",
         "settings.clipboard.clearConfirmMessage": "ピン留めした項目以外は、この Mac からすべて削除されます。この操作は取り消せません。",
         "whatsNew.2.2.0.clipboard.title": "クリップボード履歴",
-        "whatsNew.2.2.0.clipboard.detail": "⌥⇧V でコピーしたテキストや画像を探して、もう一度ペーストできます。よく使うものはピン留めできます。データは Mac の中だけに保存され、ショートカットは設定 › クリップボードで変更できます。",
+        "whatsNew.2.2.0.clipboard.detail": "⌥⇧V でコピーしたテキストや画像を探して、もう一度ペーストできます。よく使うものはピン留めできます。データは Mac の中だけに保存され、オフにする、ショートカットを変えるには設定 › クリップボードを使います。",
     ]
 }

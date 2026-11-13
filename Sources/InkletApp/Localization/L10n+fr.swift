@@ -518,6 +518,6 @@ extension L10n {
         "settings.clipboard.clearConfirmTitle": "Effacer l’historique du presse-papiers ?",
         "settings.clipboard.clearConfirmMessage": "Tous les éléments sauf ceux qui sont épinglés seront supprimés de ce Mac. Cette action est irréversible.",
         "whatsNew.2.2.0.clipboard.title": "Historique du presse-papiers",
-        "whatsNew.2.2.0.clipboard.detail": "Appuyez sur ⌥⇧V pour retrouver un texte ou une image copiés et les coller à nouveau. Épinglez ce que vous utilisez souvent. Tout reste sur votre Mac ; changez le raccourci dans Réglages › Presse-papiers.",
+        "whatsNew.2.2.0.clipboard.detail": "Appuyez sur ⌥⇧V pour retrouver un texte ou une image copiés et les coller à nouveau. Épinglez ce que vous utilisez souvent. Tout reste sur votre Mac ; désactivez-le ou changez le raccourci dans Réglages › Presse-papiers.",
     ]
 }

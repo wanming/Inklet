@@ -250,6 +250,18 @@ public final class ClipboardHistoryStore {
         return item
     }
 
+    /// Moves an item back to the top after Inklet put it on the clipboard again, keeping where
+    /// it was first copied from.
+    public func touch(itemID: UUID) {
+        guard let index = items.firstIndex(where: { $0.id == itemID }) else {
+            return
+        }
+        items[index].lastCopiedAt = now()
+        items = Self.sorted(items)
+        save()
+        onChange?()
+    }
+
     public func setPinned(_ isPinned: Bool, itemID: UUID) {
         guard let index = items.firstIndex(where: { $0.id == itemID }),
               items[index].isPinned != isPinned

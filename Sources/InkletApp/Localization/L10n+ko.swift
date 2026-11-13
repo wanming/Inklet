@@ -518,6 +518,6 @@ extension L10n {
         "settings.clipboard.clearConfirmTitle": "클립보드 기록을 지울까요?",
         "settings.clipboard.clearConfirmMessage": "고정한 항목을 제외한 모든 항목이 이 Mac에서 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
         "whatsNew.2.2.0.clipboard.title": "클립보드 기록",
-        "whatsNew.2.2.0.clipboard.detail": "⌥⇧V를 눌러 복사했던 텍스트와 이미지를 찾아 다시 붙여넣으세요. 자주 쓰는 항목은 고정할 수 있습니다. 기록은 Mac에만 저장되며, 단축키는 설정 › 클립보드에서 바꿀 수 있습니다.",
+        "whatsNew.2.2.0.clipboard.detail": "⌥⇧V를 눌러 복사했던 텍스트와 이미지를 찾아 다시 붙여넣으세요. 자주 쓰는 항목은 고정할 수 있습니다. 기록은 Mac에만 저장되며, 설정 › 클립보드에서 끄거나 단축키를 바꿀 수 있습니다.",
     ]
 }

@@ -234,7 +234,8 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
     // MARK: Shortcut
 
     private func registerHotkey() {
-        guard isStarted, !isSuspended, !isRecordingHotkey else {
+        // A turned-off history doesn't keep its shortcut from other apps; the menu still opens it.
+        guard isStarted, !isSuspended, !isRecordingHotkey, ClipboardHistorySettings.isEnabled else {
             hotkeyManager.unregister()
             return
         }
@@ -254,20 +255,28 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
     // MARK: Paste and copy
 
     private func copy(_ item: ClipboardHistoryItem) {
+        guard write(item) else { return }
+        hide()
+    }
+
+    /// Puts an item back on the clipboard. Inklet records that copy itself, so the next poll
+    /// doesn't credit it to the app in front.
+    private func write(_ item: ClipboardHistoryItem) -> Bool {
+        // Record a copy the person just made before it's replaced.
+        pollPasteboard()
         guard ClipboardPasteboard.write(item, imageURL: store.imageURL(for: item), to: pasteboard) else {
             NSSound.beep()
-            return
+            return false
         }
-        hide()
+        lastChangeCount = pasteboard.changeCount
+        store.touch(itemID: item.id)
+        return true
     }
 
     /// Puts the item on the clipboard and pastes it into the app that was in front. Without
     /// Accessibility permission Inklet can't press ⌘V, so the item is only copied.
     private func paste(_ item: ClipboardHistoryItem) {
-        guard ClipboardPasteboard.write(item, imageURL: store.imageURL(for: item), to: pasteboard) else {
-            NSSound.beep()
-            return
-        }
+        guard write(item) else { return }
         let target = targetApplication
         hide()
         guard AXIsProcessTrusted() else { return }

@@ -518,6 +518,6 @@ extension L10n {
         "settings.clipboard.clearConfirmTitle": "Limpar o histórico da área de transferência?",
         "settings.clipboard.clearConfirmMessage": "Todos os itens, exceto os fixados, serão removidos deste Mac. Não é possível desfazer.",
         "whatsNew.2.2.0.clipboard.title": "Histórico da área de transferência",
-        "whatsNew.2.2.0.clipboard.detail": "Pressione ⌥⇧V para encontrar qualquer texto ou imagem que você copiou e colar de novo. Fixe o que você usa com frequência. Tudo fica no seu Mac; mude o atalho em Ajustes › Área de transferência.",
+        "whatsNew.2.2.0.clipboard.detail": "Pressione ⌥⇧V para encontrar qualquer texto ou imagem que você copiou e colar de novo. Fixe o que você usa com frequência. Tudo fica no seu Mac; desative ou mude o atalho em Ajustes › Área de transferência.",
     ]
 }

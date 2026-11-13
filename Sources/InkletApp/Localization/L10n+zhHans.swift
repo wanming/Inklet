@@ -518,6 +518,6 @@ extension L10n {
         "settings.clipboard.clearConfirmTitle": "清空剪贴板历史？",
         "settings.clipboard.clearConfirmMessage": "除已固定的条目外，所有条目都会从这台 Mac 上删除。此操作无法撤销。",
         "whatsNew.2.2.0.clipboard.title": "剪贴板历史",
-        "whatsNew.2.2.0.clipboard.detail": "按 ⌥⇧V 找回复制过的文字和图片，再粘贴一次。常用的可以固定。内容只保存在你的 Mac 上；在设置 › 剪贴板里可以换快捷键。",
+        "whatsNew.2.2.0.clipboard.detail": "按 ⌥⇧V 找回复制过的文字和图片，再粘贴一次。常用的可以固定。内容只保存在你的 Mac 上；在设置 › 剪贴板里可以关闭或换快捷键。",
     ]
 }

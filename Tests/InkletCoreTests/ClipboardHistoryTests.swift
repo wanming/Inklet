@@ -38,6 +38,21 @@ final class ClipboardHistoryStoreTests: XCTestCase {
         XCTAssertEqual(store.items.first?.lastCopiedAt, now)
     }
 
+    func testTouchMovesAnItemToTheTopAndKeepsItsSource() {
+        let store = makeStore()
+        store.record(text("from safari", app: "Safari"), retention: .month)
+        now += 1
+        store.record(text("newer", app: "Notes"), retention: .month)
+        let older = store.items.first { $0.text == "from safari" }!
+
+        now += 1
+        store.touch(itemID: older.id)
+        XCTAssertEqual(store.items.map(\.text), ["from safari", "newer"])
+        XCTAssertEqual(store.items.first?.sourceApplicationName, "Safari")
+        XCTAssertEqual(store.items.first?.lastCopiedAt, now)
+        XCTAssertEqual(store.items.first?.firstCopiedAt, older.firstCopiedAt)
+    }
+
     func testSkipsBlankAndOversizedText() {
         let store = makeStore()
         XCTAssertNil(store.record(text("  \n "), retention: .month))

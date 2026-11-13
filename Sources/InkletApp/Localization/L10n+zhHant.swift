@@ -518,6 +518,6 @@ extension L10n {
         "settings.clipboard.clearConfirmTitle": "要清除剪貼簿歷史嗎？",
         "settings.clipboard.clearConfirmMessage": "除已釘選的項目外，所有項目都會從這台 Mac 上刪除。此動作無法還原。",
         "whatsNew.2.2.0.clipboard.title": "剪貼簿歷史",
-        "whatsNew.2.2.0.clipboard.detail": "按 ⌥⇧V 找回拷貝過的文字和圖片，再貼上一次。常用的可以釘選。內容只保存在你的 Mac 上；在設定 › 剪貼簿裡可以更換快捷鍵。",
+        "whatsNew.2.2.0.clipboard.detail": "按 ⌥⇧V 找回拷貝過的文字和圖片，再貼上一次。常用的可以釘選。內容只保存在你的 Mac 上；在設定 › 剪貼簿裡可以關閉或更換快捷鍵。",
     ]
 }
