@@ -11,7 +11,7 @@ public struct PasteboardSnapshot {
 
 @MainActor
 public final class ClipboardService {
-    private let pasteboard: NSPasteboard
+    public let pasteboard: NSPasteboard
 
     public init(pasteboard: NSPasteboard = .general) {
         self.pasteboard = pasteboard

@@ -101,6 +101,7 @@ La scorciatoia di dettatura funziona solo nell’editor sorgente e solo tenendol
 - Esegue scrittura e traduzione sul tuo Mac con il motore integrato (Qwen3.5 4B o Gemma 4 E4B, scaricati una sola volta da Hugging Face) o con un server Ollama o LM Studio locale. Non serve alcuna chiave API e il testo resta sul tuo Mac.
 - Offre l’interfaccia dell’app in inglese, cinese semplificato, cinese tradizionale, giapponese, coreano, spagnolo, francese, tedesco, portoghese e italiano.
 - Adatta i menu di selezione compatti e i controlli con poco spazio delle impostazioni e della scrittura alle etichette tradotte; cambiare lingua aggiorna l’interfaccia aperta e conserva il contenuto che stai scrivendo.
+- Conserva una cronologia degli appunti con il testo e le immagini che copi, solo sul tuo Mac. Premi `Option+Shift+V` per cercare e `Return` per incollare un elemento nell’app che stavi usando. Fissa ciò che usi spesso; resta finché non lo sblocchi. Non vengono salvate le copie che i gestori di password segnano come private, i file copiati e l’uso temporaneo degli appunti da parte di Inklet. Disattivala, cambia la scorciatoia, scegli per quanto conservarla (da 1 giorno a 3 mesi; 1 mese per impostazione predefinita) o cancellala in Impostazioni › Appunti.
 
 ## Stato attuale
 
@@ -174,6 +175,7 @@ Controlla tutte le lingue dell’interfaccia con `scripts/check-localization.sh`
 - Tenere premuto solo `Command`: mostra tutte le scorciatoie nella barra delle azioni. Altrimenti la barra mostra solo il suggerimento di dettatura e il pulsante principale; tutte le scorciatoie funzionano comunque.
 - `Escape`: torna indietro di un livello a ogni pressione, dal risultato all’editor sorgente, poi al launcher delle modalità, poi chiude il popover. Durante la trasformazione, interrompe la generazione, scarta il risultato parziale e resta nell’editor.
 - `Command+,`: apre le Impostazioni mentre Inklet è attivo.
+- `Option+Shift+V`: apre la cronologia degli appunti. Digita per cercare, `Up` / `Down` per scegliere, `Return` per incollare, `Command+C` per copiare senza incollare, `Command+P` per fissare o sbloccare, `Command+Delete` per eliminare, `Escape` per chiudere.
 
 La ricerca non distingue maiuscole, minuscole e segni diacritici e supporta la corrispondenza dei caratteri in ordine. Le corrispondenze esatte e di prefisso hanno il peso maggiore; quelle consecutive, a inizio parola, più precoci e più compatte di solito si posizionano più in alto.
 
@@ -228,6 +230,7 @@ Se macOS blocca l’accesso automatico al vecchio contenitore corrispondente, le
 - L’Assistente di selezione memorizza in una cache locale per 7 giorni i risultati di traduzione riusciti, usando chiavi di cache con hash, per velocizzare le traduzioni ripetute.
 - Quando non è disponibile una traduzione nella cache locale, la traduzione dell’Assistente di selezione invia il testo selezionato e le tue istruzioni **Traduci** personalizzate al provider scelto; un pulsante di modalità prompt invia il testo selezionato e il prompt di quella modalità al provider scelto; la pronuncia invia il testo selezionato a OpenAI solo quando OpenAI è il motore da testo a voce.
 - Inklet scarica il catalogo pubblico dei modelli da `models.dev` al massimo una volta al giorno. Questa richiesta non include il tuo testo, l’audio, le chiavi API né le impostazioni dell’app.
+- La cronologia degli appunti salva il testo e le immagini che copi in `clipboard-history.json` e nella cartella `clipboard-images`, dentro la cartella Application Support di Inklet, e non li invia da nessuna parte. Non salva le copie che i gestori di password segnano come private. Gli elementi non fissati vengono rimossi dopo il periodo scelto; disattivala o cancellala in Impostazioni › Appunti.
 - Non inviare testo o audio privati a OpenAI o al provider scelto se non ti fidi delle loro politiche di gestione dei dati.
 
 ## Feedback

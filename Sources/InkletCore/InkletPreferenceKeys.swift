@@ -16,6 +16,10 @@ public enum InkletPreferenceKeys {
     public static let attemptedUpdateInstallBuild = "attemptedUpdateInstallBuild"
     /// Set once the first launch with the system voice has checked the saved pronunciation engine.
     public static let didReviewPronunciationEngine = "didReviewPronunciationEngine"
+    /// Clipboard history: on unless turned off, its shortcut, and how long unpinned items are kept.
+    public static let clipboardHistoryEnabled = "clipboardHistoryEnabled"
+    public static let clipboardHistoryHotkey = "clipboardHistoryHotkey"
+    public static let clipboardHistoryRetention = "clipboardHistoryRetention"
     public static let providerAPIKeyPrefix = "providerAPIKey."
 
     public static let recognizedLegacyKeys = [

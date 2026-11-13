@@ -519,6 +519,9 @@ public final class SelectionClipboardReader {
             return .empty
         }
 
+        // Clipboard history skips the synthetic copy and the restore, but keeps a copy the
+        // person made during the read.
+        let ownershipClaim = PasteboardOwnership.shared.claim(pasteboard)
         pasteboardTransaction = PasteboardTransaction(
             token: token,
             snapshot: clipboardService.save(),
@@ -527,7 +530,11 @@ public final class SelectionClipboardReader {
             observedCopyChangeCount: nil
         )
         defer {
-            finishPasteboardTransaction(token: token)
+            let holdsInkletContents = finishPasteboardTransaction(token: token)
+            PasteboardOwnership.shared.release(
+                ownershipClaim,
+                ignoringThrough: holdsInkletContents ? pasteboard.changeCount : nil
+            )
         }
 
         guard sourceProcessValidator(sourceProcessIdentifier) else {
@@ -604,11 +611,14 @@ public final class SelectionClipboardReader {
         pasteboardTransaction = transaction
     }
 
-    private func finishPasteboardTransaction(token: UUID) {
+    /// Returns whether the pasteboard now holds what Inklet put or left there (the synthetic copy or
+    /// the restored contents) rather than something the person copied during the read.
+    @discardableResult
+    private func finishPasteboardTransaction(token: UUID) -> Bool {
         guard let transaction = pasteboardTransaction,
               transaction.token == token
         else {
-            return
+            return false
         }
         defer {
             if pasteboardTransaction?.token == token {
@@ -616,14 +626,20 @@ public final class SelectionClipboardReader {
             }
         }
 
-        guard !relinquishedTransactionTokens.contains(token),
-              activeRead?.token == token,
-              let observedCopyChangeCount = transaction.observedCopyChangeCount,
-              pasteboard.changeCount == observedCopyChangeCount
-        else {
-            return
+        guard !relinquishedTransactionTokens.contains(token) else {
+            return false
+        }
+        guard let observedCopyChangeCount = transaction.observedCopyChangeCount else {
+            return pasteboard.changeCount == transaction.initialChangeCount
+        }
+        guard pasteboard.changeCount == observedCopyChangeCount else {
+            return false
+        }
+        guard activeRead?.token == token else {
+            return true
         }
         _ = clipboardService.restore(transaction.snapshot)
+        return true
     }
 
     @available(

@@ -101,6 +101,7 @@ Der Diktat-Kurzbefehl wirkt nur im Quelleditor und nur durch Halten. Unter **Ein
 - Führt Schreiben und Übersetzen auf Ihrem Mac aus – mit der integrierten Engine (Qwen3.5 4B oder Gemma 4 E4B, einmalig von Hugging Face geladen) oder mit einem lokalen Ollama- bzw. LM-Studio-Server. Es ist kein API-Schlüssel nötig, und der Text bleibt auf Ihrem Mac.
 - Bietet die App-Oberfläche auf Englisch, vereinfachtem Chinesisch, traditionellem Chinesisch, Japanisch, Koreanisch, Spanisch, Französisch, Deutsch, Portugiesisch und Italienisch.
 - Passt kompakte Auswahlmenüs und platzbeschränkte Steuerelemente in Einstellungen und Schreibansicht an übersetzte Beschriftungen an; ein Sprachwechsel aktualisiert die geöffnete Oberfläche und behält den Schreibinhalt bei.
+- Behält einen Zwischenablage-Verlauf mit den Texten und Bildern, die du kopierst, nur auf deinem Mac. Mit `Option+Shift+V` durchsuchst du ihn, mit `Return` setzt du einen Eintrag in die App ein, die du gerade benutzt hast. Häufig Genutztes kannst du anheften; es bleibt, bis du es löst. Was Passwortmanager als privat markieren, kopierte Dateien und Inklets eigene kurzzeitige Nutzung der Zwischenablage werden nicht gespeichert. Unter Einstellungen › Zwischenablage kannst du ihn ausschalten, den Kurzbefehl ändern, die Aufbewahrungsdauer wählen (1 Tag bis 3 Monate, standardmäßig 1 Monat) oder ihn löschen.
 
 ## Aktueller Stand
 
@@ -174,6 +175,7 @@ Prüfen Sie alle Oberflächensprachen mit `scripts/check-localization.sh`. Mit `
 - Nur `Command` gedrückt halten: zeigt alle Kurzbefehle in der Aktionsleiste. Sonst zeigt die Leiste nur den Diktierhinweis und die Hauptschaltfläche; alle Kurzbefehle funktionieren in beiden Fällen.
 - `Escape`: geht pro Tastendruck eine Ebene zurück – vom Ergebnis zum Quelleditor, dann zum Modusstarter, dann schließt es das Popover. Während einer Umwandlung stoppt es die Generierung, verwirft das Teilergebnis und bleibt im Editor.
 - `Command+,`: öffnet die Einstellungen, während Inklet aktiv ist.
+- `Option+Shift+V`: öffnet den Zwischenablage-Verlauf. Tippen zum Suchen, `Up` / `Down` zum Auswählen, `Return` zum Einsetzen, `Command+C` zum Kopieren ohne Einsetzen, `Command+P` zum Anheften oder Lösen, `Command+Delete` zum Löschen, `Escape` zum Schließen.
 
 Die Suche ignoriert Groß- und Kleinschreibung sowie diakritische Zeichen und unterstützt Übereinstimmungen von Zeichen in Reihenfolge. Exakte und Präfix-Treffer werden am stärksten gewichtet; aufeinanderfolgende, am Wortanfang liegende, frühere und dichtere Treffer stehen in der Regel weiter oben.
 
@@ -228,6 +230,7 @@ Blockiert macOS den automatischen Zugriff auf den passenden alten Container, bie
 - Der Auswahlassistent speichert erfolgreiche Übersetzungen 7 Tage lang lokal mit gehashten Cache-Schlüsseln zwischen, um wiederholte Übersetzungen zu beschleunigen.
 - Ist keine lokal zwischengespeicherte Übersetzung vorhanden, sendet die Übersetzung des Auswahlassistenten den ausgewählten Text und Ihre eigenen **Übersetzen**-Anweisungen an den gewählten Anbieter; eine Prompt-Modus-Taste sendet den ausgewählten Text und den Prompt dieses Modus an den gewählten Anbieter; die Aussprache sendet den ausgewählten Text nur dann an OpenAI, wenn OpenAI die Engine für Text zu Sprache ist.
 - Inklet ruft den öffentlichen Modellkatalog höchstens einmal pro Tag von `models.dev` ab. Diese Anfrage enthält weder Ihren Text noch Audio, API-Schlüssel oder App-Einstellungen.
+- Der Zwischenablage-Verlauf speichert kopierte Texte und Bilder in `clipboard-history.json` und im Ordner `clipboard-images` in Inklets Application-Support-Ordner und sendet sie nirgendwohin. Was Passwortmanager als privat markieren, wird nicht gespeichert. Nicht angeheftete Einträge werden nach der gewählten Dauer entfernt; ausschalten oder löschen kannst du ihn unter Einstellungen › Zwischenablage.
 - Senden Sie keine privaten Texte oder Aufnahmen an OpenAI oder den gewählten Anbieter, wenn Sie deren Datenschutzrichtlinien nicht vertrauen.
 
 ## Feedback

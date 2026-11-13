@@ -21,6 +21,11 @@ enum WhatsNewCatalog {
     static let releases: [WhatsNewRelease] = [
         WhatsNewRelease(version: "2.2.0", features: [
             WhatsNewFeature(
+                systemImage: "doc.on.clipboard",
+                titleKey: "whatsNew.2.2.0.clipboard.title",
+                detailKey: "whatsNew.2.2.0.clipboard.detail"
+            ),
+            WhatsNewFeature(
                 systemImage: "arrow.down.circle",
                 titleKey: "whatsNew.2.2.0.autoUpdate.title",
                 detailKey: "whatsNew.2.2.0.autoUpdate.detail"

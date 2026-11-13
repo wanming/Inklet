@@ -65,6 +65,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     private let apiKeyStore: LocalAPIKeyStore
     private let selectionActions: SelectionActionsController
     private let historyStore: JSONLHistoryStore
+    private let clipboardHistory: ClipboardHistoryController
     private var configObserver: NSObjectProtocol?
     private var accessibilityObserver: NSObjectProtocol?
     private var onboardingObserver: NSObjectProtocol?
@@ -156,6 +157,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         self.configStore = configStore
         self.accessibilityPermissionService = accessibilityPermissionService
         self.apiKeyStore = apiKeyStore
+        self.clipboardHistory = ClipboardHistoryController(storagePaths: storagePaths)
         self.selectionActions = SelectionActionsController(
             configStore: configStore,
             apiKeyStore: apiKeyStore,
@@ -169,6 +171,10 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
 
         self.windowController.onOpenSettings = { [weak self] in
             self?.openSettings()
+        }
+        self.clipboardHistory.onOpenSettings = { [weak self] in
+            guard let self, !self.isStopping else { return }
+            self.showSettings(section: .clipboard)
         }
         self.windowController.onBusyChange = { [weak self] _ in
             guard let self, !self.isStopping else { return }
@@ -337,6 +343,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         windowController.reloadDictationConfiguration()
         BuiltInDictationResidency.shared.start()
         selectionActions.configureSelectionActions()
+        clipboardHistory.start()
         if !showWelcomeGuideIfPending() {
             showPermissionSettingsIfNeeded()
         }
@@ -393,6 +400,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
             self.settingsShortcutMonitor = nil
         }
         hotkeyManager.unregister()
+        clipboardHistory.stop()
         selectionActions.beginStopping()
 
         await windowController.cancelDictationAndWait()
@@ -623,6 +631,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
     private func enterMigrationMaintenance() async {
         isMigrationMaintenanceActive = true
         hotkeyManager.unregister()
+        clipboardHistory.setSuspended(true)
         selectionActions.enterMigrationMaintenance()
         await windowController.cancelForMigrationMaintenance()
         await settingsController.waitForMigrationMaintenanceQuiescence()
@@ -633,6 +642,7 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
         settingsController.setMigrationMaintenanceActive(false)
         isMigrationMaintenanceActive = false
         registerConfiguredHotkey()
+        clipboardHistory.setSuspended(false)
         windowController.reloadDictationConfiguration()
         selectionActions.leaveMigrationMaintenance()
         refreshMigrationImportEligibility()
@@ -1016,6 +1026,13 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
                 keyEquivalent: ""
             )
         )
+        menu.addItem(
+            NSMenuItem(
+                title: L10n.text("app.menu.clipboardHistory"),
+                action: #selector(openClipboardHistory),
+                keyEquivalent: ""
+            )
+        )
         menu.addItem(NSMenuItem.separator())
         let settingsItem = NSMenuItem(
             title: L10n.text("app.menu.settings"),
@@ -1092,6 +1109,12 @@ final class AppCoordinator: NSObject, NSMenuDelegate {
             return
         }
         windowController.show(fallbackApplication: lastTargetApplication)
+    }
+
+    @objc func openClipboardHistory() {
+        guard !isStopping, !isMigrationMaintenanceActive else { return }
+        selectionActions.forceDismissSelectionActions(reason: "openClipboardHistory")
+        clipboardHistory.show()
     }
 
     @objc func openSettings() {
