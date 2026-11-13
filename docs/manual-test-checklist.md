@@ -124,6 +124,19 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - Run a prompt mode button: its icon becomes a spinner, the result appears with Copy result and Play result controls, Retry after a failure reruns the same mode, and the run is recorded in History with the mode name.
 - Choose Restore Default and confirm the menu returns to Translate and Pronounce.
 
+## Clipboard History
+
+- [ ] Copy text in several apps, then press `Option+Shift+V` in a text field. Confirm the panel opens on the screen with the pointer while the other app stays in front, newest copy first, and Return pastes the selected item into that field.
+- [ ] Copy a screenshot (`Shift+Command+Control+4`) and an image from a browser. Confirm both appear with thumbnails, the preview fits the image, and Return pastes the image into Notes or Pages.
+- [ ] Copy the same text twice: it stays one item and moves to the top. Paste an older item from the panel: it moves to the top without a duplicate.
+- [ ] Search with mixed case, accents and two words; confirm Up / Down, Escape, a click elsewhere and `Command+W` behave as expected and the search clears on the next open.
+- [ ] `Command+P` pins and unpins (Pinned / Recent headers appear only with pinned items); `Command+Delete` deletes only while the search is empty; `Command+C` copies without pasting; the right-click menu offers the same actions.
+- [ ] Copy a password from a password manager (1Password, Bitwarden, Apple Passwords) and copy a file in Finder: neither appears.
+- [ ] Use Selection Actions with Force Selection and insert a writing result: Inklet's temporary clipboard use never appears in the history, but a copy you make during a selection read does.
+- [ ] Settings › Clipboard: turn history off (the panel shows the turned-off state and nothing new is recorded), change the shortcut (the new one opens the panel, the old one doesn't; choosing the writing shortcut shows a warning), shorten the retention (older unpinned items disappear), and clear (pinned items stay).
+- [ ] Without Accessibility permission, the footer says Copy instead of Paste and Return only copies.
+- [ ] Check the panel in light and dark appearance, and in Chinese and German.
+
 ## Update Checks
 
 - Online, use both app-menu locations in a production build and choose **Check for Updates…** against the current release. Confirm both menu items change to the same disabled checking state, then a manual result says Inklet is up to date.

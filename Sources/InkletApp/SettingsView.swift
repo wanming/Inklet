@@ -13,6 +13,17 @@ private extension SelectionForceSelectionMode {
     }
 }
 
+private extension ClipboardHistoryRetention {
+    var localizedDisplayName: String {
+        switch self {
+        case .day: L10n.text("settings.clipboard.retention.day")
+        case .week: L10n.text("settings.clipboard.retention.week")
+        case .month: L10n.text("settings.clipboard.retention.month")
+        case .threeMonths: L10n.text("settings.clipboard.retention.threeMonths")
+        }
+    }
+}
+
 /// Sidebar order follows docs/DESIGN.md; About sits apart at the bottom of the sidebar.
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general = "General"
@@ -21,6 +32,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case promptModes = "Prompt Modes"
     case dictation = "Live Dictation"
     case selectionAssistant = "Selection Assistant"
+    case clipboard = "Clipboard"
     case history = "History"
     case about = "About"
 
@@ -33,6 +45,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .writeAssistant: L10n.text("settings.section.writeAssistant")
         case .dictation: L10n.text("settings.section.dictation")
         case .selectionAssistant: L10n.text("settings.section.selectionAssistant")
+        case .clipboard: L10n.text("settings.section.clipboard")
         case .history: L10n.text("settings.section.history")
         case .promptModes: L10n.text("settings.section.promptModes")
         case .about: L10n.text("settings.section.about")
@@ -46,6 +59,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .writeAssistant: "pencil.and.scribble"
         case .dictation: "mic"
         case .selectionAssistant: "text.viewfinder"
+        case .clipboard: "doc.on.clipboard"
         case .history: "clock.arrow.circlepath"
         case .promptModes: "slider.horizontal.3"
         case .about: "info.circle"
@@ -66,6 +80,11 @@ struct SettingsView: View {
     @AppStorage(InkletPreferenceKeys.automaticallyInstallsUpdates) private var automaticallyInstallsUpdates = true
     @AppStorage(InkletPreferenceKeys.receivesBetaUpdates) private var receivesBetaUpdates = false
     @StateObject private var launchAtLogin = LaunchAtLoginController()
+    /// Read by the clipboard history controller, which is told about each change.
+    @AppStorage(InkletPreferenceKeys.clipboardHistoryEnabled) private var clipboardHistoryEnabled = ClipboardHistoryDefaults.isEnabled
+    @AppStorage(InkletPreferenceKeys.clipboardHistoryHotkey) private var clipboardHistoryHotkey = ClipboardHistoryDefaults.hotkey
+    @AppStorage(InkletPreferenceKeys.clipboardHistoryRetention) private var clipboardHistoryRetention = ClipboardHistoryRetention.defaultValue.rawValue
+    @State private var isConfirmingClearClipboard = false
     private let onAppearanceChange: (AppAppearance) -> Void
     private let onRequestMigrationImport: () -> Void
     private let onRetryMigrationRelaunch: () -> Void
@@ -178,6 +197,24 @@ struct SettingsView: View {
         } message: {
             Text(L10n.text("settings.history.clearConfirmMessage"))
         }
+        .alert(
+            L10n.text("settings.clipboard.clearConfirmTitle"),
+            isPresented: $isConfirmingClearClipboard
+        ) {
+            Button(L10n.text("settings.clipboard.clear"), role: .destructive) {
+                NotificationCenter.default.post(name: .inkletClipboardHistoryClearRequested, object: nil)
+            }
+            Button(L10n.text("settings.cancel"), role: .cancel) {}
+        } message: {
+            Text(L10n.text("settings.clipboard.clearConfirmMessage"))
+        }
+        .onChange(of: clipboardHistoryEnabled) { notifyClipboardHistorySettingsChanged() }
+        .onChange(of: clipboardHistoryHotkey) { notifyClipboardHistorySettingsChanged() }
+        .onChange(of: clipboardHistoryRetention) { notifyClipboardHistorySettingsChanged() }
+    }
+
+    private func notifyClipboardHistorySettingsChanged() {
+        NotificationCenter.default.post(name: .inkletClipboardHistorySettingsDidChange, object: nil)
     }
 
     private var sidebar: some View {
@@ -249,6 +286,11 @@ struct SettingsView: View {
                 case .selectionAssistant:
                     settingsPage {
                         selectionActionsPanel
+                    }
+                    .disabled(model.isMigrationMaintenanceActive)
+                case .clipboard:
+                    settingsPage {
+                        clipboardPanel
                     }
                     .disabled(model.isMigrationMaintenanceActive)
                 case .history:
@@ -380,6 +422,70 @@ struct SettingsView: View {
             }
             .disabled(model.isMigrationMaintenanceActive)
         }
+    }
+
+    /// Clipboard history: whether it records, its shortcut, how long it keeps items, and clearing it.
+    private var clipboardPanel: some View {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
+            settingsGroup {
+                settingsRow(
+                    L10n.text("settings.row.clipboardHistory"),
+                    help: L10n.text("settings.help.clipboardHistory")
+                ) {
+                    Toggle("", isOn: $clipboardHistoryEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+
+                settingsRow(
+                    L10n.text("settings.row.clipboardHotkey"),
+                    help: L10n.text("settings.help.clipboardHotkey"),
+                    warning: clipboardHotkeyWarning
+                ) {
+                    HotkeyRecorderField(hotkey: $clipboardHistoryHotkey)
+                        .frame(width: 200, height: InkletTheme.ControlHeight.regular)
+                }
+
+                settingsRow(
+                    L10n.text("settings.row.clipboardRetention"),
+                    help: L10n.text("settings.help.clipboardRetention")
+                ) {
+                    Picker("", selection: $clipboardHistoryRetention) {
+                        ForEach(ClipboardHistoryRetention.allCases) { retention in
+                            Text(retention.localizedDisplayName).tag(retention.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+            }
+
+            settingsGroup {
+                settingsRow(
+                    L10n.text("settings.row.clearClipboard"),
+                    help: L10n.text("settings.help.clearClipboard")
+                ) {
+                    Button {
+                        isConfirmingClearClipboard = true
+                    } label: {
+                        Label(L10n.text("settings.clipboard.clear"), systemImage: "trash")
+                    }
+                    .buttonStyle(InkletButtonStyle(kind: .secondary, size: .small))
+                    .fixedSize()
+                }
+            }
+        }
+    }
+
+    /// The clipboard shortcut can't be the one that opens Inklet; only one of them would work.
+    private var clipboardHotkeyWarning: String? {
+        guard let clipboardHotkey = try? Hotkey.parse(clipboardHistoryHotkey),
+              let writingHotkey = try? Hotkey.parse(model.config.hotkey),
+              clipboardHotkey == writingHotkey
+        else {
+            return nil
+        }
+        return L10n.text("settings.clipboard.hotkeyConflict")
     }
 
     /// One card per capability, each starting with its engine, and the API keys they share at the end.

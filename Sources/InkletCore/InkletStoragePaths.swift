@@ -7,6 +7,8 @@ public struct InkletStoragePaths: Equatable, Sendable {
     public let bundleIdentifier: String
     public let applicationSupportRootURL: URL
     public let historyFileURL: URL
+    public let clipboardHistoryFileURL: URL
+    public let clipboardImagesDirectoryURL: URL
     public let translationCacheFileURL: URL
     public let migrationLockFileURL: URL
     public let selectionDiagnosticsFileURL: URL
@@ -34,6 +36,13 @@ public struct InkletStoragePaths: Equatable, Sendable {
         self.bundleIdentifier = bundleIdentifier
         self.applicationSupportRootURL = applicationSupportRootURL
         self.historyFileURL = applicationSupportRootURL.appendingPathComponent("history.jsonl")
+        self.clipboardHistoryFileURL = applicationSupportRootURL.appendingPathComponent(
+            "clipboard-history.json"
+        )
+        self.clipboardImagesDirectoryURL = applicationSupportRootURL.appendingPathComponent(
+            "clipboard-images",
+            isDirectory: true
+        )
         self.translationCacheFileURL = applicationSupportRootURL.appendingPathComponent(
             "selection-translation-cache.json"
         )

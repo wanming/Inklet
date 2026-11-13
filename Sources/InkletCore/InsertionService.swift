@@ -77,6 +77,14 @@ public final class InsertionService {
             throw InsertionError.accessibilityPermissionMissing
         }
 
+        // Clipboard history skips this temporary write and the restore that follows it.
+        let ownershipClaim = PasteboardOwnership.shared.claim(clipboardService.pasteboard)
+        defer {
+            PasteboardOwnership.shared.release(
+                ownershipClaim,
+                ignoringThrough: clipboardService.pasteboard.changeCount
+            )
+        }
         let snapshot = clipboardService.save()
         clipboardService.writePlainText(text)
 

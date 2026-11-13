@@ -101,6 +101,7 @@ O atalho de Ditado só funciona no editor de origem e só ao ser mantido pressio
 - Executa a escrita e a tradução no seu Mac com o mecanismo integrado (Qwen3.5 4B ou Gemma 4 E4B, baixados uma única vez do Hugging Face) ou com um servidor local do Ollama ou do LM Studio. Não é preciso chave de API e o texto fica no seu Mac.
 - Oferece a interface do app em inglês, chinês simplificado, chinês tradicional, japonês, coreano, espanhol, francês, alemão, português e italiano.
 - Adapta os menus de seleção compactos e os controles com pouco espaço dos ajustes e da escrita aos rótulos traduzidos; trocar o idioma atualiza a interface aberta e preserva o conteúdo da escrita.
+- Mantém um histórico da área de transferência com os textos e imagens que você copia, apenas no seu Mac. Pressione `Option+Shift+V` para buscar e `Return` para colar um item no app que você estava usando. Fixe o que você usa com frequência; os itens fixados ficam até você desafixá-los. Cópias que gerenciadores de senhas marcam como privadas, arquivos copiados e o uso temporário da área de transferência pelo próprio Inklet não são salvos. Desative, mude o atalho, escolha por quanto tempo manter (de 1 dia a 3 meses; 1 mês por padrão) ou limpe em Ajustes › Área de transferência.
 
 ## Status atual
 
@@ -174,6 +175,7 @@ Verifique todos os idiomas da interface com `scripts/check-localization.sh`. Adi
 - Segurar apenas `Command`: mostra todos os atalhos na barra de ações. Normalmente a barra mostra só a dica de ditado e o botão principal; todos os atalhos funcionam de qualquer forma.
 - `Escape`: volta um nível a cada toque, do resultado para o editor de origem, depois para o lançador de modos e então fecha o popover. Durante a transformação, para a geração, descarta o resultado parcial e permanece no editor.
 - `Command+,`: abre os Ajustes enquanto o Inklet está ativo.
+- `Option+Shift+V`: abre o histórico da área de transferência. Digite para buscar, `Up` / `Down` para escolher, `Return` para colar, `Command+C` para copiar sem colar, `Command+P` para fixar ou desafixar, `Command+Delete` para apagar, `Escape` para fechar.
 
 A busca não diferencia maiúsculas, minúsculas nem acentos e aceita correspondência de caracteres em ordem. Correspondências exatas e de prefixo recebem o maior peso; correspondências consecutivas, no início de palavras, mais cedo e mais próximas geralmente ficam mais acima.
 
@@ -228,6 +230,7 @@ Se o macOS bloquear o acesso automático ao contêiner antigo correspondente, os
 - O Assistente de seleção guarda em cache local por 7 dias os resultados de tradução bem-sucedidos, usando chaves de cache com hash, para acelerar traduções repetidas.
 - Quando não há tradução no cache local, a tradução do Assistente de seleção envia o texto selecionado e suas instruções personalizadas de **Traduzir** para o provedor escolhido; um botão de modo de prompt envia o texto selecionado e o prompt desse modo para o provedor escolhido; a pronúncia só envia o texto selecionado para a OpenAI quando a OpenAI é o mecanismo de texto para voz.
 - O Inklet busca o catálogo público de modelos em `models.dev` no máximo uma vez por dia. Essa solicitação não inclui seu texto, áudio, chaves de API nem ajustes do app.
+- O histórico da área de transferência salva os textos e imagens que você copia em `clipboard-history.json` e na pasta `clipboard-images`, dentro da pasta Application Support do Inklet, e nunca os envia a lugar nenhum. Cópias que gerenciadores de senhas marcam como privadas não são salvas. Itens não fixados são removidos após o período escolhido; desative ou limpe em Ajustes › Área de transferência.
 - Não envie texto ou áudio privados para a OpenAI ou para o provedor escolhido a menos que você confie nas políticas de tratamento de dados deles.
 
 ## Feedback
