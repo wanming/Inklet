@@ -3,13 +3,10 @@ import XCTest
 
 @MainActor
 final class SnippetStoreTests: XCTestCase {
-    private var directory: URL!
+    // XCTest makes a new instance for each test, so each test gets its own folder.
+    nonisolated private let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("SnippetsTests-\(UUID().uuidString)", isDirectory: true)
     private var now = Date(timeIntervalSince1970: 1_800_000_000)
-
-    override func setUpWithError() throws {
-        directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("SnippetsTests-\(UUID().uuidString)", isDirectory: true)
-    }
 
     override func tearDownWithError() throws {
         try? FileManager.default.removeItem(at: directory)
