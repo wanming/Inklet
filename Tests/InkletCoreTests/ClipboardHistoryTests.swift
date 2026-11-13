@@ -4,13 +4,10 @@ import XCTest
 
 @MainActor
 final class ClipboardHistoryStoreTests: XCTestCase {
-    private var directory: URL!
+    // XCTest makes a new instance for each test, so each test gets its own folder.
+    nonisolated private let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("ClipboardHistoryTests-\(UUID().uuidString)", isDirectory: true)
     private var now = Date(timeIntervalSince1970: 1_800_000_000)
-
-    override func setUpWithError() throws {
-        directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ClipboardHistoryTests-\(UUID().uuidString)", isDirectory: true)
-    }
 
     override func tearDownWithError() throws {
         try? FileManager.default.removeItem(at: directory)
@@ -155,17 +152,14 @@ final class ClipboardHistoryStoreTests: XCTestCase {
 
 @MainActor
 final class ClipboardPasteboardTests: XCTestCase {
-    private var pasteboard: NSPasteboard!
-
-    override func setUp() {
-        pasteboard = NSPasteboard(name: NSPasteboard.Name("InkletClipboardTests-\(UUID().uuidString)"))
-    }
-
-    override func tearDown() {
-        pasteboard.releaseGlobally()
+    private func makePasteboard() -> NSPasteboard {
+        let name = NSPasteboard.Name("InkletClipboardTests-\(UUID().uuidString)")
+        addTeardownBlock { @MainActor in NSPasteboard(name: name).releaseGlobally() }
+        return NSPasteboard(name: name)
     }
 
     func testCapturesTextAndSkipsPrivateOrTemporaryCopies() {
+        let pasteboard = makePasteboard()
         pasteboard.clearContents()
         pasteboard.setString("hello", forType: .string)
         XCTAssertEqual(ClipboardPasteboard.capture(from: pasteboard, sourceApplication: nil)?.content, .text("hello"))
@@ -179,6 +173,7 @@ final class ClipboardPasteboardTests: XCTestCase {
     }
 
     func testCapturesImagesAndWritesThemBack() throws {
+        let pasteboard = makePasteboard()
         let png = try XCTUnwrap(ClipboardHistoryStoreTests.pngData(width: 4, height: 5))
         pasteboard.clearContents()
         pasteboard.setData(png, forType: .png)
@@ -205,6 +200,7 @@ final class ClipboardPasteboardTests: XCTestCase {
     }
 
     func testSkipsCopiedFiles() {
+        let pasteboard = makePasteboard()
         pasteboard.clearContents()
         pasteboard.writeObjects([URL(fileURLWithPath: "/tmp/example.txt") as NSURL])
         XCTAssertNil(ClipboardPasteboard.capture(from: pasteboard, sourceApplication: nil))
