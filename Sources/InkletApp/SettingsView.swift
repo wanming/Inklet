@@ -33,6 +33,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case dictation = "Live Dictation"
     case selectionAssistant = "Selection Assistant"
     case clipboard = "Clipboard"
+    case snippets = "Snippets"
     case history = "History"
     case about = "About"
 
@@ -46,6 +47,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .dictation: L10n.text("settings.section.dictation")
         case .selectionAssistant: L10n.text("settings.section.selectionAssistant")
         case .clipboard: L10n.text("settings.section.clipboard")
+        case .snippets: L10n.text("settings.section.snippets")
         case .history: L10n.text("settings.section.history")
         case .promptModes: L10n.text("settings.section.promptModes")
         case .about: L10n.text("settings.section.about")
@@ -60,6 +62,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .dictation: "mic"
         case .selectionAssistant: "text.viewfinder"
         case .clipboard: "doc.on.clipboard"
+        case .snippets: "text.quote"
         case .history: "clock.arrow.circlepath"
         case .promptModes: "slider.horizontal.3"
         case .about: "info.circle"
@@ -85,6 +88,10 @@ struct SettingsView: View {
     @AppStorage(InkletPreferenceKeys.clipboardHistoryHotkey) private var clipboardHistoryHotkey = ClipboardHistoryDefaults.hotkey
     @AppStorage(InkletPreferenceKeys.clipboardHistoryRetention) private var clipboardHistoryRetention = ClipboardHistoryRetention.defaultValue.rawValue
     @State private var isConfirmingClearClipboard = false
+    @AppStorage(InkletPreferenceKeys.snippetKeywordExpansionEnabled) private var expandsSnippetKeywords = SnippetDefaults.expandsKeywords
+    @ObservedObject private var snippetLibrary: SnippetLibrary = .shared
+    @State private var selectedSnippetID: UUID?
+    @State private var snippetPendingDeletionID: UUID?
     private let onAppearanceChange: (AppAppearance) -> Void
     private let onRequestMigrationImport: () -> Void
     private let onRetryMigrationRelaunch: () -> Void
@@ -211,6 +218,35 @@ struct SettingsView: View {
         .onChange(of: clipboardHistoryEnabled) { notifyClipboardHistorySettingsChanged() }
         .onChange(of: clipboardHistoryHotkey) { notifyClipboardHistorySettingsChanged() }
         .onChange(of: clipboardHistoryRetention) { notifyClipboardHistorySettingsChanged() }
+        .onChange(of: expandsSnippetKeywords) {
+            NotificationCenter.default.post(name: .inkletSnippetSettingsDidChange, object: nil)
+        }
+        .alert(
+            L10n.text("settings.snippet.deleteConfirmTitle"),
+            isPresented: Binding(
+                get: { snippetPendingDeletionID != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        snippetPendingDeletionID = nil
+                    }
+                }
+            )
+        ) {
+            Button(L10n.text("settings.snippet.delete"), role: .destructive) {
+                if let snippetPendingDeletionID {
+                    deleteSnippet(id: snippetPendingDeletionID)
+                }
+                snippetPendingDeletionID = nil
+            }
+            Button(L10n.text("settings.cancel"), role: .cancel) {
+                snippetPendingDeletionID = nil
+            }
+        } message: {
+            Text(L10n.format(
+                "settings.snippet.deleteConfirmMessage",
+                snippetLibrary.snippet(id: snippetPendingDeletionID)?.displayName ?? ""
+            ))
+        }
     }
 
     private func notifyClipboardHistorySettingsChanged() {
@@ -291,6 +327,11 @@ struct SettingsView: View {
                 case .clipboard:
                     settingsPage {
                         clipboardPanel
+                    }
+                    .disabled(model.isMigrationMaintenanceActive)
+                case .snippets:
+                    settingsPage {
+                        snippetsPanel
                     }
                     .disabled(model.isMigrationMaintenanceActive)
                 case .history:
@@ -474,6 +515,181 @@ struct SettingsView: View {
                     .fixedSize()
                 }
             }
+        }
+    }
+
+    /// Snippets: keyword expansion, then the list of snippets next to the selected one's editor.
+    private var snippetsPanel: some View {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.xl) {
+            settingsGroup {
+                settingsRow(
+                    L10n.text("settings.row.snippetExpansion"),
+                    help: L10n.text("settings.help.snippetExpansion"),
+                    warning: expandsSnippetKeywords && !model.isAccessibilityTrusted
+                        ? L10n.text("settings.snippet.needsAccessibility")
+                        : nil
+                ) {
+                    Toggle("", isOn: $expandsSnippetKeywords)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+            }
+
+            HStack(alignment: .top, spacing: InkletTheme.Spacing.md) {
+                VStack(spacing: InkletTheme.Spacing.xs) {
+                    snippetList
+                        .frame(height: SettingsLayoutMetrics.snippetListHeight)
+                        .clipShape(RoundedRectangle(cornerRadius: InkletTheme.Radius.card))
+                        .inkletCard()
+
+                    Button {
+                        selectedSnippetID = snippetLibrary.add().id
+                    } label: {
+                        Label(L10n.text("snippets.new"), systemImage: "plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(InkletButtonStyle(kind: .secondary))
+                }
+                .frame(width: SettingsLayoutMetrics.promptModeListWidth)
+
+                if let snippet = snippetLibrary.snippet(id: selectedSnippetID) {
+                    snippetEditor(snippet)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
+                } else {
+                    Text(L10n.text(snippetLibrary.snippets.isEmpty ? "settings.snippet.none" : "settings.snippet.pick"))
+                        .font(InkletTheme.Typography.body)
+                        .foregroundStyle(InkletTheme.secondaryLabel)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity, minHeight: SettingsLayoutMetrics.snippetListHeight)
+                }
+            }
+        }
+        .onAppear {
+            if snippetLibrary.snippet(id: selectedSnippetID) == nil {
+                selectedSnippetID = snippetLibrary.snippets.first?.id
+            }
+        }
+    }
+
+    private var snippetList: some View {
+        ScrollView {
+            LazyVStack(spacing: 2) {
+                ForEach(snippetLibrary.snippets) { snippet in
+                    let isSelected = snippet.id == selectedSnippetID
+                    Button {
+                        selectedSnippetID = snippet.id
+                    } label: {
+                        HStack(spacing: InkletTheme.Spacing.xs) {
+                            Text(snippet.displayName.isEmpty ? L10n.text("snippets.untitled") : snippet.displayName)
+                                .font(isSelected ? InkletTheme.Typography.control : InkletTheme.Typography.body)
+                                .foregroundStyle(snippet.displayName.isEmpty ? InkletTheme.tertiaryLabel : InkletTheme.label)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                            Spacer(minLength: InkletTheme.Spacing.xxs)
+                            if !snippet.keyword.isEmpty {
+                                Text(snippet.keyword)
+                                    .font(InkletTheme.Typography.keycap)
+                                    .foregroundStyle(InkletTheme.tertiaryLabel)
+                                    .lineLimit(1)
+                                    .fixedSize()
+                            }
+                        }
+                        .padding(.horizontal, InkletTheme.Spacing.xs)
+                        .frame(height: SettingsLayoutMetrics.snippetRowHeight)
+                        .background(InkletRowBackground(isSelected: isSelected))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
+            }
+            .padding(InkletTheme.Spacing.xxs)
+        }
+    }
+
+    private func snippetEditor(_ snippet: Snippet) -> some View {
+        VStack(alignment: .leading, spacing: InkletTheme.Spacing.md) {
+            settingsGroup {
+                settingsStackedRow(L10n.text("settings.row.name"), help: L10n.text("settings.help.snippetName")) {
+                    TextField(L10n.text("snippets.untitled"), text: snippetBinding(snippet.id, \.name))
+                        .textFieldStyle(.plain)
+                        .font(InkletTheme.Typography.body)
+                        .padding(.horizontal, InkletTheme.Spacing.xs)
+                        .frame(height: InkletTheme.ControlHeight.regular)
+                        .modifier(InkletFieldModifier())
+                }
+
+                settingsStackedRow(L10n.text("settings.row.snippetKeyword"), help: L10n.text("settings.help.snippetKeyword")) {
+                    VStack(alignment: .leading, spacing: InkletTheme.Spacing.xxs) {
+                        TextField(L10n.text("settings.snippet.keywordPlaceholder"), text: snippetBinding(snippet.id, \.keyword))
+                            .textFieldStyle(.plain)
+                            .font(InkletTheme.Typography.body.monospaced())
+                            .padding(.horizontal, InkletTheme.Spacing.xs)
+                            .frame(width: SettingsLayoutMetrics.fieldWidth, height: InkletTheme.ControlHeight.regular)
+                            .modifier(InkletFieldModifier())
+                        if let warning = snippetKeywordWarning(snippet) {
+                            Label(warning, systemImage: "exclamationmark.triangle")
+                                .font(InkletTheme.Typography.help)
+                                .foregroundStyle(InkletTheme.statusWarning)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+
+                settingsStackedRow(L10n.text("settings.row.snippetText")) {
+                    SettingsPromptTextView(text: snippetBinding(snippet.id, \.text))
+                        .frame(height: 160)
+                        .padding(InkletTheme.Spacing.xs)
+                        .modifier(InkletFieldModifier())
+                        .accessibilityLabel(L10n.text("settings.row.snippetText"))
+                }
+            }
+
+            Button {
+                snippetPendingDeletionID = snippet.id
+            } label: {
+                Label(L10n.text("settings.snippet.delete"), systemImage: "trash")
+            }
+            .buttonStyle(InkletButtonStyle(kind: .secondary, size: .small))
+            .fixedSize()
+        }
+    }
+
+    private func snippetBinding(_ id: UUID, _ keyPath: WritableKeyPath<Snippet, String>) -> Binding<String> {
+        Binding(
+            get: { snippetLibrary.snippet(id: id)?[keyPath: keyPath] ?? "" },
+            set: { value in
+                guard var snippet = snippetLibrary.snippet(id: id) else { return }
+                // Keywords stay short enough for the typing buffer to spot them.
+                snippet[keyPath: keyPath] = keyPath == \Snippet.keyword
+                    ? String(value.prefix(SnippetDefaults.maximumKeywordLength))
+                    : value
+                snippetLibrary.update(snippet)
+            }
+        )
+    }
+
+    private func snippetKeywordWarning(_ snippet: Snippet) -> String? {
+        switch snippetLibrary.keywordIssue(snippet.keyword, for: snippet.id) {
+        case .containsWhitespace?:
+            return L10n.text("settings.snippet.keyword.whitespace")
+        case .tooShort?:
+            return L10n.text("settings.snippet.keyword.tooShort")
+        case .duplicate(let name)?:
+            return L10n.format("settings.snippet.keyword.duplicate", name)
+        case nil:
+            return nil
+        }
+    }
+
+    private func deleteSnippet(id: UUID) {
+        let snippets = snippetLibrary.snippets
+        let index = snippets.firstIndex { $0.id == id }
+        snippetLibrary.delete(id: id)
+        if selectedSnippetID == id, let index {
+            let remaining = snippetLibrary.snippets
+            selectedSnippetID = remaining.isEmpty ? nil : remaining[min(index, remaining.count - 1)].id
         }
     }
 
@@ -1982,6 +2198,8 @@ enum SettingsLayoutMetrics {
     static let compactRowHeight: CGFloat = 36
     static let fieldWidth: CGFloat = 220
     static let promptModeListWidth: CGFloat = 240
+    static let snippetListHeight: CGFloat = 320
+    static let snippetRowHeight: CGFloat = 32
 
     static var migrationActionWidth: CGFloat {
         let font = NSFont.systemFont(ofSize: 12, weight: .semibold)

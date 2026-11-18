@@ -9,6 +9,7 @@ public struct InkletStoragePaths: Equatable, Sendable {
     public let historyFileURL: URL
     public let clipboardHistoryFileURL: URL
     public let clipboardImagesDirectoryURL: URL
+    public let snippetsFileURL: URL
     public let translationCacheFileURL: URL
     public let migrationLockFileURL: URL
     public let selectionDiagnosticsFileURL: URL
@@ -43,6 +44,7 @@ public struct InkletStoragePaths: Equatable, Sendable {
             "clipboard-images",
             isDirectory: true
         )
+        self.snippetsFileURL = applicationSupportRootURL.appendingPathComponent("snippets.json")
         self.translationCacheFileURL = applicationSupportRootURL.appendingPathComponent(
             "selection-translation-cache.json"
         )
