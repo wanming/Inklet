@@ -419,8 +419,8 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
             hide()
             return true
         case ",":
-            hide()
-            onOpenSettings?()
+            // Opens the Settings page of the tab in view; the panel hides first.
+            model.openSettings()
             return true
         default:
             return false
