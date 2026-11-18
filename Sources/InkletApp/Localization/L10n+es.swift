@@ -548,5 +548,15 @@ extension L10n {
         "settings.snippet.deleteConfirmMessage": "«%@» se eliminará de este Mac. Esta acción no se puede deshacer.",
         "whatsNew.2.2.0.snippets.title": "Fragmentos",
         "whatsNew.2.2.0.snippets.detail": "Guarda textos que escribes a menudo y pégalos desde el mismo panel ⌥⇧V (pulsa Tab). Dale una palabra clave como ;dir y activa la expansión en Ajustes › Fragmentos para escribirla en cualquier sitio.",
+        "welcome.clipboard.title": "Portapapeles y fragmentos",
+        "welcome.clipboard.message": "Encuentra lo que copiaste y pega textos que usas a menudo, desde un solo panel.",
+        "welcome.clipboard.history": "Historial del portapapeles",
+        "welcome.clipboard.history.detail": "Guarda el texto y las imágenes que copias, solo en este Mac.",
+        "welcome.clipboard.shortcut": "Abrir el panel",
+        "welcome.clipboard.shortcut.detail": "Busca en el historial y en los fragmentos; Tab cambia de uno a otro.",
+        "welcome.clipboard.expansion": "Expandir palabras clave",
+        "welcome.clipboard.expansion.detail": "Escribe una palabra clave como ;dir en cualquier app para insertar su fragmento.",
+        "welcome.clipboard.expansion.needsAccessibility": "Funciona cuando permitas Accesibilidad.",
+        "welcome.clipboard.customize": "Añade fragmentos y cambia esto más tarde en Ajustes › %@.",
     ]
 }

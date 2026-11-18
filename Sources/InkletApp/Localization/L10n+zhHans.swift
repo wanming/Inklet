@@ -548,5 +548,15 @@ extension L10n {
         "settings.snippet.deleteConfirmMessage": "“%@”会从这台 Mac 上删除。此操作无法撤销。",
         "whatsNew.2.2.0.snippets.title": "片段",
         "whatsNew.2.2.0.snippets.detail": "把常打的文字存成片段，在同一个 ⌥⇧V 小窗里按 Tab 切换后搜索并粘贴。给片段设一个关键词（比如 ;addr），在设置 › 片段里打开自动展开，就能在任何地方直接打出来。",
+        "welcome.clipboard.title": "剪贴板与片段",
+        "welcome.clipboard.message": "在同一个小窗里找回复制过的内容，粘贴常用的文字。",
+        "welcome.clipboard.history": "剪贴板历史",
+        "welcome.clipboard.history.detail": "保存你复制的文字和图片，只存在这台 Mac 上。",
+        "welcome.clipboard.shortcut": "打开小窗",
+        "welcome.clipboard.shortcut.detail": "搜索剪贴板历史和片段，按 Tab 切换。",
+        "welcome.clipboard.expansion": "展开片段关键词",
+        "welcome.clipboard.expansion.detail": "在任何应用里输入关键词（比如 ;addr），自动换成片段内容。",
+        "welcome.clipboard.expansion.needsAccessibility": "允许辅助功能后才能使用。",
+        "welcome.clipboard.customize": "片段可以在“设置 › %@”里添加，这些选项以后也能在设置里改。",
     ]
 }

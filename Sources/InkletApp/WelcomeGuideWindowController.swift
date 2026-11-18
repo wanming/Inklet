@@ -84,6 +84,7 @@ final class WelcomeGuideViewModel: ObservableObject {
         case writingModel
         case dictation
         case selectionBar
+        case clipboard
         case ready
     }
 
@@ -165,7 +166,7 @@ final class WelcomeGuideViewModel: ObservableObject {
             needsBuiltInDownload ? L10n.text("welcome.action.downloadAndContinue") : L10n.text("welcome.action.continue")
         case .dictation:
             microphoneStatus == .authorized ? L10n.text("welcome.action.continue") : L10n.text("welcome.action.later")
-        case .selectionBar:
+        case .selectionBar, .clipboard:
             L10n.text("welcome.action.continue")
         case .ready:
             L10n.text("welcome.action.finish")
@@ -228,6 +229,9 @@ final class WelcomeGuideViewModel: ObservableObject {
             _ = settings.flushPendingEdits()
         case .welcome, .selectionBar:
             _ = settings.flushPendingEdits()
+        case .clipboard:
+            // These switches save as they change, like Settings › Clipboard and Snippets.
+            break
         case .accessibility:
             break
         case .ready:
@@ -366,6 +370,8 @@ struct WelcomeGuideView: View {
             dictationStep
         case .selectionBar:
             WelcomeSelectionStep(model: model, settings: settings)
+        case .clipboard:
+            WelcomeClipboardStep(model: model)
         case .ready:
             WelcomeReadyStep(model: model, settings: settings)
         }
@@ -897,6 +903,97 @@ struct WelcomeSelectionStep: View {
 }
 
 /// The last step: the three ways to use Inklet, each with the shortcut chosen earlier in the guide.
+/// Clipboard history and snippets: whether they run and the shortcut of their shared panel. The
+/// switches save right away, the same preferences as Settings › Clipboard and Settings › Snippets.
+struct WelcomeClipboardStep: View {
+    @ObservedObject var model: WelcomeGuideViewModel
+    @AppStorage(InkletPreferenceKeys.clipboardHistoryEnabled) private var clipboardHistoryEnabled = ClipboardHistoryDefaults.isEnabled
+    @AppStorage(InkletPreferenceKeys.clipboardHistoryHotkey) private var clipboardHistoryHotkey = ClipboardHistoryDefaults.hotkey
+    @AppStorage(InkletPreferenceKeys.snippetKeywordExpansionEnabled) private var expandsSnippetKeywords = SnippetDefaults.expandsKeywords
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            WelcomeStepHeader(
+                systemImage: SettingsSection.clipboard.icon,
+                title: L10n.text("welcome.clipboard.title"),
+                message: L10n.text("welcome.clipboard.message")
+            )
+            VStack(spacing: 0) {
+                row(
+                    title: L10n.text("welcome.clipboard.history"),
+                    detail: L10n.text("welcome.clipboard.history.detail")
+                ) {
+                    Toggle("", isOn: $clipboardHistoryEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+                InkletRowDivider()
+                row(
+                    title: L10n.text("welcome.clipboard.shortcut"),
+                    detail: L10n.text("welcome.clipboard.shortcut.detail")
+                ) {
+                    HotkeyRecorderField(hotkey: $clipboardHistoryHotkey)
+                        .frame(width: 160, height: 30)
+                }
+                InkletRowDivider()
+                row(
+                    title: L10n.text("welcome.clipboard.expansion"),
+                    detail: model.isAccessibilityTrusted
+                        ? L10n.text("welcome.clipboard.expansion.detail")
+                        : L10n.text("welcome.clipboard.expansion.needsAccessibility")
+                ) {
+                    Toggle("", isOn: $expandsSnippetKeywords)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
+            }
+            .inkletCard()
+            HStack(alignment: .firstTextBaseline, spacing: InkletTheme.Spacing.xs) {
+                // The Snippets icon in Settings, so the hint points at the same place.
+                Image(systemName: SettingsSection.snippets.icon)
+                    .font(.system(size: InkletTheme.IconSize.small))
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                Text(L10n.format("welcome.clipboard.customize", L10n.text("settings.section.snippets")))
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, InkletTheme.Spacing.xxs)
+        }
+        .onChange(of: clipboardHistoryEnabled) {
+            NotificationCenter.default.post(name: .inkletClipboardHistorySettingsDidChange, object: nil)
+        }
+        .onChange(of: clipboardHistoryHotkey) {
+            NotificationCenter.default.post(name: .inkletClipboardHistorySettingsDidChange, object: nil)
+        }
+        .onChange(of: expandsSnippetKeywords) {
+            NotificationCenter.default.post(name: .inkletSnippetSettingsDidChange, object: nil)
+        }
+    }
+
+    private func row<Control: View>(
+        title: String,
+        detail: String,
+        @ViewBuilder control: () -> Control
+    ) -> some View {
+        HStack(alignment: .center, spacing: InkletTheme.Spacing.sm) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(InkletTheme.Typography.control)
+                    .foregroundStyle(InkletTheme.label)
+                Text(detail)
+                    .font(InkletTheme.Typography.help)
+                    .foregroundStyle(InkletTheme.secondaryLabel)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            control()
+        }
+        .padding(InkletTheme.Spacing.sm)
+    }
+}
+
 struct WelcomeReadyStep: View {
     @ObservedObject var model: WelcomeGuideViewModel
     @ObservedObject var settings: SettingsViewModel

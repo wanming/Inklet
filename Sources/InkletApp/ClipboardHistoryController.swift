@@ -41,6 +41,7 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
     private let hotkeyManager: GlobalHotkeyManager
     private let model: ClipboardHistoryPanelModel
     private let snippetExpander: SnippetKeywordExpander
+    private let snippets: SnippetLibrary
     private var panel: ClipboardHistoryPanel?
     private var pollTimer: Timer?
     private var lastChangeCount: Int
@@ -63,6 +64,7 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
         self.hotkeyManager = GlobalHotkeyManager()
         self.model = ClipboardHistoryPanelModel(store: store, snippets: snippets)
         self.snippetExpander = SnippetKeywordExpander(library: snippets)
+        self.snippets = snippets
         self.lastChangeCount = NSPasteboard.general.changeCount
         super.init()
 
@@ -108,6 +110,16 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.store.clearUnpinned()
+            }
+        })
+        // The shortcut also opens snippets, so it follows whether there are any.
+        observers.append(center.addObserver(
+            forName: .inkletSnippetsDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.registerHotkey()
             }
         })
         for name in [Notification.Name.inkletSnippetSettingsDidChange, .inkletAccessibilityDidBecomeTrusted] {
@@ -248,9 +260,14 @@ final class ClipboardHistoryController: NSObject, NSWindowDelegate {
 
     // MARK: Shortcut
 
+    private var isPanelInUse: Bool {
+        ClipboardHistorySettings.isEnabled || !snippets.snippets.isEmpty
+    }
+
     private func registerHotkey() {
-        // A turned-off history doesn't keep its shortcut from other apps; the menu still opens it.
-        guard isStarted, !isSuspended, !isRecordingHotkey, ClipboardHistorySettings.isEnabled else {
+        // With history off and no snippets, the shortcut is left to other apps; the menu still
+        // opens the panel.
+        guard isStarted, !isSuspended, !isRecordingHotkey, isPanelInUse else {
             hotkeyManager.unregister()
             return
         }

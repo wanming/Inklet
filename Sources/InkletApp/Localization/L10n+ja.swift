@@ -548,5 +548,15 @@ extension L10n {
         "settings.snippet.deleteConfirmMessage": "「%@」はこの Mac から削除されます。この操作は取り消せません。",
         "whatsNew.2.2.0.snippets.title": "スニペット",
         "whatsNew.2.2.0.snippets.detail": "よく入力するテキストを保存して、同じ ⌥⇧V パネル（Tab で切り替え）からペーストできます。;addr のようなキーワードを付けて設定 › スニペットで展開をオンにすると、どこでも入力できます。",
+        "welcome.clipboard.title": "クリップボードとスニペット",
+        "welcome.clipboard.message": "コピーしたものを探したり、よく使うテキストを貼り付けたりが 1 つのパネルでできます。",
+        "welcome.clipboard.history": "クリップボード履歴",
+        "welcome.clipboard.history.detail": "コピーしたテキストと画像を、この Mac の中だけに保存します。",
+        "welcome.clipboard.shortcut": "パネルを開く",
+        "welcome.clipboard.shortcut.detail": "クリップボード履歴とスニペットを検索。Tab で切り替えます。",
+        "welcome.clipboard.expansion": "スニペットのキーワードを展開",
+        "welcome.clipboard.expansion.detail": "どのアプリでも ;addr などのキーワードを入力すると、スニペットに置き換わります。",
+        "welcome.clipboard.expansion.needsAccessibility": "アクセシビリティを許可すると使えます。",
+        "welcome.clipboard.customize": "スニペットの追加や、これらの変更は「設定 › %@」でいつでもできます。",
     ]
 }

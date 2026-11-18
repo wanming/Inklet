@@ -196,6 +196,17 @@ final class LocalizationSettingsLayoutTests: XCTestCase {
                 )
 
                 guide.performPrimaryAction()
+                XCTAssertEqual(guide.step, .clipboard)
+                let clipboard = NSHostingView(rootView: WelcomeClipboardStep(model: guide)
+                    .frame(width: 472))
+                XCTAssertLessThanOrEqual(clipboard.fittingSize.height, 374, "clipboard \(language.rawValue)")
+                try LocalizationSnapshot.record(
+                    WelcomeGuideView(model: guide, settings: settings),
+                    name: "welcome-clipboard-\(language.localeIdentifier)",
+                    size: NSSize(width: 560, height: 520)
+                )
+
+                guide.performPrimaryAction()
                 XCTAssertEqual(guide.step, .ready)
                 let ready = NSHostingView(rootView: WelcomeReadyStep(model: guide, settings: settings)
                     .frame(width: 472))

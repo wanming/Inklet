@@ -548,5 +548,15 @@ extension L10n {
         "settings.snippet.deleteConfirmMessage": "“%@” will be removed from this Mac. This can't be undone.",
         "whatsNew.2.2.0.snippets.title": "Snippets",
         "whatsNew.2.2.0.snippets.detail": "Save text you type often and paste it from the same ⌥⇧V panel (press Tab). Give a snippet a keyword such as ;addr and turn on keyword expansion in Settings › Snippets to type it anywhere.",
+        "welcome.clipboard.title": "Clipboard & Snippets",
+        "welcome.clipboard.message": "Find anything you copied and paste text you use often, from one panel.",
+        "welcome.clipboard.history": "Clipboard history",
+        "welcome.clipboard.history.detail": "Keeps the text and images you copy, on this Mac only.",
+        "welcome.clipboard.shortcut": "Open the panel",
+        "welcome.clipboard.shortcut.detail": "Search clipboard history and snippets; Tab switches.",
+        "welcome.clipboard.expansion": "Expand snippet keywords",
+        "welcome.clipboard.expansion.detail": "Type a keyword such as ;addr in any app to insert its snippet.",
+        "welcome.clipboard.expansion.needsAccessibility": "Works once Accessibility is allowed.",
+        "welcome.clipboard.customize": "Add snippets and change these later in Settings › %@.",
     ]
 }

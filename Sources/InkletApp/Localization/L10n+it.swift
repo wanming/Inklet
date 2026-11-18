@@ -548,5 +548,15 @@ extension L10n {
         "settings.snippet.deleteConfirmMessage": "“%@” verrà rimosso da questo Mac. L’operazione non può essere annullata.",
         "whatsNew.2.2.0.snippets.title": "Snippet",
         "whatsNew.2.2.0.snippets.detail": "Salva i testi che scrivi spesso e incollali dallo stesso pannello ⌥⇧V (premi Tab). Dai a uno snippet una parola chiave come ;ind e attiva l’espansione in Impostazioni › Snippet per scriverla ovunque.",
+        "welcome.clipboard.title": "Appunti e snippet",
+        "welcome.clipboard.message": "Ritrova ciò che hai copiato e incolla i testi che usi spesso, da un solo pannello.",
+        "welcome.clipboard.history": "Cronologia degli appunti",
+        "welcome.clipboard.history.detail": "Conserva il testo e le immagini che copi, solo su questo Mac.",
+        "welcome.clipboard.shortcut": "Apri il pannello",
+        "welcome.clipboard.shortcut.detail": "Cerca nella cronologia e negli snippet; Tab passa dall’uno all’altro.",
+        "welcome.clipboard.expansion": "Espandi le parole chiave",
+        "welcome.clipboard.expansion.detail": "Digita una parola chiave come ;ind in qualsiasi app per inserire il suo snippet.",
+        "welcome.clipboard.expansion.needsAccessibility": "Funziona dopo aver consentito l’Accessibilità.",
+        "welcome.clipboard.customize": "Aggiungi snippet e modifica queste opzioni più tardi in Impostazioni › %@.",
     ]
 }

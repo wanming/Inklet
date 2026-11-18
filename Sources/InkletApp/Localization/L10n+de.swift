@@ -548,5 +548,15 @@ extension L10n {
         "settings.snippet.deleteConfirmMessage": "„%@“ wird von diesem Mac entfernt. Das lässt sich nicht widerrufen.",
         "whatsNew.2.2.0.snippets.title": "Snippets",
         "whatsNew.2.2.0.snippets.detail": "Speichere Texte, die du oft tippst, und setze sie aus demselben ⌥⇧V-Fenster ein (mit Tab wechseln). Gib einem Snippet ein Kürzel wie ;adr und schalte das Ersetzen unter Einstellungen › Snippets ein, um es überall zu tippen.",
+        "welcome.clipboard.title": "Zwischenablage und Snippets",
+        "welcome.clipboard.message": "Finde Kopiertes wieder und setze häufige Texte ein, alles in einem Fenster.",
+        "welcome.clipboard.history": "Zwischenablage-Verlauf",
+        "welcome.clipboard.history.detail": "Behält kopierte Texte und Bilder, nur auf diesem Mac.",
+        "welcome.clipboard.shortcut": "Fenster öffnen",
+        "welcome.clipboard.shortcut.detail": "Durchsucht Verlauf und Snippets; Tab wechselt.",
+        "welcome.clipboard.expansion": "Kürzel erweitern",
+        "welcome.clipboard.expansion.detail": "Tippe in einer beliebigen App ein Kürzel wie ;adr, um sein Snippet einzusetzen.",
+        "welcome.clipboard.expansion.needsAccessibility": "Funktioniert, sobald Bedienungshilfen erlaubt sind.",
+        "welcome.clipboard.customize": "Snippets hinzufügen und dies später ändern kannst du unter Einstellungen › %@.",
     ]
 }

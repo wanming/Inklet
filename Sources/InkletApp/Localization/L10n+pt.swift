@@ -548,5 +548,15 @@ extension L10n {
         "settings.snippet.deleteConfirmMessage": "“%@” será removido deste Mac. Não é possível desfazer.",
         "whatsNew.2.2.0.snippets.title": "Trechos",
         "whatsNew.2.2.0.snippets.detail": "Salve textos que você digita com frequência e cole do mesmo painel ⌥⇧V (pressione Tab). Dê a um trecho uma palavra-chave como ;end e ative a expansão em Ajustes › Trechos para digitá-la em qualquer lugar.",
+        "welcome.clipboard.title": "Área de transferência e trechos",
+        "welcome.clipboard.message": "Encontre o que você copiou e cole textos frequentes em um só painel.",
+        "welcome.clipboard.history": "Histórico da área de transferência",
+        "welcome.clipboard.history.detail": "Guarda os textos e imagens que você copia, só neste Mac.",
+        "welcome.clipboard.shortcut": "Abrir o painel",
+        "welcome.clipboard.shortcut.detail": "Busque no histórico e nos trechos; Tab alterna.",
+        "welcome.clipboard.expansion": "Expandir palavras-chave",
+        "welcome.clipboard.expansion.detail": "Digite uma palavra-chave como ;end em qualquer app para inserir o trecho.",
+        "welcome.clipboard.expansion.needsAccessibility": "Funciona depois que a Acessibilidade for permitida.",
+        "welcome.clipboard.customize": "Adicione trechos e mude isso depois em Ajustes › %@.",
     ]
 }

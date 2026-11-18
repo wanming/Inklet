@@ -38,6 +38,7 @@ Before any response or action, use the relevant `superpowers` skill.
 - Favor clarity over decoration. Do not add flashy effects, oversized cards, gradients, or new visual motifs that `docs/DESIGN.md` does not define.
 - For SwiftUI layout changes, verify text fits in Chinese and English, avoids overlap, and behaves at the app's actual window size.
 - Treat Accessibility, clipboard, text insertion, voice audio, and API key flows as sensitive surfaces.
+- Every feature a person can turn on or off, or that has its own shortcut, also appears in the welcome guide (`WelcomeGuideWindowController.swift`): give it a switch and, if it has one, a shortcut setting there, bound to the same preference as its Settings page, so a new user can set it up without opening Settings. Add or extend a guide step in the same change, keep each step within the guide's height in every language, and update the README's welcome guide paragraph.
 
 ## Interaction Details
 

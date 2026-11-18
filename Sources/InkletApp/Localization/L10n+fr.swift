@@ -548,5 +548,15 @@ extension L10n {
         "settings.snippet.deleteConfirmMessage": "« %@ » sera supprimé de ce Mac. Cette action est irréversible.",
         "whatsNew.2.2.0.snippets.title": "Extraits",
         "whatsNew.2.2.0.snippets.detail": "Enregistrez les textes que vous tapez souvent et collez-les depuis le même panneau ⌥⇧V (touche Tab). Donnez-leur un mot-clé comme ;adr et activez le développement dans Réglages › Extraits pour les taper n’importe où.",
+        "welcome.clipboard.title": "Presse-papiers et extraits",
+        "welcome.clipboard.message": "Retrouvez ce que vous avez copié et collez vos textes fréquents depuis un seul panneau.",
+        "welcome.clipboard.history": "Historique du presse-papiers",
+        "welcome.clipboard.history.detail": "Conserve le texte et les images que vous copiez, uniquement sur ce Mac.",
+        "welcome.clipboard.shortcut": "Ouvrir le panneau",
+        "welcome.clipboard.shortcut.detail": "Cherchez dans l’historique et les extraits ; Tab passe de l’un à l’autre.",
+        "welcome.clipboard.expansion": "Développer les mots-clés",
+        "welcome.clipboard.expansion.detail": "Tapez un mot-clé comme ;adr dans n’importe quelle app pour insérer son extrait.",
+        "welcome.clipboard.expansion.needsAccessibility": "Fonctionne une fois l’Accessibilité autorisée.",
+        "welcome.clipboard.customize": "Ajoutez des extraits et modifiez ces options plus tard dans Réglages › %@.",
     ]
 }

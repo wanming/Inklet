@@ -102,6 +102,10 @@ final class ClipboardHistoryPanelModel: ObservableObject {
     func prepareForPresentation(isEnabled: Bool, canPaste: Bool) {
         self.isEnabled = isEnabled
         self.canPaste = canPaste
+        // With history turned off, the shortcut is there for snippets.
+        if !isEnabled, tab == .clipboard, !snippets.snippets.isEmpty {
+            tab = .snippets
+        }
         if query.isEmpty {
             refilter(resetSelection: true)
         } else {

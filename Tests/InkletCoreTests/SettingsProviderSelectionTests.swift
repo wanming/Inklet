@@ -73,7 +73,7 @@ final class SettingsProviderSelectionTests: XCTestCase {
         XCTAssertFalse(didFinish)
 
         guide.goBack()
-        XCTAssertEqual(guide.step, .selectionBar)
+        XCTAssertEqual(guide.step, .clipboard)
         guide.performPrimaryAction()
         guide.performPrimaryAction()
         XCTAssertTrue(didFinish)
@@ -155,7 +155,7 @@ final class SettingsProviderSelectionTests: XCTestCase {
         XCTAssertTrue(settings.config.selectionActions.isEnabled)
         settings.config.selectionActions.isEnabled = false
         guide.performPrimaryAction()
-        XCTAssertEqual(guide.step, .ready)
+        XCTAssertEqual(guide.step, .clipboard)
         XCTAssertFalse(try configStore.load().selectionActions.isEnabled)
     }
 

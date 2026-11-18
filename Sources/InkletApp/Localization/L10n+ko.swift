@@ -548,5 +548,15 @@ extension L10n {
         "settings.snippet.deleteConfirmMessage": "“%@”이(가) 이 Mac에서 삭제됩니다. 이 작업은 되돌릴 수 없습니다.",
         "whatsNew.2.2.0.snippets.title": "스니펫",
         "whatsNew.2.2.0.snippets.detail": "자주 입력하는 텍스트를 저장하고 같은 ⌥⇧V 패널(Tab으로 전환)에서 붙여넣으세요. ;addr 같은 키워드를 지정하고 설정 › 스니펫에서 펼치기를 켜면 어디서든 입력할 수 있습니다.",
+        "welcome.clipboard.title": "클립보드와 스니펫",
+        "welcome.clipboard.message": "복사한 내용을 찾고 자주 쓰는 텍스트를 붙여넣는 일을 한 패널에서 합니다.",
+        "welcome.clipboard.history": "클립보드 기록",
+        "welcome.clipboard.history.detail": "복사한 텍스트와 이미지를 이 Mac에만 보관합니다.",
+        "welcome.clipboard.shortcut": "패널 열기",
+        "welcome.clipboard.shortcut.detail": "클립보드 기록과 스니펫을 검색합니다. Tab으로 전환합니다.",
+        "welcome.clipboard.expansion": "스니펫 키워드 확장",
+        "welcome.clipboard.expansion.detail": "어느 앱에서든 ;addr 같은 키워드를 입력하면 스니펫으로 바뀝니다.",
+        "welcome.clipboard.expansion.needsAccessibility": "손쉬운 사용을 허용하면 작동합니다.",
+        "welcome.clipboard.customize": "스니펫 추가와 이 설정 변경은 나중에 설정 › %@에서 할 수 있습니다.",
     ]
 }

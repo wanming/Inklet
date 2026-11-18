@@ -133,7 +133,7 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - [ ] `Command+P` pins and unpins (Pinned / Recent headers appear only with pinned items); `Command+Delete` deletes only while the search is empty; `Command+C` copies without pasting; the right-click menu offers the same actions.
 - [ ] Copy a password from a password manager (1Password, Bitwarden, Apple Passwords) and copy a file in Finder: neither appears.
 - [ ] Use Selection Actions with Force Selection and insert a writing result: Inklet's temporary clipboard use never appears in the history, but a copy you make during a selection read does.
-- [ ] Settings › Clipboard: turn history off (nothing new is recorded, `Option+Shift+V` is free for other apps again, and the menu bar item opens the turned-off state), change the shortcut (the new one opens the panel, the old one doesn't; choosing the writing shortcut shows a warning), shorten the retention (older unpinned items disappear), and clear (pinned items stay).
+- [ ] Settings › Clipboard: turn history off (nothing new is recorded, `Option+Shift+V` is free for other apps again unless you have snippets, in which case it opens on the Snippets tab, and the menu bar item opens the turned-off state), change the shortcut (the new one opens the panel, the old one doesn't; choosing the writing shortcut shows a warning), shorten the retention (older unpinned items disappear), and clear (pinned items stay).
 - [ ] Without Accessibility permission, the footer says Copy instead of Paste and Return only copies.
 - [ ] Check the panel in light and dark appearance, and in Chinese and German.
 
@@ -147,6 +147,7 @@ Run every item below in Chrome, Safari, Edge, and a native AppKit text view. Rep
 - [ ] With Pinyin or Japanese input active, typing a keyword never expands; in a password field it never expands.
 - [ ] Turn keyword expansion off: typing the keyword does nothing. Quit and reopen Inklet: snippets and the switch are kept.
 - [ ] Check the Snippets tab and settings page in light and dark appearance, and in Chinese and German.
+- [ ] Welcome guide (menu bar › Welcome Guide): the Clipboard & Snippets step shows the current clipboard history switch, panel shortcut and keyword expansion switch. Changing each one takes effect right away and matches Settings › Clipboard and Settings › Snippets; Back and Continue keep the choices. Check it fits in Chinese, German and Spanish.
 
 ## Update Checks
 
