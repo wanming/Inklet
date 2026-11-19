@@ -47,6 +47,8 @@ public actor BuiltInModelServer {
         var process: Process
         var modelID: String
         var connection: Connection
+        /// False while the model loads; the server answers "Loading model" to requests until then.
+        var isReady = false
     }
 
     private let store: BuiltInModelStore
@@ -133,7 +135,7 @@ public actor BuiltInModelServer {
         projector: BuiltInModel? = nil,
         startupTimeoutSeconds: TimeInterval
     ) async throws -> Connection {
-        if let running, running.modelID == model.id, running.process.isRunning {
+        if let running, running.modelID == model.id, running.isReady, running.process.isRunning {
             return running.connection
         }
         if let starting {
@@ -220,6 +222,9 @@ public actor BuiltInModelServer {
         } catch {
             stop()
             throw error
+        }
+        if running?.process === process {
+            running?.isReady = true
         }
         return connection
     }
