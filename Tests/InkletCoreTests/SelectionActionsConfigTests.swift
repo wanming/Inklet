@@ -133,6 +133,22 @@ final class SelectionActionsConfigTests: XCTestCase {
         XCTAssertEqual(config.pronunciationSpeed, 1.0)
         XCTAssertEqual(config.forceSelectionMode, .menuCopyOnly)
         XCTAssertFalse(config.allowsSimulatedCopyFallback)
+        XCTAssertEqual(config.maximumSelectionLength, 20_000)
+    }
+
+    func testMaximumSelectionLengthRoundTripsAndStaysPositive() throws {
+        let config = SelectionActionsConfig(maximumSelectionLength: 50_000)
+        let decoded = try JSONDecoder().decode(
+            SelectionActionsConfig.self,
+            from: try JSONEncoder().encode(config)
+        )
+        XCTAssertEqual(decoded.maximumSelectionLength, 50_000)
+
+        let zero = try JSONDecoder().decode(
+            SelectionActionsConfig.self,
+            from: Data(#"{"maximumSelectionLength":0}"#.utf8)
+        )
+        XCTAssertEqual(zero.maximumSelectionLength, 1)
     }
 
     func testLegacyShortcutModesNormalizeToMenuCopyWithoutExplicitPermission() throws {

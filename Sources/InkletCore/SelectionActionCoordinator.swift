@@ -30,18 +30,13 @@ public enum SelectionActionEffect: Equatable, Sendable {
 
 public struct SelectionActionCoordinator: Sendable {
     private var config: SelectionActionsConfig
-    private let maxSelectionLength: Int
     private var pendingAppBundleID: String?
     private var pendingLocation: SelectionPoint = .zero
     private var unsupportedNoticeAppIDs = Set<String>()
     private var lastShownText: String?
 
-    public init(
-        config: SelectionActionsConfig,
-        maxSelectionLength: Int = 1_500
-    ) {
+    public init(config: SelectionActionsConfig) {
         self.config = config
-        self.maxSelectionLength = maxSelectionLength
     }
 
     public mutating func handle(_ event: SelectionActionEvent) -> [SelectionActionEffect] {
@@ -63,7 +58,7 @@ public struct SelectionActionCoordinator: Sendable {
 
             switch result {
             case .success(let text):
-                guard text.count <= maxSelectionLength, text != lastShownText else {
+                guard text.count <= config.maximumSelectionLength, text != lastShownText else {
                     return []
                 }
                 lastShownText = text
