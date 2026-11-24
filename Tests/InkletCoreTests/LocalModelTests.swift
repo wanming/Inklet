@@ -336,6 +336,57 @@ final class LocalModelTests: XCTestCase {
         }
     }
 
+    func testRequestWaitsWhileTheBuiltInModelIsStillLoading() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = BuiltInModelStore(directoryURL: directory)
+        let model = BuiltInModel.qwen35_4B
+        // A sparse file of the right size counts as downloaded without taking up disk space.
+        FileManager.default.createFile(atPath: store.fileURL(for: model).path, contents: nil)
+        let modelFile = try FileHandle(forWritingTo: store.fileURL(for: model))
+        try modelFile.truncate(atOffset: UInt64(model.sizeBytes))
+        try modelFile.close()
+        // Stands in for llama-server: it keeps running whatever flags it gets.
+        let executableURL = directory.appendingPathComponent("fake-llama-server")
+        try "#!/bin/sh\nexec sleep 30\n".write(to: executableURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executableURL.path)
+
+        let loading = LoadingState()
+        MockLocalServerURLProtocol.handler = { request in
+            let isReady = loading.healthCheck()
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: isReady ? 200 : 503,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data())
+        }
+        let server = BuiltInModelServer(
+            store: store,
+            executableURL: { executableURL },
+            session: mockSession()
+        )
+
+        // The popover's warm-up starts the server, and the person presses Transform while it loads.
+        let warmUp = Task { try await server.connection(for: model, startupTimeoutSeconds: 10) }
+        while loading.healthChecks == 0 {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        let request = Task { () -> Bool in
+            _ = try await server.connection(for: model, startupTimeoutSeconds: 10)
+            return loading.isReady
+        }
+        try await Task.sleep(for: .milliseconds(300))
+        loading.finish()
+
+        let wasReadyWhenRequestWentOut = try await request.value
+        _ = try await warmUp.value
+        await server.stop()
+        XCTAssertTrue(wasReadyWhenRequestWentOut)
+    }
+
     private func value(after flag: String, in arguments: [String]) -> String? {
         guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else {
             return nil
@@ -377,6 +428,31 @@ final class LocalModelTests: XCTestCase {
 private final class RecordedRequest: @unchecked Sendable {
     var request: URLRequest?
     var body: Data?
+}
+
+private final class LoadingState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var ready = false
+    private var checks = 0
+
+    var isReady: Bool {
+        lock.withLock { ready }
+    }
+
+    var healthChecks: Int {
+        lock.withLock { checks }
+    }
+
+    func healthCheck() -> Bool {
+        lock.withLock {
+            checks += 1
+            return ready
+        }
+    }
+
+    func finish() {
+        lock.withLock { ready = true }
+    }
 }
 
 private final class PartialOutputs: @unchecked Sendable {
