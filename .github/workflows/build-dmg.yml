@@ -241,10 +241,16 @@ jobs:
             echo "DMG notarization failed." >&2
             exit 1
           fi
-          if ! xcrun stapler staple "$dmg_path" >"$release_log_dir/staple.log" 2>&1; then
-            echo "DMG stapling failed." >&2
-            exit 1
-          fi
+          # The notarization ticket can take a minute to become available after notarytool returns.
+          staple_attempt=1
+          until xcrun stapler staple "$dmg_path" >"$release_log_dir/staple.log" 2>&1; do
+            if ((staple_attempt >= 5)); then
+              echo "DMG stapling failed." >&2
+              exit 1
+            fi
+            sleep $((staple_attempt * 15))
+            staple_attempt=$((staple_attempt + 1))
+          done
           if ! xcrun stapler validate "$dmg_path" >"$release_log_dir/stapler-validate.log" 2>&1; then
             echo "DMG staple validation failed." >&2
             exit 1
@@ -386,8 +392,9 @@ jobs:
           attach_succeeded=0
 
           cp "$dmg_path" "dist/Inklet.dmg"
-          shasum -a 256 "$dmg_path" > "$dmg_path.sha256"
-          shasum -a 256 "dist/Inklet.dmg" > "dist/Inklet.dmg.sha256"
+          # List bare file names so `shasum -c` works next to the downloaded files.
+          shasum -a 256 "$dmg_path" | awk -v name="${dmg_path##*/}" '{ print $1 "  " name }' > "$dmg_path.sha256"
+          shasum -a 256 "dist/Inklet.dmg" | awk '{ print $1 "  Inklet.dmg" }' > "dist/Inklet.dmg.sha256"
 
       - name: Publish GitHub release
         env:
