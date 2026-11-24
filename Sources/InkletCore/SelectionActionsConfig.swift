@@ -19,6 +19,9 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
     public static let minimumPronunciationSpeed = 0.75
     public static let maximumPronunciationSpeed = 1.5
     public static let defaultPronunciationSpeed = 1.0
+    /// The selection menu stays hidden for selections longer than this many characters.
+    public static let defaultMaximumSelectionLength = 20_000
+    public static let maximumSelectionLengthChoices = [2_000, 5_000, 20_000, 50_000, 100_000]
 
     public var isEnabled: Bool
     public var translationLanguage: SelectionTranslationLanguage
@@ -31,6 +34,7 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
     public var allowsSimulatedCopyFallback: Bool
     /// Stored order and on/off state of the selection menu buttons. Empty means defaults.
     public var menuButtonSettings: [SelectionMenuButtonSetting]
+    public var maximumSelectionLength: Int
 
     static let legacyDefaultTranslationPrompt = """
     Translate the user's selected text into {targetLanguage}.
@@ -58,7 +62,8 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
         pronunciationSpeed: Double = Self.defaultPronunciationSpeed,
         forceSelectionMode: SelectionForceSelectionMode = .menuCopyOnly,
         allowsSimulatedCopyFallback: Bool = false,
-        menuButtonSettings: [SelectionMenuButtonSetting] = []
+        menuButtonSettings: [SelectionMenuButtonSetting] = [],
+        maximumSelectionLength: Int = Self.defaultMaximumSelectionLength
     ) {
         self.isEnabled = isEnabled
         self.translationLanguage = translationLanguage
@@ -69,6 +74,7 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
         self.forceSelectionMode = forceSelectionMode.normalizedForSafeSettings
         self.allowsSimulatedCopyFallback = allowsSimulatedCopyFallback
         self.menuButtonSettings = menuButtonSettings
+        self.maximumSelectionLength = max(1, maximumSelectionLength)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -81,6 +87,7 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
         case forceSelectionMode
         case allowsSimulatedCopyFallback
         case menuButtonSettings = "menuButtons"
+        case maximumSelectionLength
     }
 
     public init(from decoder: Decoder) throws {
@@ -121,6 +128,11 @@ public struct SelectionActionsConfig: Codable, Equatable, Sendable {
             [SelectionMenuButtonSetting].self,
             forKey: .menuButtonSettings
         ) ?? defaults.menuButtonSettings
+        maximumSelectionLength = max(
+            1,
+            try container.decodeIfPresent(Int.self, forKey: .maximumSelectionLength)
+                ?? defaults.maximumSelectionLength
+        )
     }
 
     public static func defaultConfig() -> SelectionActionsConfig {

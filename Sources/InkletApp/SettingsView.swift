@@ -1424,7 +1424,32 @@ struct SettingsView: View {
                     .toggleStyle(.switch)
                     .disabled(model.config.selectionActions.forceSelectionMode == .disabled)
             }
+
+            settingsRow(
+                L10n.text("settings.row.maximumSelectionLength"),
+                help: L10n.text("settings.help.maximumSelectionLength")
+            ) {
+                Picker("", selection: $model.config.selectionActions.maximumSelectionLength) {
+                    ForEach(maximumSelectionLengthChoices, id: \.self) { length in
+                        Text(characterCountText(length)).tag(length)
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
         }
+    }
+
+    /// The preset limits, plus the saved one if it was set to something else.
+    private var maximumSelectionLengthChoices: [Int] {
+        let current = model.config.selectionActions.maximumSelectionLength
+        let choices = SelectionActionsConfig.maximumSelectionLengthChoices
+        return choices.contains(current) ? choices : (choices + [current]).sorted()
+    }
+
+    private func characterCountText(_ count: Int) -> String {
+        let number = count.formatted(.number.locale(Locale(identifier: L10n.resolvedLanguage.localeIdentifier)))
+        return L10n.format("settings.characterCount", number)
     }
 
     private var selectionTranslationGroup: some View {

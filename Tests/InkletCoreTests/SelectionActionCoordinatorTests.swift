@@ -70,7 +70,9 @@ final class SelectionActionCoordinatorTests: XCTestCase {
     }
 
     func testTooLongSelectionIsIgnored() {
-        var coordinator = SelectionActionCoordinator(config: .defaultConfig(), maxSelectionLength: 5)
+        var coordinator = SelectionActionCoordinator(
+            config: SelectionActionsConfig(maximumSelectionLength: 5)
+        )
         _ = coordinator.handle(.candidateSelection(sourceAppBundleID: "com.apple.TextEdit", mouseLocation: .zero))
 
         let actions = coordinator.handle(.readCompleted(.success("too long")))
@@ -78,8 +80,8 @@ final class SelectionActionCoordinatorTests: XCTestCase {
         XCTAssertEqual(actions, [])
     }
 
-    func testDefaultSelectionLengthLimitAllowsFifteenHundredCharacters() {
-        let text = String(repeating: "a", count: 1_500)
+    func testDefaultSelectionLengthLimitAllowsTwentyThousandCharacters() {
+        let text = String(repeating: "a", count: 20_000)
         var coordinator = SelectionActionCoordinator(config: .defaultConfig())
         _ = coordinator.handle(.candidateSelection(sourceAppBundleID: "com.apple.TextEdit", mouseLocation: .zero))
 
@@ -88,13 +90,21 @@ final class SelectionActionCoordinatorTests: XCTestCase {
         XCTAssertEqual(actions, [.showPanel(text: text, location: .zero)])
     }
 
-    func testDefaultSelectionLengthLimitIgnoresMoreThanFifteenHundredCharacters() {
-        let text = String(repeating: "a", count: 1_501)
+    func testDefaultSelectionLengthLimitIgnoresMoreThanTwentyThousandCharacters() {
+        let text = String(repeating: "a", count: 20_001)
         var coordinator = SelectionActionCoordinator(config: .defaultConfig())
         _ = coordinator.handle(.candidateSelection(sourceAppBundleID: "com.apple.TextEdit", mouseLocation: .zero))
 
         let actions = coordinator.handle(.readCompleted(.success(text)))
 
         XCTAssertEqual(actions, [])
+    }
+
+    func testUpdatedSelectionLengthLimitAppliesToNextSelection() {
+        var coordinator = SelectionActionCoordinator(config: .defaultConfig())
+        _ = coordinator.handle(.updateConfig(SelectionActionsConfig(maximumSelectionLength: 3)))
+        _ = coordinator.handle(.candidateSelection(sourceAppBundleID: "com.apple.TextEdit", mouseLocation: .zero))
+
+        XCTAssertEqual(coordinator.handle(.readCompleted(.success("four"))), [])
     }
 }
